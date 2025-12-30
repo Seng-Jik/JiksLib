@@ -9,6 +9,7 @@ namespace JiksLib.Collections
     public interface IReadOnlyMultiSet<T> :
         IEnumerable<T>,
         IReadOnlyCollection<T>
+        where T : notnull
     {
         /// <summary>
         /// 判断集合是否包含某个元素

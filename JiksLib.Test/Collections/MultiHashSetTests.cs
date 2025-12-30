@@ -36,8 +36,8 @@ namespace JiksLib.Test.Collections
         public void Constructor_WithNullComparer_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            // Note: Current implementation doesn't validate comparer parameter
-            // This test documents the expected behavior
+            // Implementation now validates comparer parameter using ThrowIfNull
+            // This test verifies the expected behavior
             Assert.That(() => new MultiHashSet<string>(null!), Throws.ArgumentNullException);
         }
 
@@ -81,8 +81,8 @@ namespace JiksLib.Test.Collections
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Note: Current implementation doesn't validate null items due to Dictionary constraint
-            // This test documents the expected behavior
+            // Implementation now validates null items using ThrowIfNull
+            // This test verifies the expected behavior
             Assert.That(() => set.Add(null!), Throws.ArgumentNullException);
         }
 
@@ -145,8 +145,8 @@ namespace JiksLib.Test.Collections
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Note: Current implementation doesn't validate null items due to Dictionary constraint
-            // This test documents the expected behavior
+            // Implementation now validates null items using ThrowIfNull
+            // This test verifies the expected behavior
             Assert.That(() => set.Remove(null!), Throws.ArgumentNullException);
         }
 
@@ -178,8 +178,8 @@ namespace JiksLib.Test.Collections
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Note: Current implementation doesn't validate null items due to Dictionary constraint
-            // This test documents the expected behavior
+            // Implementation now validates null items using ThrowIfNull
+            // This test verifies the expected behavior
             Assert.That(() => set.Contains(null!), Throws.ArgumentNullException);
         }
 
@@ -213,8 +213,8 @@ namespace JiksLib.Test.Collections
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Note: Current implementation doesn't validate null items due to Dictionary constraint
-            // This test documents the expected behavior
+            // Implementation now validates null items using ThrowIfNull
+            // This test verifies the expected behavior
             Assert.That(() => set.GetCountOf(null!), Throws.ArgumentNullException);
         }
 
@@ -327,7 +327,7 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Performance_Count_IsNotCached()
+        public void Performance_Count_IsCached()
         {
             // Arrange
             var set = new MultiHashSet<int>();
@@ -338,7 +338,7 @@ namespace JiksLib.Test.Collections
             }
 
             // Act
-            // Call Count multiple times - implementation is O(n) each time
+            // Call Count multiple times - implementation is O(1) (returns cached count)
             var counts = new List<int>();
             for (int i = 0; i < 100; i++) // Reduced iterations for speed
             {
@@ -348,7 +348,7 @@ namespace JiksLib.Test.Collections
             // Assert
             // All counts should be the same (1000)
             Assert.That(counts.All(c => c == 1000), Is.True);
-            // Note: This test validates the documented behavior that Count is not O(1)
+            // Note: This test validates that Count is O(1) (returns cached count)
         }
 
         [Test]
@@ -487,11 +487,11 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void DictionaryWaste_ConstructorWithComparer_CreatesTwoDictionaries()
+        public void Constructor_WithComparer_CreatesSingleDictionary()
         {
             // Arrange & Act
-            // The field initializer creates a dictionary, then the constructor creates another
-            // This is inefficient but not functionally incorrect
+            // The constructor creates a single dictionary with the specified comparer
+            // No waste occurs (previously there was a concern about field initializer)
             var set = new MultiHashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Assert

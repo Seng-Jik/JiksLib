@@ -9,6 +9,7 @@ namespace JiksLib.Collections
     /// 允许单个元素重复多次
     /// </summary>
     public sealed class MultiHashSet<T> : IReadOnlyMultiSet<T>
+        where T : notnull
     {
         /// <summary>
         /// 创建一个空的多重哈希集合
@@ -16,7 +17,7 @@ namespace JiksLib.Collections
         public MultiHashSet()
         {
             dict = new();
-            count = 0;
+            Count = 0;
         }
 
         /// <summary>
@@ -26,18 +27,18 @@ namespace JiksLib.Collections
         public MultiHashSet(IEqualityComparer<T> comparer)
         {
             dict = new(comparer.ThrowIfNull());
-            count = 0;
+            Count = 0;
         }
 
         /// <summary>
         /// 获得元素总数量
         /// </summary>
-        public int Count => count;
+        public int Count { get; private set; }
 
         /// <summary>
         /// 判断集合是否包含某个元素
         /// </summary>
-        public bool Contains(T item) => dict.ContainsKey(item);
+        public bool Contains(T item) => dict.ContainsKey(item.ThrowIfNull());
 
         /// <summary>
         /// 判断集合中某个元素的重复次数
@@ -46,7 +47,7 @@ namespace JiksLib.Collections
         /// <returns>重复次数</returns>
         public int GetCountOf(T item)
         {
-            if (dict.TryGetValue(item, out var count))
+            if (dict.TryGetValue(item.ThrowIfNull(), out var count))
                 return count;
 
             return 0;
@@ -58,7 +59,7 @@ namespace JiksLib.Collections
         public void Clear()
         {
             dict.Clear();
-            count = 0;
+            Count = 0;
         }
 
         /// <summary>
@@ -68,7 +69,9 @@ namespace JiksLib.Collections
         /// <returns>添加后该元素的数量</returns>
         public int Add(T item)
         {
-            this.count++;
+            item.ThrowIfNull();
+
+            Count++;
 
             if (dict.TryGetValue(item, out var count))
             {
@@ -89,9 +92,11 @@ namespace JiksLib.Collections
         /// <returns>是否成功移除以及移除后该元素的数量</returns>
         public (bool Success, int Count) Remove(T item)
         {
+            item.ThrowIfNull();
+
             if (dict.TryGetValue(item, out var count))
             {
-                this.count--;
+                Count--;
 
                 if (count > 1)
                 {
@@ -126,7 +131,6 @@ namespace JiksLib.Collections
             return GetEnumerator();
         }
 
-        int count;
         readonly Dictionary<T, int> dict;
     }
 }
