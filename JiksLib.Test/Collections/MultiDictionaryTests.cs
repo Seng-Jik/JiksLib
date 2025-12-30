@@ -753,5 +753,432 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.GetValueCountOfKey("d"), Is.EqualTo(2));
             Assert.That(dict.GetCountOfKeyValuePair("d", 6), Is.EqualTo(2));
         }
+
+        [Test]
+        public void ContainsValue_EmptyDictionary_ReturnsFalse()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+
+            // Act & Assert
+            Assert.That(dict.ContainsValue(100), Is.False);
+        }
+
+        [Test]
+        public void ContainsValue_ValueInMultipleKeys_ReturnsTrue()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key2", 100);
+            dict.Add("key3", 200);
+
+            // Act & Assert
+            Assert.That(dict.ContainsValue(100), Is.True);
+        }
+
+        [Test]
+        public void GetCountOfKeyValuePair_MultipleOccurrences_ReturnsCorrectCount()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 100);
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+
+            // Act & Assert
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 200), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetEnumerator_NonGeneric_ReturnsCorrectEnumerator()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+
+            // Act
+            var enumerator = ((System.Collections.IEnumerable)dict).GetEnumerator();
+            var pairs = new List<KeyValuePair<string, int>>();
+            while (enumerator.MoveNext())
+            {
+                pairs.Add((KeyValuePair<string, int>)enumerator.Current);
+            }
+
+            // Assert
+            Assert.That(pairs.Count, Is.EqualTo(2));
+            Assert.That(pairs.Any(p => p.Key == "key1" && p.Value == 100), Is.True);
+            Assert.That(pairs.Any(p => p.Key == "key1" && p.Value == 200), Is.True);
+        }
+
+        [Test]
+        public void Remove_KeyWithMultipleValues_RemovesAllValuesAndDecreasesCountCorrectly()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key1", 300);
+            dict.Add("key2", 400);
+            var originalCount = dict.Count;
+
+            // Act
+            var result = dict.Remove("key1");
+
+            // Assert
+            Assert.That(result, Is.True);
+            Assert.That(dict.Count, Is.EqualTo(originalCount - 3));
+            Assert.That(dict.ContainsKey("key1"), Is.False);
+            Assert.That(dict.ContainsKey("key2"), Is.True);
+            Assert.That(dict.Contains("key2", 400), Is.True);
+        }
+
+        [Test]
+        public void Remove_KeyFromEmptyDictionary_ReturnsFalse()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+
+            // Act & Assert
+            Assert.That(dict.Remove("nonexistent"), Is.False);
+        }
+
+        [Test]
+        public void Add_DuplicateKeyValuePairMultipleTimes_IncreasesCountCorrectly()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+
+            // Act
+            dict.Add("key1", 100);
+            dict.Add("key1", 100);
+            dict.Add("key1", 100);
+
+            // Assert
+            Assert.That(dict.Count, Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Indexer_ReturnsIndependentEnumerable()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+
+            // Act
+            var values1 = dict["key1"].ToList();
+            var values2 = dict["key1"].ToList();
+
+            // Assert - both enumerations should be independent and contain the same values
+            Assert.That(values1.Count, Is.EqualTo(2));
+            Assert.That(values2.Count, Is.EqualTo(2));
+            Assert.That(values1.Contains(100), Is.True);
+            Assert.That(values1.Contains(200), Is.True);
+            Assert.That(values2.Contains(100), Is.True);
+            Assert.That(values2.Contains(200), Is.True);
+        }
+
+        [Test]
+        public void Indexer_ModifyDictionaryWhileEnumerating_DoesNotAffectEnumeration()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+
+            // Act
+            var values = dict["key1"].ToList(); // Materialize the enumeration
+
+            // Modify dictionary after enumeration is materialized
+            dict.Add("key1", 300);
+
+            // Assert - the materialized list should not contain the new value
+            Assert.That(values.Count, Is.EqualTo(2));
+            Assert.That(values.Contains(100), Is.True);
+            Assert.That(values.Contains(200), Is.True);
+            Assert.That(values.Contains(300), Is.False);
+        }
+
+        [Test]
+        public void Keys_Property_ReflectsCurrentState()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+
+            // Act - get keys before modification
+            var keysBefore = dict.Keys.ToList();
+
+            // Modify dictionary
+            dict.Add("key2", 200);
+            dict.Remove("key1");
+
+            // Get keys after modification
+            var keysAfter = dict.Keys.ToList();
+
+            // Assert
+            Assert.That(keysBefore.Count, Is.EqualTo(1));
+            Assert.That(keysBefore.Contains("key1"), Is.True);
+
+            Assert.That(keysAfter.Count, Is.EqualTo(1));
+            Assert.That(keysAfter.Contains("key2"), Is.True);
+            Assert.That(keysAfter.Contains("key1"), Is.False);
+        }
+
+        [Test]
+        public void Values_Property_ReflectsCurrentState()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+
+            // Act - get values before modification
+            var valuesBefore = dict.Values.ToList();
+
+            // Modify dictionary
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+
+            // Get values after modification
+            var valuesAfter = dict.Values.ToList();
+
+            // Assert
+            Assert.That(valuesBefore.Count, Is.EqualTo(1));
+            Assert.That(valuesBefore.Contains(100), Is.True);
+
+            Assert.That(valuesAfter.Count, Is.EqualTo(3));
+            Assert.That(valuesAfter.Contains(100), Is.True);
+            Assert.That(valuesAfter.Contains(200), Is.True);
+            Assert.That(valuesAfter.Contains(300), Is.True);
+        }
+
+        [Test]
+        public void CustomKeyComparer_CaseInsensitive_AllOperationsRespectComparer()
+        {
+            // Arrange
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var dict = new MultiDictionary<string, int>(comparer);
+
+            // Act
+            dict.Add("KEY", 100);
+            dict.Add("key", 200);
+            dict.Add("Key", 300);
+
+            // Assert
+            Assert.That(dict.Count, Is.EqualTo(3));
+            Assert.That(dict.ContainsKey("key"), Is.True);
+            Assert.That(dict.GetValueCountOfKey("KEY"), Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKeyValuePair("Key", 100), Is.EqualTo(1));
+
+            // Remove using different casing
+            var removed = dict.Remove("key", 200);
+            Assert.That(removed, Is.True);
+            Assert.That(dict.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void CustomValueComparer_CaseInsensitive_AllOperationsRespectComparer()
+        {
+            // Arrange
+            var keyComparer = StringComparer.OrdinalIgnoreCase;
+            var valueComparer = StringComparer.OrdinalIgnoreCase;
+            var dict = new MultiDictionary<string, string>(keyComparer, valueComparer);
+
+            // Act
+            dict.Add("key1", "VALUE");
+            dict.Add("key1", "value");
+            dict.Add("key1", "Value");
+
+            // Assert
+            Assert.That(dict.Count, Is.EqualTo(3));
+            Assert.That(dict.ContainsValue("VALUE"), Is.True);
+            Assert.That(dict.Contains("key1", "value"), Is.True);
+            Assert.That(dict.GetCountOfKeyValuePair("KEY1", "Value"), Is.EqualTo(3));
+
+            // Remove using different casing
+            var removed = dict.Remove("KEY1", "VALUE");
+            Assert.That(removed, Is.True);
+            Assert.That(dict.Count, Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", "value"), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Clone_ThenClearOriginal_CloneUnaffected()
+        {
+            // Arrange
+            var original = new MultiDictionary<string, int>();
+            original.Add("key1", 100);
+            original.Add("key1", 200);
+            original.Add("key2", 300);
+            var clone = original.Clone();
+
+            // Act
+            original.Clear();
+
+            // Assert
+            Assert.That(original.Count, Is.EqualTo(0));
+            Assert.That(original.ContainsKey("key1"), Is.False);
+
+            Assert.That(clone.Count, Is.EqualTo(3));
+            Assert.That(clone.ContainsKey("key1"), Is.True);
+            Assert.That(clone.Contains("key1", 100), Is.True);
+            Assert.That(clone.Contains("key1", 200), Is.True);
+            Assert.That(clone.Contains("key2", 300), Is.True);
+        }
+
+        [Test]
+        public void GetValueCountOfKey_AfterRemovingValues_ReturnsUpdatedCount()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key1", 300);
+
+            // Act & Assert - initial count
+            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(3));
+
+            // Remove one value
+            dict.Remove("key1", 200);
+            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(2));
+
+            // Remove another value
+            dict.Remove("key1", 100);
+            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(1));
+
+            // Remove last value (key should be removed)
+            dict.Remove("key1", 300);
+            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(0));
+            Assert.That(dict.ContainsKey("key1"), Is.False);
+        }
+
+        [Test]
+        public void Contains_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var kvp = new KeyValuePair<string, int>(null!, 100);
+
+            // Act & Assert
+            Assert.That(() => dict.Contains(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Contains_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, string>();
+            dict.Add("key1", "value1");
+            var kvp = new KeyValuePair<string, string>("key1", null!);
+
+            // Act & Assert
+            Assert.That(() => dict.Contains(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var kvp = new KeyValuePair<string, int>(null!, 100);
+
+            // Act & Assert
+            Assert.That(() => dict.GetCountOfKeyValuePair(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, string>();
+            dict.Add("key1", "value1");
+            var kvp = new KeyValuePair<string, string>("key1", null!);
+
+            // Act & Assert
+            Assert.That(() => dict.GetCountOfKeyValuePair(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Remove_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var kvp = new KeyValuePair<string, int>(null!, 100);
+
+            // Act & Assert
+            Assert.That(() => dict.Remove(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Remove_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, string>();
+            dict.Add("key1", "value1");
+            var kvp = new KeyValuePair<string, string>("key1", null!);
+
+            // Act & Assert
+            Assert.That(() => dict.Remove(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Add_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var kvp = new KeyValuePair<string, int>(null!, 100);
+
+            // Act & Assert
+            Assert.That(() => dict.Add(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Add_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, string>();
+            var kvp = new KeyValuePair<string, string>("key1", null!);
+
+            // Act & Assert
+            Assert.That(() => dict.Add(kvp), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void LargeNumberOfOperations_PerformanceAndConsistency()
+        {
+            // Arrange
+            var dict = new MultiDictionary<int, int>();
+            const int operationCount = 1000;
+
+            // Act - add many items
+            for (int i = 0; i < operationCount; i++)
+            {
+                dict.Add(i % 100, i); // 100 keys, each with multiple values
+            }
+
+            // Assert - verify counts
+            Assert.That(dict.Count, Is.EqualTo(operationCount));
+
+            // Remove half of the items
+            int removedCount = 0;
+            for (int i = 0; i < operationCount; i += 2)
+            {
+                if (dict.Remove(i % 100, i))
+                    removedCount++;
+            }
+
+            Assert.That(dict.Count, Is.EqualTo(operationCount - removedCount));
+
+            // Verify remaining items
+            for (int i = 1; i < operationCount; i += 2)
+            {
+                Assert.That(dict.Contains(i % 100, i), Is.True);
+            }
+        }
     }
 }
