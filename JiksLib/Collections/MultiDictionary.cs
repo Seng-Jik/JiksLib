@@ -34,7 +34,7 @@ namespace JiksLib.Collections
         /// </summary>
         public MultiDictionary(IEqualityComparer<TKey> keyComparer)
         {
-            dict = new(keyComparer);
+            dict = new(keyComparer.ThrowIfNull());
             Count = 0;
             valueComparer = null;
         }
@@ -48,9 +48,9 @@ namespace JiksLib.Collections
             IEqualityComparer<TKey> keyComparer,
             IEqualityComparer<TValue> valueComparer)
         {
-            dict = new(keyComparer);
+            dict = new(keyComparer.ThrowIfNull());
             Count = 0;
-            this.valueComparer = valueComparer;
+            this.valueComparer = valueComparer.ThrowIfNull();
         }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace JiksLib.Collections
             if (!dict.TryGetValue(key.ThrowIfNull(), out var set))
                 return false;
 
-            bool success = set.Remove(value.ThrowIfNull()).Success;
+            bool success = set.Remove(value).Success;
 
             if (success)
             {
@@ -242,8 +242,9 @@ namespace JiksLib.Collections
             GetValueCountOfKeyValuePair(item.Key, item.Value);
 
         /// <summary>
-        /// 深拷贝当前多重字典
+        /// 拷贝当前多重字典，但引用类型元素共享相同对象引用
         /// </summary>
+        /// <returns>拷贝后的多重字典</returns>
         public MultiDictionary<TKey, TValue> Clone()
         {
             var clone = valueComparer != null ?
@@ -253,7 +254,7 @@ namespace JiksLib.Collections
             clone.Count = Count;
 
             foreach (var kv in dict)
-                clone.dict[kv.Key] = kv.Value.Clone();
+                clone.dict.Add(kv.Key, kv.Value.Clone());
 
             return clone;
         }

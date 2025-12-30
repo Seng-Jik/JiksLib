@@ -130,18 +130,16 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 深拷贝当前集合
+        /// 拷贝当前集合
+        /// 复制集合结构，但引用类型元素共享对象引用
         /// </summary>
-        /// <returns>深拷贝后的对象</returns>
-        public MultiHashSet<T> Clone()
+        /// <returns>拷贝后的集合</returns>
+        public MultiHashSet<T> Clone() => new(Count, new(dict, dict.Comparer));
+
+        private MultiHashSet(int count, Dictionary<T, int> dict)
         {
-            MultiHashSet<T> clone = new(dict.Comparer);
-            clone.Count = Count;
-
-            foreach (var kv in dict)
-                clone.dict.Add(kv.Key, kv.Value);
-
-            return clone;
+            this.dict = dict;
+            Count = count;
         }
 
         object ICloneable.Clone() => Clone();
