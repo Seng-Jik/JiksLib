@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib", "JiksLib\JiksLib.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib.Test", "JiksLib.Test\JiksLib.Test.csproj", "{BD1CE606-5EEA-4A07-A863-67EC9110211D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib.UniTask", "JiksLib.UniTask\JiksLib.UniTask.csproj", "{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{BD1CE606-5EEA-4A07-A863-67EC9110211D}.Release|x64.Build.0 = Release|Any CPU
 		{BD1CE606-5EEA-4A07-A863-67EC9110211D}.Release|x86.ActiveCfg = Release|Any CPU
 		{BD1CE606-5EEA-4A07-A863-67EC9110211D}.Release|x86.Build.0 = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|x64.Build.0 = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Debug|x86.Build.0 = Debug|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|x64.ActiveCfg = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|x64.Build.0 = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|x86.ActiveCfg = Release|Any CPU
+		{9A426E0A-ACA9-4481-A6A3-B60FC0F331E3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

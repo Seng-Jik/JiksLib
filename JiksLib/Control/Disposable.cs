@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using JiksLib.Collections;
+using JiksLib.Extensions;
 
 namespace JiksLib.Control
 {
@@ -50,24 +53,49 @@ namespace JiksLib.Control
         public delegate void SubmitDisposable(IDisposable disposable);
 
         /// <summary>
-        /// 通过一个作用域创建一个 IDisposable
-        /// 作用域会被传入一个 SubmitDisposable 委托
-        /// 调用该委托即提交一个 IDisposable
-        /// 生成的 IDisposable 被调用时，将会以相反的顺序调用提交的各 IDisposable
+        /// 通过一个作用域函数创建一个 IDisposable 实例
+        /// 作用域将会被传入一个提交 IDisposable 的函数
+        /// 不适用于异步作用域，也不可将 SubmitDisposable 存储到作用域外
         /// </summary>
+        /// <typeparam name="R">作用域返回值类型</typeparam>
         /// <param name="scope">作用域</param>
-        /// <returns>生成的 IDisposable</returns>
-        public static IDisposable Scope(Action<SubmitDisposable> scope)
+        /// <returns>返回值和 IDisposable</returns>
+        public static (R result, IDisposable disposable) Scope<R>(
+            Func<SubmitDisposable, R> scope)
         {
             Stack<IDisposable> disposableStack = new();
-            scope(disposableStack.Push);
+            Cell<bool> inScope = new(true);
 
-            return FromAction(() =>
+            var result = scope(x =>
             {
+                if (!inScope.Value)
+                    throw new InvalidOperationException(
+                        "Cannot submit IDisposable outside of scope.");
+
+                disposableStack.Push(x.ThrowIfNull());
+            });
+
+            inScope.Value = false;
+
+            var disposable = FromAction(() =>
+            {
+                inScope.Value = false;
                 while (disposableStack.Count > 0)
                     disposableStack.Pop().Dispose();
             });
+
+            return (result, disposable);
         }
+
+        /// <summary>
+        /// 通过一个作用域函数创建一个 IDisposable 实例
+        /// 作用域将会被传入一个提交 IDisposable 的函数
+        /// 不适用于异步作用域，也不可将 SubmitDisposable 存储到作用域外
+        /// </summary>
+        /// <param name="scope">作用域</param>
+        /// <returns>IDisposable 实例</returns>
+        public static IDisposable Scope(Action<SubmitDisposable> scope) =>
+            Scope<UnitType>(f => { scope(f); return new(); }).disposable;
 
         #region 实现细节
 
@@ -78,7 +106,7 @@ namespace JiksLib.Control
 
             public ActionDisposable(Action disposeAction)
             {
-                this.disposeAction = disposeAction;
+                this.disposeAction = disposeAction.ThrowIfNull();
             }
 
             public void Dispose()

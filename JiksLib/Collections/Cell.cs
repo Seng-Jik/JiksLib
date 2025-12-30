@@ -7,7 +7,6 @@ namespace JiksLib.Collections
     /// 可用于强类型装箱值类型或者提供修改时事件
     /// </summary>
     public sealed class Cell<T>
-        where T : notnull
     {
         /// <summary>
         /// 设置格子的值时触发该事件
@@ -21,7 +20,7 @@ namespace JiksLib.Collections
         {
             get
             {
-                return v!;
+                return v;
             }
 
             set

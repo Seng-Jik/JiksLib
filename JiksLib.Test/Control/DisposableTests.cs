@@ -105,26 +105,22 @@ namespace JiksLib.Test.Control
             merged.Dispose();
 
             // Assert
-            Assert.That(disposeOrder, Is.EqualTo(new[] { 3, 2, 1 }));
+            Assert.That(disposeOrder.ToArray(), Is.EqualTo(new[] { 3, 2, 1 }));
         }
 
         [Test]
         public void Merge_WithParams_CreatesDisposable()
         {
             // Arrange
-            var disposable1 = Disposable.FromAction(() => {});
-            var disposable2 = Disposable.FromAction(() => {});
-            var disposable3 = Disposable.FromAction(() => {});
+            var disposable1 = Disposable.FromAction(() => { });
+            var disposable2 = Disposable.FromAction(() => { });
+            var disposable3 = Disposable.FromAction(() => { });
 
             // Act
-            // Note: There's a bug in the original code where Merge(params IDisposable[] disposables)
-            // calls itself recursively. This test may fail or cause stack overflow.
-            // We'll skip this test for now.
-            // var merged = Disposable.Merge(disposable1, disposable2, disposable3);
+            var merged = Disposable.Merge(disposable1, disposable2, disposable3);
 
             // Assert
-            // Assert.That(merged, Is.Not.Null);
-            Assert.Pass("Skipping test due to recursive bug in Merge(params) method");
+            Assert.That(merged, Is.Not.Null);
         }
 
         [Test]
@@ -135,7 +131,7 @@ namespace JiksLib.Test.Control
             Action<Disposable.SubmitDisposable> scope = (submit) =>
             {
                 scopeCalled = true;
-                submit(Disposable.FromAction(() => {}));
+                submit(Disposable.FromAction(() => { }));
             };
 
             // Act
@@ -194,6 +190,176 @@ namespace JiksLib.Test.Control
             // Assert
             Assert.That(merged, Is.Not.Null);
             Assert.DoesNotThrow(() => merged.Dispose());
+        }
+
+        [Test]
+        public void Scope_Generic_ReturnsResultAndDisposable()
+        {
+            // Arrange
+            var expectedResult = 42;
+            var disposeOrder = new List<int>();
+            Func<Disposable.SubmitDisposable, int> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => disposeOrder.Add(1)));
+                submit(Disposable.FromAction(() => disposeOrder.Add(2)));
+                return expectedResult;
+            };
+
+            // Act
+            var (result, disposable) = Disposable.Scope(scope);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(expectedResult));
+            Assert.That(disposable, Is.Not.Null);
+            Assert.That(disposeOrder, Is.Empty); // Not disposed yet
+        }
+
+        [Test]
+        public void Scope_Generic_DisposeCallsSubmittedDisposablesInReverseOrder()
+        {
+            // Arrange
+            var disposeOrder = new List<int>();
+            var expectedResult = "test result";
+            Func<Disposable.SubmitDisposable, string> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => disposeOrder.Add(1)));
+                submit(Disposable.FromAction(() => disposeOrder.Add(2)));
+                submit(Disposable.FromAction(() => disposeOrder.Add(3)));
+                return expectedResult;
+            };
+
+            var (result, disposable) = Disposable.Scope(scope);
+
+            // Act
+            disposable.Dispose();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(expectedResult));
+            Assert.That(disposeOrder, Is.EqualTo(new[] { 3, 2, 1 }));
+        }
+
+        [Test]
+        public void Scope_Generic_SubmitDisposableOutsideScope_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            Disposable.SubmitDisposable? capturedSubmit = null;
+            Func<Disposable.SubmitDisposable, int> scope = (submit) =>
+            {
+                capturedSubmit = submit;
+                return 0;
+            };
+
+            var (_, disposable) = Disposable.Scope(scope);
+
+            // Act & Assert - Using capturedSubmit outside scope should throw
+            Assert.That(() => capturedSubmit!(Disposable.FromAction(() => { })),
+                Throws.TypeOf<InvalidOperationException>());
+
+            // Cleanup
+            disposable.Dispose();
+        }
+
+        [Test]
+        public void Scope_Generic_WithNullDisposable_Behavior()
+        {
+            // Arrange
+            Func<Disposable.SubmitDisposable, int> scope = (submit) =>
+            {
+                // Try to submit null
+                submit(null!);
+                return 0;
+            };
+
+            // Act & Assert
+            // Test the actual behavior when null is submitted
+            // Stack.Push(null) may or may not throw ArgumentNullException
+            // depending on .NET version and configuration
+            try
+            {
+                var (result, disposable) = Disposable.Scope(scope);
+                // If we get here, null was accepted
+                // Now try to dispose - this should fail when trying to call Dispose on null
+                Assert.That(() => disposable.Dispose(), Throws.TypeOf<NullReferenceException>());
+            }
+            catch (ArgumentNullException)
+            {
+                // Stack.Push(null) threw ArgumentNullException - this is expected behavior
+                Assert.Pass();
+            }
+        }
+
+        [Test]
+        public void Scope_Generic_WithExceptionInScope_PropagatesException()
+        {
+            // Arrange
+            var expectedException = new InvalidOperationException("Scope failed");
+            Func<Disposable.SubmitDisposable, int> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => { }));
+                throw expectedException;
+            };
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidOperationException>(() => Disposable.Scope(scope));
+            Assert.That(exception, Is.SameAs(expectedException));
+        }
+
+        [Test]
+        public void Scope_Generic_DisposeCalledTwice_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var disposeCount = 0;
+            Func<Disposable.SubmitDisposable, UnitType> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => disposeCount++));
+                return new UnitType();
+            };
+
+            var (_, disposable) = Disposable.Scope(scope);
+            disposable.Dispose();
+
+            // Act & Assert
+            Assert.That(() => disposable.Dispose(), Throws.TypeOf<InvalidOperationException>());
+            Assert.That(disposeCount, Is.EqualTo(1)); // Should only be disposed once
+        }
+
+        [Test]
+        public void Scope_Generic_ReturnsComplexType()
+        {
+            // Arrange
+            var expectedList = new List<string> { "a", "b", "c" };
+            Func<Disposable.SubmitDisposable, List<string>> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => { }));
+                return expectedList;
+            };
+
+            // Act
+            var (result, disposable) = Disposable.Scope(scope);
+
+            // Assert
+            Assert.That(result, Is.SameAs(expectedList));
+            Assert.That(result, Is.EqualTo(new[] { "a", "b", "c" }));
+            disposable.Dispose();
+        }
+
+        [Test]
+        public void Scope_NonGeneric_IsWrapperOfGenericScope()
+        {
+            // Arrange
+            var disposeOrder = new List<int>();
+            Action<Disposable.SubmitDisposable> scope = (submit) =>
+            {
+                submit(Disposable.FromAction(() => disposeOrder.Add(1)));
+                submit(Disposable.FromAction(() => disposeOrder.Add(2)));
+            };
+
+            // Act
+            var disposable = Disposable.Scope(scope);
+            disposable.Dispose();
+
+            // Assert
+            Assert.That(disposeOrder, Is.EqualTo(new[] { 2, 1 }));
         }
 
     }

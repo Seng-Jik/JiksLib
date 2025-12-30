@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using JiksLib.Extensions;
 
 namespace JiksLib.Text
 {
@@ -22,7 +23,7 @@ namespace JiksLib.Text
             bool leaveOpen = false,
             char separator = ',')
         {
-            this.csv = csv;
+            this.csv = csv.ThrowIfNull();
             this.leaveOpen = leaveOpen;
             this.separator = separator;
         }
@@ -33,7 +34,7 @@ namespace JiksLib.Text
         /// <param name="csv">CSV 字符串</param>
         /// <param name="separator">分隔符，修改此值可以读取 TSV 或 DSV</param>
         public CsvReader(string csv, char separator = ',') :
-            this(new StringReader(csv), false, separator)
+            this(new StringReader(csv.ThrowIfNull()), false, separator)
         {
         }
 
@@ -107,7 +108,7 @@ namespace JiksLib.Text
                 noMoreFields = true;
             else if (peek2 == separator)
                 csv.Read();
-            else throw new InvalidProgramException();
+            else throw new InvalidDataException();
 
             return field;
         }

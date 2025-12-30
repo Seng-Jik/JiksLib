@@ -1,4 +1,5 @@
 using System.Text;
+using JiksLib.Extensions;
 
 namespace JiksLib.Text
 {
@@ -16,12 +17,13 @@ namespace JiksLib.Text
         public CsvWriter(char separator = ',')
         {
             this.separator = separator;
+            separatorString = separator.ToString();
         }
 
         /// <summary>
         /// 是否强制每个字段均被双引号包裹
         /// </summary>
-        public bool AlwaysWrap { private set; get; } = false;
+        public bool AlwaysWrap { set; get; } = false;
 
         /// <summary>
         /// 在当前记录写入字段
@@ -29,15 +31,18 @@ namespace JiksLib.Text
         /// <param name="field">字段值</param>
         public void WriteField(string field)
         {
+            field.ThrowIfNull();
+
             if (!isFirstFieldOfCurrentLine)
                 sb.Append(separator);
             isFirstFieldOfCurrentLine = false;
 
             bool wrap =
                 AlwaysWrap ||
-                field.Contains(separator.ToString()) ||
+                field.Contains(separatorString) ||
                 field.Contains("\r") ||
                 field.Contains("\"") ||
+                field.Contains("\'") ||
                 field.Contains("\n") ||
                 field.Contains(",") ||
                 field.Contains("\t");
@@ -53,7 +58,7 @@ namespace JiksLib.Text
         public void NextRecord()
         {
             isFirstFieldOfCurrentLine = true;
-            sb.AppendLine();
+            sb.Append("\r\n");
         }
 
         /// <summary>
@@ -78,6 +83,7 @@ namespace JiksLib.Text
         #region 实现细节
 
         readonly char separator;
+        readonly string separatorString;
         readonly StringBuilder sb = new();
         bool isFirstFieldOfCurrentLine = true;
 
