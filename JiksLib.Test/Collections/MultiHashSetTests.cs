@@ -499,5 +499,147 @@ namespace JiksLib.Test.Collections
             set.Add("test");
             Assert.That(set.Contains("TEST"), Is.True);
         }
+
+        [Test]
+        public void Clone_EmptySet_ReturnsEmptyClone()
+        {
+            // Arrange
+            var original = new MultiHashSet<string>();
+
+            // Act
+            var clone = original.Clone();
+
+            // Assert
+            Assert.That(clone, Is.Not.SameAs(original));
+            Assert.That(clone.Count, Is.EqualTo(0));
+            Assert.That(clone, Is.Empty);
+        }
+
+        [Test]
+        public void Clone_SetWithItems_ReturnsEqualCopy()
+        {
+            // Arrange
+            var original = new MultiHashSet<string>();
+            original.Add("a");
+            original.Add("a");
+            original.Add("b");
+            original.Add("c");
+            original.Add("c");
+            original.Add("c");
+
+            // Act
+            var clone = original.Clone();
+
+            // Assert
+            Assert.That(clone, Is.Not.SameAs(original));
+            Assert.That(clone.Count, Is.EqualTo(original.Count));
+            Assert.That(clone.Contains("a"), Is.True);
+            Assert.That(clone.Contains("b"), Is.True);
+            Assert.That(clone.Contains("c"), Is.True);
+            Assert.That(clone.GetCountOf("a"), Is.EqualTo(2));
+            Assert.That(clone.GetCountOf("b"), Is.EqualTo(1));
+            Assert.That(clone.GetCountOf("c"), Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Clone_ModifyOriginal_DoesNotAffectClone()
+        {
+            // Arrange
+            var original = new MultiHashSet<string>();
+            original.Add("item");
+            original.Add("item");
+            var clone = original.Clone();
+
+            // Act
+            original.Add("new");
+            original.Remove("item");
+
+            // Assert
+            Assert.That(clone.Count, Is.EqualTo(2));
+            Assert.That(clone.Contains("item"), Is.True);
+            Assert.That(clone.GetCountOf("item"), Is.EqualTo(2));
+            Assert.That(clone.Contains("new"), Is.False);
+        }
+
+        [Test]
+        public void Clone_ModifyClone_DoesNotAffectOriginal()
+        {
+            // Arrange
+            var original = new MultiHashSet<string>();
+            original.Add("item");
+            original.Add("item");
+            var clone = original.Clone();
+
+            // Act
+            clone.Add("new");
+            clone.Remove("item");
+
+            // Assert
+            Assert.That(original.Count, Is.EqualTo(2));
+            Assert.That(original.Contains("item"), Is.True);
+            Assert.That(original.GetCountOf("item"), Is.EqualTo(2));
+            Assert.That(original.Contains("new"), Is.False);
+        }
+
+        [Test]
+        public void Clone_WithCustomComparer_PreservesComparer()
+        {
+            // Arrange
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var original = new MultiHashSet<string>(comparer);
+            original.Add("ITEM");
+
+            // Act
+            var clone = original.Clone();
+
+            // Assert
+            Assert.That(clone.Contains("item"), Is.True);
+            Assert.That(clone.GetCountOf("item"), Is.EqualTo(1));
+            // Verify comparer is the same by checking case-insensitive behavior
+            var (success, count) = clone.Remove("ItEm");
+            Assert.That(success, Is.True);
+            Assert.That(count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ICloneable_Clone_ReturnsObjectOfCorrectType()
+        {
+            // Arrange
+            var original = new MultiHashSet<string>();
+            original.Add("test");
+
+            // Act
+            var clone = ((ICloneable)original).Clone();
+
+            // Assert
+            Assert.That(clone, Is.InstanceOf<MultiHashSet<string>>());
+            var typedClone = (MultiHashSet<string>)clone;
+            Assert.That(typedClone.Count, Is.EqualTo(1));
+            Assert.That(typedClone.Contains("test"), Is.True);
+        }
+
+        [Test]
+        public void Clone_IsShallowCopy_ForReferenceTypes()
+        {
+            // Arrange - using a mutable reference type
+            var original = new MultiHashSet<List<string>>();
+            var list = new List<string> { "initial" };
+            original.Add(list);
+
+            // Act
+            var clone = original.Clone();
+
+            // Assert - both collections reference the same list object
+            var originalList = original.First();
+            var cloneList = clone.First();
+            Assert.That(cloneList, Is.SameAs(originalList));
+
+            // Modify the shared list
+            originalList.Add("modified");
+
+            // Both collections see the modification (shallow copy behavior)
+            Assert.That(cloneList.Count, Is.EqualTo(2));
+            Assert.That(cloneList.Contains("modified"), Is.True);
+        }
     }
 }

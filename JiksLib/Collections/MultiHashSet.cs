@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using JiksLib.Extensions;
@@ -8,7 +9,9 @@ namespace JiksLib.Collections
     /// 多重哈希集合
     /// 允许单个元素重复多次
     /// </summary>
-    public sealed class MultiHashSet<T> : IReadOnlyMultiSet<T>
+    public sealed class MultiHashSet<T> :
+        IReadOnlyMultiSet<T>,
+        ICloneable
         where T : notnull
     {
         /// <summary>
@@ -125,6 +128,23 @@ namespace JiksLib.Collections
                 for (int j = 0; j < i.Value; j++)
                     yield return i.Key;
         }
+
+        /// <summary>
+        /// 深拷贝当前集合
+        /// </summary>
+        /// <returns>深拷贝后的对象</returns>
+        public MultiHashSet<T> Clone()
+        {
+            MultiHashSet<T> clone = new(dict.Comparer);
+            clone.Count = Count;
+
+            foreach (var kv in dict)
+                clone.dict.Add(kv.Key, kv.Value);
+
+            return clone;
+        }
+
+        object ICloneable.Clone() => Clone();
 
         IEnumerator IEnumerable.GetEnumerator()
         {
