@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace CosmosPrelude.Misc
+namespace JiksLib.Text
 {
     /// <summary>
     /// CSV 写入器

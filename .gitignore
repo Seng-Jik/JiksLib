@@ -1,2 +1,4 @@
-/JiksLib/bin/
-/JiksLib/obj/
+/.claude
+/.vscode
+/**/bin
+/**/obj

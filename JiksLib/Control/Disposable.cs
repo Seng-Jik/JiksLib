@@ -42,7 +42,7 @@ namespace JiksLib.Control
         /// <param name="disposables">要合并的 IDisposables</param>
         /// <returns>合并后的 IDisposable</returns>
         public static IDisposable Merge(params IDisposable[] disposables) =>
-            Merge(disposables);
+            Merge((IEnumerable<IDisposable>)disposables);
 
         /// <summary>
         /// 这个委托用于向 Disposable.Scope 提交一个 IDisposable 实例
