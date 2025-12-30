@@ -225,7 +225,7 @@ namespace JiksLib.Collections
         /// <param name="key">键</param>
         /// <param name="value">值</param>
         /// <returns>指定键值对的数量</returns>
-        public int GetValueCountOfKeyValuePair(TKey key, TValue value)
+        public int GetCountOfKeyValuePair(TKey key, TValue value)
         {
             if (dict.TryGetValue(key.ThrowIfNull(), out var set))
                 return set.GetCountOf(value.ThrowIfNull());
@@ -238,8 +238,8 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="item">键值对</param>
         /// <returns>指定键值对的数量</returns>
-        public int GetValueCountOfKeyValuePair(KeyValuePair<TKey, TValue> item) =>
-            GetValueCountOfKeyValuePair(item.Key, item.Value);
+        public int GetCountOfKeyValuePair(KeyValuePair<TKey, TValue> item) =>
+            GetCountOfKeyValuePair(item.Key, item.Value);
 
         /// <summary>
         /// 拷贝当前多重字典，但引用类型元素共享相同对象引用

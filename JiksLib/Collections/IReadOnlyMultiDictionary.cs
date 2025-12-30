@@ -53,14 +53,14 @@ namespace JiksLib.Collections
         /// <param name="key">键</param>
         /// <param name="value">值</param>
         /// <returns>指定键值对的数量</returns>
-        int GetValueCountOfKeyValuePair(TKey key, TValue value);
+        int GetCountOfKeyValuePair(TKey key, TValue value);
 
         /// <summary>
         /// 获得指定键值对的数量
         /// </summary>
         /// <param name="item">键值对</param>
         /// <returns>指定键值对的数量</returns>
-        int GetValueCountOfKeyValuePair(KeyValuePair<TKey, TValue> item);
+        int GetCountOfKeyValuePair(KeyValuePair<TKey, TValue> item);
 
         /// <summary>
         /// 所有的键

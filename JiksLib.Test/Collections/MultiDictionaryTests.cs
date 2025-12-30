@@ -80,7 +80,7 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.ContainsKey("key1"), Is.True);
             Assert.That(dict.Contains("key1", 100), Is.True);
             Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(1));
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", 100), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(1));
         }
 
         [Test]
@@ -100,8 +100,8 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.Contains("key1", 100), Is.True);
             Assert.That(dict.Contains("key1", 200), Is.True);
             Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(3));
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", 100), Is.EqualTo(2));
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", 200), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 200), Is.EqualTo(1));
         }
 
         [Test]
@@ -174,7 +174,7 @@ namespace JiksLib.Test.Collections
             Assert.That(result, Is.True);
             Assert.That(dict.Count, Is.EqualTo(2));
             Assert.That(dict.Contains("key1", 100), Is.True); // Still one more 100
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", 100), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(1));
         }
 
         [Test]
@@ -561,7 +561,7 @@ namespace JiksLib.Test.Collections
             // Act & Assert
             Assert.That(dict.ContainsValue("value"), Is.True);
             Assert.That(dict.Contains("key1", "value"), Is.True);
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", "value"), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", "value"), Is.EqualTo(1));
         }
 
         [Test]
@@ -600,7 +600,7 @@ namespace JiksLib.Test.Collections
             Assert.That(clone.Contains("key1", 100), Is.True);
             Assert.That(clone.Contains("key1", 200), Is.True);
             Assert.That(clone.Contains("key2", 300), Is.True);
-            Assert.That(clone.GetValueCountOfKeyValuePair("key2", 300), Is.EqualTo(2));
+            Assert.That(clone.GetCountOfKeyValuePair("key2", 300), Is.EqualTo(2));
         }
 
         [Test]
@@ -721,8 +721,8 @@ namespace JiksLib.Test.Collections
             dict.Add("key1", 100);
 
             // Act & Assert
-            Assert.That(dict.GetValueCountOfKeyValuePair("key1", 999), Is.EqualTo(0));
-            Assert.That(dict.GetValueCountOfKeyValuePair("key2", 100), Is.EqualTo(0));
+            Assert.That(dict.GetCountOfKeyValuePair("key1", 999), Is.EqualTo(0));
+            Assert.That(dict.GetCountOfKeyValuePair("key2", 100), Is.EqualTo(0));
         }
 
         [Test]
@@ -751,7 +751,7 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.ContainsKey("c"), Is.False);
             Assert.That(dict.ContainsKey("d"), Is.True);
             Assert.That(dict.GetValueCountOfKey("d"), Is.EqualTo(2));
-            Assert.That(dict.GetValueCountOfKeyValuePair("d", 6), Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKeyValuePair("d", 6), Is.EqualTo(2));
         }
     }
 }
