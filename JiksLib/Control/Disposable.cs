@@ -60,7 +60,7 @@ namespace JiksLib.Control
         /// <typeparam name="R">作用域返回值类型</typeparam>
         /// <param name="scope">作用域</param>
         /// <returns>返回值和 IDisposable</returns>
-        public static (R result, IDisposable disposable) Scope<R>(
+        public static (R Result, IDisposable Disposable) Scope<R>(
             Func<SubmitDisposable, R> scope)
         {
             Stack<IDisposable> disposableStack = new();
@@ -95,9 +95,7 @@ namespace JiksLib.Control
         /// <param name="scope">作用域</param>
         /// <returns>IDisposable 实例</returns>
         public static IDisposable Scope(Action<SubmitDisposable> scope) =>
-            Scope<UnitType>(f => { scope(f); return new(); }).disposable;
-
-        #region 实现细节
+            Scope<UnitType>(f => { scope(f); return new(); }).Disposable;
 
         private class ActionDisposable : IDisposable
         {
@@ -119,7 +117,5 @@ namespace JiksLib.Control
                 disposed = true;
             }
         }
-
-        #endregion
     }
 }

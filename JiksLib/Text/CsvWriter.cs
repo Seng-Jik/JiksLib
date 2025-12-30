@@ -79,15 +79,10 @@ namespace JiksLib.Text
             isFirstFieldOfCurrentLine = true;
         }
 
-
-        #region 实现细节
-
         readonly char separator;
         readonly string separatorString;
         readonly StringBuilder sb = new();
         bool isFirstFieldOfCurrentLine = true;
-
-        #endregion
 
     }
 }

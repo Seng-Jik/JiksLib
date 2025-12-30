@@ -17,7 +17,7 @@ namespace JiksLib.Control.UniTask
         /// <typeparam name="R">作用域返回值类型</typeparam>
         /// <param name="scope">作用域</param>
         /// <returns>返回值和 IDisposable</returns>
-        public static async UniTask<(R result, IDisposable disposable)> ScopeAsync<R>(
+        public static async UniTask<(R Result, IDisposable Disposable)> ScopeAsync<R>(
             Func<SubmitDisposable, UniTask<R>> scope)
         {
             Stack<IDisposable> disposableStack = new();
@@ -53,6 +53,6 @@ namespace JiksLib.Control.UniTask
         /// <returns>返回值和 IDisposable</returns>
         public static async UniTask<IDisposable> ScopeAsync(
             Func<SubmitDisposable, Cysharp.Threading.Tasks.UniTask> scope) =>
-            (await ScopeAsync<UnitType>(async f => { await scope(f); return new(); })).disposable;
+            (await ScopeAsync<UnitType>(async f => { await scope(f); return new(); })).Disposable;
     }
 }

@@ -130,14 +130,11 @@ namespace JiksLib.Text
             return true;
         }
 
-        #region 实现细节
-
         readonly TextReader csv;
         readonly StringBuilder fieldSb = new();
         readonly bool leaveOpen;
         readonly char separator;
         bool noMoreFields = false;
 
-        #endregion
     }
 }
