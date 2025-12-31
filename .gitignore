@@ -1,4 +1,11 @@
 /.claude
 /.vscode
-/**/bin
-/**/obj
+/Library
+/Logs
+/Temp
+/UserSettings
+/*.csproj
+/*.sln
+/JiksLib.Core.Test/bin
+/JiksLib.Core.Test/obj
+/Assets/JiksLib/JiksLib.Core/Runtime/.artifacts
