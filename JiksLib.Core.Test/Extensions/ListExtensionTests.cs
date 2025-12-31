@@ -433,7 +433,346 @@ namespace JiksLib.Test.Extensions
 
         #endregion
 
+        #region GetReversedEnumerable Tests
+
+        [Test]
+        public void GetReversedEnumerable_WithEmptyList_ReturnsEmptyEnumerable()
+        {
+            // Arrange
+            IReadOnlyList<int> emptyList = new List<int>();
+
+            // Act
+            var result = emptyList.GetReversedEnumerable().ToList();
+
+            // Assert
+            Assert.That(result.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetReversedEnumerable_WithSingleElement_ReturnsThatElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "only" };
+
+            // Act
+            var result = list.GetReversedEnumerable().ToList();
+
+            // Assert
+            Assert.That(result.Count, Is.EqualTo(1));
+            Assert.That(result[0], Is.EqualTo("only"));
+        }
+
+        [Test]
+        public void GetReversedEnumerable_WithMultipleElements_ReturnsElementsInReverseOrder()
+        {
+            // Arrange
+            IReadOnlyList<int> list = new List<int> { 1, 2, 3, 4, 5 };
+
+            // Act
+            var result = list.GetReversedEnumerable().ToList();
+
+            // Assert
+            Assert.That(result.Count, Is.EqualTo(5));
+            Assert.That(result[0], Is.EqualTo(5));
+            Assert.That(result[1], Is.EqualTo(4));
+            Assert.That(result[2], Is.EqualTo(3));
+            Assert.That(result[3], Is.EqualTo(2));
+            Assert.That(result[4], Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetReversedEnumerable_WithListContainingNullElements_HandlesCorrectly()
+        {
+            // Arrange
+            IReadOnlyList<string?> list = new List<string?> { "a", null, "c", null, "e" };
+
+            // Act
+            var result = list.GetReversedEnumerable().ToList();
+
+            // Assert
+            Assert.That(result.Count, Is.EqualTo(5));
+            Assert.That(result[0], Is.EqualTo("e"));
+            Assert.That(result[1], Is.Null);
+            Assert.That(result[2], Is.EqualTo("c"));
+            Assert.That(result[3], Is.Null);
+            Assert.That(result[4], Is.EqualTo("a"));
+        }
+
+        [Test]
+        public void GetReversedEnumerable_IsLazyEvaluated()
+        {
+            // Arrange
+            var callCount = 0;
+            var list = new TestList<int>(() => callCount++, new[] { 1, 2, 3 });
+
+            // Act
+            var enumerable = list.GetReversedEnumerable();
+
+            // Assert - 尚未迭代，不应调用 Count
+            Assert.That(callCount, Is.EqualTo(0));
+
+            // 开始迭代
+            var result = enumerable.ToList();
+            Assert.That(result.Count, Is.EqualTo(3));
+            Assert.That(callCount, Is.GreaterThan(0)); // 迭代过程中应访问元素
+        }
+
+        [Test]
+        public void GetReversedEnumerable_CanBeEnumeratedMultipleTimes()
+        {
+            // Arrange
+            IReadOnlyList<int> list = new List<int> { 10, 20, 30 };
+
+            // Act
+            var enumerable = list.GetReversedEnumerable();
+            var firstEnumeration = enumerable.ToList();
+            var secondEnumeration = enumerable.ToList();
+
+            // Assert
+            Assert.That(firstEnumeration.Count, Is.EqualTo(3));
+            Assert.That(secondEnumeration.Count, Is.EqualTo(3));
+            Assert.That(firstEnumeration[0], Is.EqualTo(30));
+            Assert.That(secondEnumeration[0], Is.EqualTo(30));
+        }
+
+        [Test]
+        public void GetReversedEnumerable_WithLargeList_WorksCorrectly()
+        {
+            // Arrange
+            var largeList = Enumerable.Range(1, 1000).ToList();
+            IReadOnlyList<int> list = largeList;
+
+            // Act
+            var result = list.GetReversedEnumerable().ToList();
+
+            // Assert
+            Assert.That(result.Count, Is.EqualTo(1000));
+            Assert.That(result[0], Is.EqualTo(1000));
+            Assert.That(result[999], Is.EqualTo(1));
+            // 检查顺序是否正确反转
+            for (int i = 0; i < 1000; i++)
+            {
+                Assert.That(result[i], Is.EqualTo(1000 - i));
+            }
+        }
+
+        #endregion
+
+        #region RandomSelect Tests
+
+        [Test]
+        public void RandomSelect_WithEmptyList_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            IReadOnlyList<int> emptyList = new List<int>();
+            float randomNumber = 0.5f;
+
+            // Act & Assert
+            Assert.That(
+                () => emptyList.RandomSelect(randomNumber),
+                Throws.TypeOf<InvalidOperationException>()
+                    .With.Message.Contains("ls cannot be empty."));
+        }
+
+        [Test]
+        public void RandomSelect_WithSingleElementList_AlwaysReturnsThatElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "only" };
+
+            // Act & Assert
+            // 测试多个随机数，包括边界值
+            foreach (float r in new[] { 0f, 0.1f, 0.5f, 0.9f, 1f })
+            {
+                var result = list.RandomSelect(r);
+                Assert.That(result, Is.EqualTo("only"));
+            }
+        }
+
+        [Test]
+        public void RandomSelect_WithMultipleElements_AtZero_ReturnsFirstElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            float randomNumber = 0f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public void RandomSelect_WithMultipleElements_AtOne_ReturnsLastElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            float randomNumber = 1f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("E")); // 索引 = (int)(1 * (5-1)) = (int)(4) = 4
+        }
+
+        [Test]
+        public void RandomSelect_WithMultipleElements_AtMidValue_ReturnsCorrectElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            // randomNumber = 0.5, 索引 = (int)(0.5 * 4) = (int)(2) = 2
+            float randomNumber = 0.5f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("C"));
+        }
+
+        [Test]
+        public void RandomSelect_WithRandomNumberJustBelowBoundary_ReturnsCorrectElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            // 列表大小3，索引范围0-2
+            // randomNumber = 0.33, 索引 = (int)(0.33 * 2) = (int)(0.66) = 0
+            float randomNumber = 0.33f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public void RandomSelect_WithRandomNumberJustAboveBoundary_ReturnsCorrectElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            // randomNumber = 0.34, 索引 = (int)(0.34 * 2) = (int)(0.68) = 0
+            float randomNumber = 0.34f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public void RandomSelect_WithRandomNumberNegative_MayThrowOrReturnElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            float randomNumber = -0.5f;
+
+            // Act & Assert
+            // 方法不验证 randomNumber 范围，负值可能导致负索引
+            // 这会导致 ArgumentOutOfRangeException
+            Assert.That(() => list.RandomSelect(randomNumber), Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void RandomSelect_WithRandomNumberGreaterThanOne_MayThrowOrReturnElement()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            float randomNumber = 1.5f;
+
+            // Act & Assert
+            // randomNumber > 1 可能导致索引超出范围
+            // 索引 = (int)(1.5 * 2) = (int)(3) = 3，超出范围
+            Assert.That(() => list.RandomSelect(randomNumber), Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void RandomSelect_WithFloatingPointPrecisionEdgeCase()
+        {
+            // Arrange
+            // 测试浮点精度问题：randomNumber 非常接近 1
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            // randomNumber = 0.9999999f, 索引 = (int)(0.9999999 * 4) = (int)(3.9999996) = 3
+            float randomNumber = 0.9999999f;
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            Assert.That(result, Is.EqualTo("D")); // 索引3，不是4
+        }
+
+        [Test]
+        public void RandomSelect_WithExactlyOneMinusEpsilon()
+        {
+            // Arrange
+            // 测试 1 - epsilon 的情况
+            IReadOnlyList<string> list = new List<string> { "A", "B" };
+            float randomNumber = 0.99999994f; // 在单精度中接近1
+
+            // Act
+            var result = list.RandomSelect(randomNumber);
+
+            // Assert
+            // 索引 = (int)(0.99999994 * 1) = (int)(0.99999994) = 0
+            // 由于浮点精度，可能得到0而不是1
+            Assert.That(result, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public void RandomSelect_WithDifferentListSizes_WorksCorrectly()
+        {
+            // Arrange & Act & Assert
+            // 测试不同大小的列表
+            var sizes = new[] { 1, 2, 3, 10, 100 };
+            foreach (int size in sizes)
+            {
+                var list = Enumerable.Range(1, size).ToList();
+                IReadOnlyList<int> readOnlyList = list;
+
+                // randomNumber = 0 应该返回第一个元素
+                var result0 = readOnlyList.RandomSelect(0f);
+                Assert.That(result0, Is.EqualTo(1));
+
+                // randomNumber = 1 应该返回最后一个元素
+                var result1 = readOnlyList.RandomSelect(1f);
+                Assert.That(result1, Is.EqualTo(size));
+            }
+        }
+
+        #endregion
+
         #region Helper Class for Testing
+
+        private class TestList<T> : IReadOnlyList<T>
+        {
+            private readonly Func<int> _countCallback;
+            private readonly IReadOnlyList<T> _items;
+
+            public TestList(Func<int> countCallback, IEnumerable<T> items)
+            {
+                _countCallback = countCallback;
+                _items = items.ToList();
+            }
+
+            public T this[int index] => _items[index];
+
+            public int Count
+            {
+                get
+                {
+                    _countCallback();
+                    return _items.Count;
+                }
+            }
+
+            public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        }
 
         private class TestRandom : Random
         {

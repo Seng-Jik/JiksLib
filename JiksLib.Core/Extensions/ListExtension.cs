@@ -73,5 +73,37 @@ namespace JiksLib.Extensions
                 list[j] = temp;
             }
         }
+
+        /// <summary>
+        /// 获取反向的迭代器
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="ls"></param>
+        /// <returns></returns>
+        public static IEnumerable<T> GetReversedEnumerable<T>(
+            this IReadOnlyList<T> ls)
+        {
+            for (int i = ls.Count - 1; i >= 0; --i)
+                yield return ls[i];
+        }
+
+        /// <summary>
+        /// 随机抽取一个元素
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="ls">要抽取元素的列表</param>
+        /// <param name="randomNumber">随机数，范围为[0,1]</param>
+        /// <returns>随机抽取的元素</returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static T RandomSelect<T>(
+            this IReadOnlyList<T> ls,
+            float randomNumber)
+        {
+            if (ls.Count == 0)
+                throw new InvalidOperationException(
+                    "ls cannot be empty.");
+
+            return ls[(int)(randomNumber * (ls.Count - 1))];
+        }
     }
 }
