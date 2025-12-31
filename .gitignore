@@ -5,7 +5,7 @@
 /Temp
 /UserSettings
 /*.csproj
-/*.sln
+/JiksLib.sln
 /JiksLib.Core/bin
 /JiksLib.Core/obj
 /JiksLib.Core.Test/bin
