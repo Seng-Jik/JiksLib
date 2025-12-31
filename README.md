@@ -14,7 +14,7 @@
 
 #### 用于 Unity
 
-将 `https://github.com/Seng-Jik/JiksLib.git?path=Assets/JiksLib/JiksLib.Core` 添加到 Unity 包中。
+将 `https://github.com/Seng-Jik/JiksLib.git?path=Assets/JiksLib` 添加到 Unity 包中。
 
 #### 用于 .NET
 

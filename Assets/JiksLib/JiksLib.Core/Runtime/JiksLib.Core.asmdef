@@ -1,3 +1,14 @@
 {
-	"name": "JiksLib.Core"
+    "name": "JiksLib.Core",
+    "rootNamespace": "JiksLib",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
 }
