@@ -1,5 +1,3 @@
-#nullable enable
-
 using System.Collections.Generic;
 using System.Linq;
 
@@ -75,12 +73,5 @@ namespace JiksLib.Collections
         /// 所有的值
         /// </summary>
         IEnumerable<TValue> Values { get; }
-
-        /// <summary>
-        /// 获取指定键对应的值集合
-        /// </summary>
-        /// <param name="key">键</param>
-        /// <returns>值集合</returns>
-        IEnumerable<TValue> this[TKey key] { get; }
     }
 }

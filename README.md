@@ -6,7 +6,8 @@
 
 ### 用于 Unity
 
-将 `https://github.com/Seng-Jik/JiksLib.git?path=Assets/JiksLib` 添加到 Unity 包中。
+1. 使用 NuGetForUnity 引入 `JiksLib.Core`。
+2. 将 `https://github.com/Seng-Jik/JiksLib.git?path=Assets/JiksLib` 添加到 Unity 包中，以引用 `JiksLib.Core` 以外的内容。
 
 ### 用于 .NET
 

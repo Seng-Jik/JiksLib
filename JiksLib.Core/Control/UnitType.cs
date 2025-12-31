@@ -1,5 +1,3 @@
-#nullable enable
-
 namespace JiksLib.Control
 {
     /// <summary>
