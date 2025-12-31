@@ -50,13 +50,8 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="item">元素</param>
         /// <returns>重复次数</returns>
-        public int GetCountOf(T item)
-        {
-            if (dict.TryGetValue(item.ThrowIfNull(), out var count))
-                return count;
-
-            return 0;
-        }
+        public int GetCountOf(T item) =>
+            dict.GetValueOrDefault(item.ThrowIfNull(), 0);
 
         /// <summary>
         /// 清空集合
