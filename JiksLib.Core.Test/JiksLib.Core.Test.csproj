@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Assets/JiksLib/JiksLib.Core/Runtime/JiksLib.Core.csproj" />
+    <ProjectReference Include="../JiksLib.Core/JiksLib.Core.csproj" />
   </ItemGroup>
 
 </Project>
