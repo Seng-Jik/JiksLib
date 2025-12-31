@@ -261,6 +261,11 @@ namespace JiksLib.Collections
             return clone;
         }
 
+        /// <summary>
+        /// 转换为只读字典
+        /// </summary>
+        public IReadOnlyMultiDictionary<TKey, TValue> AsReadOnly() => this;
+
         object ICloneable.Clone() => Clone();
 
         /// <summary>

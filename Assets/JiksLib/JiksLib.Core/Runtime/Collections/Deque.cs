@@ -147,6 +147,11 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 转换为只读双端列表
+        /// </summary>
+        public IReadOnlyList<T> AsReadOnly() => this;
+
+        /// <summary>
         /// 根据Deque下标计算其在缓冲区内的下标
         /// </summary>
         int CalcIndex(int index)
@@ -158,7 +163,6 @@ namespace JiksLib.Collections
 
             return (index + front) % buffer.Length;
         }
-
         public IEnumerator<T> GetEnumerator()
         {
             for (int i = 0; i < Count; ++i)

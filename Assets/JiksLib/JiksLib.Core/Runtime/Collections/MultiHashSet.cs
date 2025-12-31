@@ -132,6 +132,11 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 转换为只读集合
+        /// </summary>
+        public IReadOnlyMultiSet<T> AsReadOnly() => this;
+
+        /// <summary>
         /// 拷贝当前集合
         /// 复制集合结构，但引用类型元素共享对象引用
         /// </summary>
