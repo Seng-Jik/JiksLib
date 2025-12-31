@@ -8,6 +8,7 @@ namespace JiksLib.Control
     /// <summary>
     /// 超级事件
     /// 可以发布以某一类型为基础的不同类型的事件
+    /// 不支持多线程
     /// </summary>
     public sealed class SuperEvent<TBaseEvent>
         where TBaseEvent : class
@@ -18,6 +19,10 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         public SuperEvent(out Publisher publisher)
         {
+            if (typeof(TBaseEvent).IsInterface)
+                throw new InvalidOperationException(
+                    "Interface types are not supported by super event.");
+
             publisher = new(this);
         }
 
@@ -28,6 +33,8 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 注册某一类型的事件监听器
+        /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
+        /// TBaseEvent不能是接口类型
         /// </summary>
         public void AddListener<TEvent>(Listener<TEvent> listener)
         {
@@ -43,6 +50,8 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 移除某一类型的事件监听器
+        /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
+        /// TBaseEvent不能是接口类型
         /// </summary>
         public void RemoveListener<TEvent>(Listener<TEvent> listener)
         {
@@ -51,6 +60,9 @@ namespace JiksLib.Control
 
             var typedHandler = (TypeHandler<TEvent>)handler;
             typedHandler.RemoveListener(listener);
+
+            if (typedHandler.IsEmpty())
+                typeHandlers.Remove(typeof(TEvent));
         }
 
         /// <summary>
@@ -62,7 +74,7 @@ namespace JiksLib.Control
             /// 发布事件
             /// </summary>
             /// <param name="@event">事件对象</param>
-            /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中</param>
+            /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
             public void Publish(
                 TBaseEvent @event,
                 IList<Exception>? exceptionsOutput)
@@ -114,12 +126,6 @@ namespace JiksLib.Control
                 {
                     listenerTypes.Add(t);
                     t = t.BaseType;
-
-                    if (t == typeof(TBaseEvent))
-                    {
-                        listenerTypes.Add(t);
-                        break;
-                    }
                 }
 
                 listenerTypes.AddRange(type.GetInterfaces());
@@ -147,6 +153,8 @@ namespace JiksLib.Control
             {
                 listeners.Remove(listener);
             }
+
+            public bool IsEmpty() => listeners.Count <= 0;
 
             public override void Invoke(
                 object baseEvent,
