@@ -1,0 +1,77 @@
+using System;
+using System.Collections.Generic;
+
+namespace JiksLib.Extensions
+{
+    public static class ListExtension
+    {
+        /// <summary>
+        /// 以O(1)时间复杂度删除给定下标的元素
+        ///
+        /// 删除后列表的最后一个元素将会填补空位
+        /// </summary>
+        /// <param name="ls">列表</param>
+        /// <param name="n">要删除元素的下标</param>
+        /// <typeparam name="T">列表元素的类型</typeparam>
+        public static void RemoveO1<T>(this IList<T> ls, int n)
+        {
+            if (ls.Count == 0)
+                throw new InvalidOperationException("list has no element to remove.");
+
+            var lastIndex = ls.Count - 1;
+            var last = ls[lastIndex];
+            ls[n] = last;
+            ls.RemoveAt(lastIndex);
+        }
+
+        /// <summary>
+        /// 移除最后一个元素并返回该元素
+        /// </summary>
+        public static T PopBack<T>(this IList<T> ls)
+        {
+            if (ls.Count == 0)
+                throw new InvalidOperationException("list has no element to remove.");
+
+            var lastIndex = ls.Count - 1;
+            var last = ls[lastIndex];
+            ls.RemoveAt(lastIndex);
+            return last;
+        }
+
+        /// <summary>
+        /// 查找第一个符合条件的元素的下标
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="ls">列表</param>
+        /// <param name="predicate">条件</param>
+        /// <returns>第一个符合条件的元素的下标，如果是-1则查找失败</returns>
+        public static int FindIndex<T>(this IReadOnlyList<T> ls, Func<T, bool> predicate)
+        {
+            for (int i = 0; i < ls.Count; ++i)
+                if (predicate(ls[i]))
+                    return i;
+
+            return -1;
+        }
+
+        /// <summary>
+        /// 按照概率对数组进行洗牌
+        /// </summary>
+        /// <param name="list"></param>
+        /// <param name="rand">随机数发生器</param>
+        /// <typeparam name="T"></typeparam>
+        public static void Shuffle<T>(this IList<T> list, Random rand)
+        {
+            //Fisher-Yates洗牌算法
+            int n = list.Count;
+            for (int i = n - 1; i > 0; i--)
+            {
+                //随机抽取[0~i]的索引并与当前索引进行替换
+                int j = rand.Next(i + 1);
+                var temp = list[i];
+                list[i] = list[j];
+                list[j] = temp;
+            }
+        }
+    }
+}
