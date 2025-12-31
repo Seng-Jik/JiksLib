@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace JiksLib.Collections
 {
@@ -11,7 +12,8 @@ namespace JiksLib.Collections
     /// <typeparam name="TValue">值的类型</typeparam>
     public interface IReadOnlyMultiDictionary<TKey, TValue> :
         IEnumerable<KeyValuePair<TKey, TValue>>,
-        IReadOnlyCollection<KeyValuePair<TKey, TValue>>
+        IReadOnlyCollection<KeyValuePair<TKey, TValue>>,
+        ILookup<TKey, TValue>
         where TKey : notnull
         where TValue : notnull
     {

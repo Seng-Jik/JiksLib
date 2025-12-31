@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using JiksLib.Collections;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -526,7 +527,7 @@ namespace JiksLib.Test.Collections
             dict.Add("key2", 300);
 
             // Act
-            var pairs = dict.ToList();
+            var pairs = Enumerable.ToList<KeyValuePair<string, int>>(dict);
 
             // Assert
             Assert.That(pairs.Count, Is.EqualTo(3));
@@ -1180,5 +1181,253 @@ namespace JiksLib.Test.Collections
                 Assert.That(dict.Contains(i % 100, i), Is.True);
             }
         }
+
+        #region ILookup<TKey, TValue> Interface Tests
+
+        [Test]
+        public void ILookup_Contains_ExistingKey_ReturnsTrue()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+
+            // Cast to ILookup to test explicit interface implementation
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act & Assert
+            Assert.That(lookup.Contains("key1"), Is.True);
+            Assert.That(lookup.Contains("key2"), Is.True);
+        }
+
+        [Test]
+        public void ILookup_Contains_NonExistentKey_ReturnsFalse()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act & Assert
+            Assert.That(lookup.Contains("nonexistent"), Is.False);
+        }
+
+        [Test]
+        public void ILookup_Contains_NullKey_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act & Assert
+            Assert.That(() => lookup.Contains(null!), Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_ReturnsGroupingsForAllKeys()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            dict.Add("key2", 400);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act
+            var groupings = lookup.ToList();
+
+            // Assert
+            Assert.That(groupings.Count, Is.EqualTo(2));
+
+            var key1Grouping = groupings.FirstOrDefault(g => g.Key == "key1");
+            var key2Grouping = groupings.FirstOrDefault(g => g.Key == "key2");
+
+            Assert.That(key1Grouping, Is.Not.Null);
+            Assert.That(key2Grouping, Is.Not.Null);
+
+            var key1Values = key1Grouping!.ToList();
+            var key2Values = key2Grouping!.ToList();
+
+            Assert.That(key1Values.Count, Is.EqualTo(2));
+            Assert.That(key1Values.Contains(100), Is.True);
+            Assert.That(key1Values.Contains(200), Is.True);
+
+            Assert.That(key2Values.Count, Is.EqualTo(2));
+            Assert.That(key2Values.Contains(300), Is.True);
+            Assert.That(key2Values.Contains(400), Is.True);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_EmptyDictionary_ReturnsNoGroupings()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act
+            var groupings = lookup.ToList();
+
+            // Assert
+            Assert.That(groupings, Is.Empty);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_GroupingsHaveCorrectKeyProperty()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key2", 200);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act
+            var groupings = lookup.ToList();
+
+            // Assert
+            Assert.That(groupings[0].Key, Is.EqualTo("key1"));
+            Assert.That(groupings[1].Key, Is.EqualTo("key2"));
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_GroupingCanBeEnumeratedMultipleTimes()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            var lookup = (ILookup<string, int>)dict;
+            var grouping = lookup.First();
+
+            // Act
+            var firstEnumeration = grouping.ToList();
+            var secondEnumeration = grouping.ToList();
+
+            // Assert
+            Assert.That(firstEnumeration.Count, Is.EqualTo(2));
+            Assert.That(secondEnumeration.Count, Is.EqualTo(2));
+            Assert.That(firstEnumeration.Contains(100), Is.True);
+            Assert.That(firstEnumeration.Contains(200), Is.True);
+            Assert.That(secondEnumeration.Contains(100), Is.True);
+            Assert.That(secondEnumeration.Contains(200), Is.True);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_GroupingValuesMatchIndexerValues()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            var lookup = (ILookup<string, int>)dict;
+            var grouping = lookup.First();
+
+            // Act
+            var groupingValues = grouping.ToList();
+            var indexerValues = dict["key1"].ToList();
+
+            // Assert
+            Assert.That(groupingValues.Count, Is.EqualTo(2));
+            Assert.That(indexerValues.Count, Is.EqualTo(2));
+            Assert.That(groupingValues.Contains(100), Is.True);
+            Assert.That(groupingValues.Contains(200), Is.True);
+            Assert.That(indexerValues.Contains(100), Is.True);
+            Assert.That(indexerValues.Contains(200), Is.True);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_NonGenericEnumerable_ReturnsGroupings()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            ILookup<string, int> enumerable = (ILookup<string, int>)dict;
+
+            // Act
+            var list = new System.Collections.ArrayList();
+            foreach (object item in enumerable)
+            {
+                list.Add(item);
+            }
+
+            // Assert
+            Assert.That(list.Count, Is.EqualTo(1));
+            var grouping = list[0] as IGrouping<string, int>;
+            Assert.That(grouping, Is.Not.Null);
+            Assert.That(grouping!.Key, Is.EqualTo("key1"));
+            var values = grouping.ToList();
+            Assert.That(values.Count, Is.EqualTo(2));
+            Assert.That(values.Contains(100), Is.True);
+            Assert.That(values.Contains(200), Is.True);
+        }
+
+        [Test]
+        public void ILookup_Interface_CanBeUsedInLinqQueries()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("a", 1);
+            dict.Add("a", 2);
+            dict.Add("b", 3);
+            dict.Add("b", 4);
+            dict.Add("c", 5);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act - LINQ query on ILookup
+            var query = from grouping in lookup
+                        where grouping.Key != "b"
+                        from value in grouping
+                        where value > 1
+                        select new { grouping.Key, Value = value };
+
+            var results = query.ToList();
+
+            // Assert
+            Assert.That(results.Count, Is.EqualTo(2));
+            Assert.That(results.Any(r => r.Key == "a" && r.Value == 2), Is.True);
+            Assert.That(results.Any(r => r.Key == "c" && r.Value == 5), Is.True);
+        }
+
+        [Test]
+        public void ILookup_Contains_WithCustomKeyComparer_RespectsComparer()
+        {
+            // Arrange
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var dict = new MultiDictionary<string, int>(comparer);
+            dict.Add("KEY", 100);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act & Assert
+            Assert.That(lookup.Contains("key"), Is.True);
+            Assert.That(lookup.Contains("Key"), Is.True);
+            Assert.That(lookup.Contains("KEY"), Is.True);
+        }
+
+        [Test]
+        public void ILookup_GetEnumerator_WithCustomKeyComparer_RespectsComparer()
+        {
+            // Arrange
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var dict = new MultiDictionary<string, int>(comparer);
+            dict.Add("KEY", 100);
+            dict.Add("key", 200);
+            var lookup = (ILookup<string, int>)dict;
+
+            // Act
+            var groupings = lookup.ToList();
+
+            // Assert - both additions should be in the same group due to case-insensitive comparer
+            Assert.That(groupings.Count, Is.EqualTo(1));
+            var grouping = groupings[0];
+            Assert.That(grouping.Key, Is.EqualTo("KEY")); // First key added
+            var values = grouping.ToList();
+            Assert.That(values.Count, Is.EqualTo(2));
+            Assert.That(values.Contains(100), Is.True);
+            Assert.That(values.Contains(200), Is.True);
+        }
+
+        #endregion
     }
 }

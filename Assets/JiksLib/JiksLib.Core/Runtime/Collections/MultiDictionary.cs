@@ -279,6 +279,40 @@ namespace JiksLib.Collections
             return GetEnumerator();
         }
 
+        bool ILookup<TKey, TValue>.Contains(TKey key) =>
+            ContainsKey(key);
+
+        IEnumerator<IGrouping<TKey, TValue>> IEnumerable<IGrouping<TKey, TValue>>.GetEnumerator()
+        {
+            foreach (var k in dict)
+                yield return new Grouping(k.Key, this[k.Key]);
+        }
+
+        private sealed class Grouping : IGrouping<TKey, TValue>
+        {
+            public TKey Key { get; private set; }
+
+            public Grouping(
+                TKey key,
+                IEnumerable<TValue> values)
+            {
+                Key = key;
+                this.values = values;
+            }
+
+            public IEnumerator<TValue> GetEnumerator()
+            {
+                return values.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+
+            readonly IEnumerable<TValue> values;
+        }
+
         readonly Dictionary<TKey, MultiHashSet<TValue>> dict;
         readonly IEqualityComparer<TValue>? valueComparer;
     }
