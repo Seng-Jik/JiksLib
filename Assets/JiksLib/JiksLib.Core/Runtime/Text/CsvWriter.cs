@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Text;
 using JiksLib.Extensions;
 
