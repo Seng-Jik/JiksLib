@@ -1,0 +1,19 @@
+{
+    "name": "JiksLib.UniTask",
+    "rootNamespace": "JiksLib",
+    "references": [
+        "GUID:4232890847095e442975dc5d70efc767",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "JIKS_LIB_ENABLE_UNITASK"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
