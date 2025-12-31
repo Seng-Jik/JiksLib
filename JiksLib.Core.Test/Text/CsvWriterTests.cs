@@ -147,19 +147,14 @@ namespace JiksLib.Test.Text
         public void AlwaysWrap_WhenTrue_WrapsAllFields()
         {
             // Arrange
-            var writer = new CsvWriter();
-            // Note: AlwaysWrap is private set, so we can't set it directly.
-            // We'll test through constructor if available, but it's not.
-            // This test is commented out since we can't set AlwaysWrap.
-            // writer.AlwaysWrap = true;
+            var writer = new CsvWriter { AlwaysWrap = true };
 
             // Act
-            // writer.WriteField("simple");
-            // var result = writer.ToString().TrimEnd();
+            writer.WriteField("simple");
+            var result = writer.ToString().TrimEnd();
 
             // Assert
-            // Assert.That(result, Is.EqualTo("\"simple\""));
-            Assert.Pass("AlwaysWrap is private set and cannot be tested directly");
+            Assert.That(result, Is.EqualTo("\"simple\""));
         }
 
         [Test]
