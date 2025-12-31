@@ -1,0 +1,15 @@
+{
+    "name": "com.sengjik.jikslib",
+    "displayName": "JiksLib Core",
+    "author": {
+        "name": "Seng Jik",
+        "url": "https://github.com/Seng-Jik"
+    },
+    "version": "1.0",
+    "unity": "2022.3",
+    "description": "A library providing essential utilities and functionalities for Unity projects.",
+    "keywords": [],
+    "license": "MIT",
+    "category": "Utilities",
+    "dependencies": {}
+}
