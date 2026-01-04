@@ -4,6 +4,11 @@
     <TargetFrameworks>net10.0;net48;netstandard2.1</TargetFrameworks>
     <Nullable>enable</Nullable>
     <LangVersion>9.0</LangVersion>
+    <Authors>许兴逸 Seng Jik</Authors>
+    <PackageId>JiksLib.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Description>综合杂项工具库。</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>
