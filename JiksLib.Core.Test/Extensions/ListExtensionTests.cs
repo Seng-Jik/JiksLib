@@ -745,6 +745,236 @@ namespace JiksLib.Test.Extensions
 
         #endregion
 
+        #region RandomSelectIndex Tests
+
+        [Test]
+        public void RandomSelectIndex_WithEmptyList_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            IReadOnlyList<int> emptyList = new List<int>();
+            float randomNumber = 0.5f;
+            Func<int, float> getWeight = x => 1f;
+
+            // Act & Assert
+            Assert.That(
+                () => emptyList.RandomSelectIndex(randomNumber, getWeight),
+                Throws.TypeOf<InvalidOperationException>()
+                    .With.Message.Contains("Can not random select on a zero length list."));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithSingleElementList_AlwaysReturnsZero()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "only" };
+            Func<string, float> getWeight = x => 1f;
+
+            // Act & Assert
+            foreach (float r in new[] { 0f, 0.1f, 0.5f, 0.9f, 1f })
+            {
+                var result = list.RandomSelectIndex(r, getWeight);
+                Assert.That(result, Is.EqualTo(0));
+            }
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithEqualWeights_AtZero_ReturnsFirstIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            float randomNumber = 0f;
+            Func<string, float> getWeight = x => 1f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithEqualWeights_AtOne_ReturnsLastIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            float randomNumber = 1f;
+            Func<string, float> getWeight = x => 1f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithEqualWeights_AtMidValue_ReturnsCorrectIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
+            // With equal weights, randomNumber maps linearly to indices
+            // randomNumber = 0.5 -> selectedWeight = totalWeight * 0.5 = 5 * 0.5 = 2.5
+            // Loop: i=0, p=1, selectedWeight <= 1? 2.5 <= 1 false, selectedWeight=1.5
+            // i=1, p=1, 1.5 <= 1 false, selectedWeight=0.5
+            // i=2, p=1, 0.5 <= 1 true, return 2
+            float randomNumber = 0.5f;
+            Func<string, float> getWeight = x => 1f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithUnequalWeights_ReturnsCorrectIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            // Weights: A=1, B=2, C=3, total=6
+            Func<string, float> getWeight = x => x switch
+            {
+                "A" => 1f,
+                "B" => 2f,
+                "C" => 3f,
+                _ => 0f
+            };
+
+            // Test cases: (randomNumber, expectedIndex)
+            var testCases = new[]
+            {
+                (0f, 0),        // selectedWeight = 0, returns A
+                (0.166f, 0),    // selectedWeight = 1, <=1 returns A
+                (0.167f, 1),    // selectedWeight = 1.002, >1, subtract 1 -> 0.002, <=2 returns B
+                (0.5f, 1),      // selectedWeight = 3, >1, subtract 1 ->2, <=2 returns B
+                (0.833f, 2),    // selectedWeight = 5, >1, subtract1->4, >2, subtract2->2, <=3 returns C
+                (1f, 2),        // selectedWeight = 6, >1, subtract1->5, >2, subtract2->3, <=3 returns C
+            };
+
+            foreach (var (randomNumber, expectedIndex) in testCases)
+            {
+                // Act
+                var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+                // Assert
+                Assert.That(result, Is.EqualTo(expectedIndex),
+                    $"Failed for randomNumber={randomNumber}: expected {expectedIndex}, got {result}");
+            }
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithAllZeroWeights_ReturnsZero()
+        {
+            // Arrange
+            IReadOnlyList<int> list = new List<int> { 10, 20, 30 };
+            float randomNumber = 0.5f;
+            Func<int, float> getWeight = x => 0f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            // When all weights are zero, totalWeight = 0, selectedWeight = 0
+            // First element satisfies selectedWeight <= p (0 <= 0)
+            Assert.That(result, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithFloatingPointPrecisionEdgeCase()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            // Weights: 1, 1, 1
+            Func<string, float> getWeight = x => 1f;
+            // randomNumber very close to 1 but not exactly 1
+            float randomNumber = 0.9999999f; // totalWeight=3, selectedWeight=2.9999997
+            // Loop: i=0, p=1, 2.9999997 <=1 false, selectedWeight=1.9999997
+            // i=1, p=1, 1.9999997 <=1 false, selectedWeight=0.9999997
+            // i=2, p=1, 0.9999997 <=1 true, return 2
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithRandomNumberNegative_MayReturnLastIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            float randomNumber = -0.5f;
+            Func<string, float> getWeight = x => 1f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            // selectedWeight = totalWeight * (-0.5) = 3 * -0.5 = -1.5
+            // Loop: i=0, p=1, -1.5 <=1 true, returns 0
+            // Actually, selectedWeight is negative, so condition selectedWeight <= p is true for first element
+            Assert.That(result, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithRandomNumberGreaterThanOne_MayReturnLastIndex()
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            float randomNumber = 1.5f;
+            Func<string, float> getWeight = x => 1f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            // selectedWeight = totalWeight * 1.5 = 3 * 1.5 = 4.5
+            // Loop: i=0, p=1, 4.5 <=1 false, selectedWeight=3.5
+            // i=1, p=1, 3.5 <=1 false, selectedWeight=2.5
+            // i=2, p=1, 2.5 <=1 false, selectedWeight=1.5
+            // Loop ends, returns last index (2)
+            Assert.That(result, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithLargeList_WorksCorrectly()
+        {
+            // Arrange
+            var largeList = Enumerable.Range(1, 1000).ToList();
+            IReadOnlyList<int> list = largeList;
+            // Weight proportional to value
+            Func<int, float> getWeight = x => x;
+            float randomNumber = 0.75f;
+
+            // Act
+            var result = list.RandomSelectIndex(randomNumber, getWeight);
+
+            // Assert
+            // Since weights increase linearly, higher indices have higher probability
+            // With randomNumber=0.75, we expect a relatively high index
+            Assert.That(result, Is.GreaterThanOrEqualTo(0));
+            Assert.That(result, Is.LessThan(1000));
+            // Additional check: verify the algorithm would select this index
+            // by manually computing selectedWeight
+            float totalWeight = list.Sum(getWeight);
+            float selectedWeight = totalWeight * randomNumber;
+            float cumulative = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                float weight = getWeight(list[i]);
+                if (selectedWeight <= cumulative + weight)
+                {
+                    Assert.That(result, Is.EqualTo(i));
+                    break;
+                }
+                cumulative += weight;
+            }
+        }
+
+        #endregion
+
         #region Helper Class for Testing
 
         private class TestList<T> : IReadOnlyList<T>

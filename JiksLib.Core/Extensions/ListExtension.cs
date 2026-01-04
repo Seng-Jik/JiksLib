@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace JiksLib.Extensions
 {
@@ -104,6 +105,38 @@ namespace JiksLib.Extensions
                     "ls cannot be empty.");
 
             return ls[(int)(randomNumber * (ls.Count - 1))];
+        }
+
+        /// <summary>
+        /// 随机抽取一个元素的下标
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="ls">要抽取元素的列表</param>
+        /// <param name="randomNumber">随机数，范围为[0,1]</param>
+        /// <returns>随机抽取的元素的下标</returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static int RandomSelectIndex<T>(
+            this IReadOnlyList<T> ls,
+            float randomNumber,
+            Func<T, float> getWeight)
+        {
+            if (ls.Count == 0)
+                throw new InvalidOperationException(
+                    "Can not random select on a zero length list.");
+
+            if (ls.Count == 1) return 0;
+
+            float allWeight = ls.Sum(getWeight);
+            float selectedWeight = allWeight * randomNumber;
+
+            for (int i = 0; i < ls.Count; ++i)
+            {
+                var p = getWeight(ls[i]);
+                if (selectedWeight <= p) return i;
+                selectedWeight -= p;
+            }
+
+            return ls.Count - 1;
         }
     }
 }
