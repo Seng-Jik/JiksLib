@@ -29,13 +29,12 @@ namespace JiksLib.Test
         {
             // Arrange
             var progress = Progress.Null<string>();
-            bool wasCalled = false;
 
             // This test ensures Report doesn't throw
             // We can't directly verify "nothing happens" but we can verify no exception
             // Act & Assert
             Assert.DoesNotThrow(() => progress.Report("test"));
-            Assert.DoesNotThrow(() => progress.Report(null));
+            Assert.DoesNotThrow(() => progress.Report(null!));
             Assert.DoesNotThrow(() => progress.Report(""));
         }
 
