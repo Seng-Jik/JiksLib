@@ -9,7 +9,8 @@ namespace JiksLib.Collections
     /// </summary>
     public readonly struct IntRange :
         IEnumerable<int>,
-        IReadOnlyCollection<int>
+        IReadOnlyCollection<int>,
+        IEquatable<IntRange>
     {
         /// <summary>
         /// 最小值
@@ -102,5 +103,11 @@ namespace JiksLib.Collections
         {
             return GetEnumerator();
         }
+
+        public bool Equals(IntRange other) =>
+            Min == other.Min
+            && IncludeMin == other.IncludeMin
+            && Max == other.Max
+            && IncludeMax == other.IncludeMax;
     }
 }
