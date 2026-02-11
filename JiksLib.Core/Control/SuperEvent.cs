@@ -171,30 +171,26 @@ namespace JiksLib.Control
         private sealed class TypeHandler<TEvent> : TypeHandler
         {
             readonly MultiHashSet<Listener<TEvent>> listeners = new();
-            readonly List<Listener<TEvent>> listenersDelayedAdd = new();
-            readonly List<Listener<TEvent>> listenersDelayedRemove = new();
+            readonly Queue<Listener<TEvent>> listenersDelayedAdd = new();
+            readonly Queue<Listener<TEvent>> listenersDelayedRemove = new();
 
             public void AddListener(Listener<TEvent> listener)
             {
-                listenersDelayedAdd.Add(listener);
+                listenersDelayedAdd.Enqueue(listener);
             }
 
             public void RemoveListener(Listener<TEvent> listener)
             {
-                listenersDelayedRemove.Add(listener);
+                listenersDelayedRemove.Enqueue(listener);
             }
 
             void ApplyDelayedListenerAddOrRemove()
             {
-                for (int i = 0; i < listenersDelayedAdd.Count; ++i)
-                    listeners.Add(listenersDelayedAdd[i]);
+                while (listenersDelayedAdd.Count > 0)
+                    listeners.Add(listenersDelayedAdd.Dequeue());
 
-                listenersDelayedAdd.Clear();
-
-                for (int i = 0; i < listenersDelayedRemove.Count; ++i)
-                    listeners.Remove(listenersDelayedRemove[i]);
-
-                listenersDelayedRemove.Clear();
+                while (listenersDelayedRemove.Count > 0)
+                    listeners.Remove(listenersDelayedRemove.Dequeue());
             }
 
             public override bool Invoke(
