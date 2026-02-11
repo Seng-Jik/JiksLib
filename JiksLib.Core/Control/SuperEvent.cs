@@ -60,9 +60,6 @@ namespace JiksLib.Control
 
             var typedHandler = (TypeHandler<TEvent>)handler;
             typedHandler.RemoveListener(listener);
-
-            if (typedHandler.IsEmpty())
-                typeHandlers.Remove(typeof(TEvent));
         }
 
         /// <summary>
@@ -86,7 +83,10 @@ namespace JiksLib.Control
                 foreach (var i in typeChain)
                 {
                     if (superEvent.typeHandlers.TryGetValue(i, out var h))
-                        h.Invoke(@event, exceptionsOutput);
+                    {
+                        if (h.Invoke(@event, exceptionsOutput))
+                            superEvent.typeHandlers.Remove(i);
+                    }
                 }
             }
 
@@ -135,7 +135,7 @@ namespace JiksLib.Control
 
         private abstract class TypeHandler
         {
-            public abstract void Invoke(
+            public abstract bool Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput);
         }
@@ -143,23 +143,38 @@ namespace JiksLib.Control
         private sealed class TypeHandler<TEvent> : TypeHandler
         {
             readonly MultiHashSet<Listener<TEvent>> listeners = new();
+            readonly List<Listener<TEvent>> listenersDelayedAdd = new();
+            readonly List<Listener<TEvent>> listenersDelayedRemove = new();
 
             public void AddListener(Listener<TEvent> listener)
             {
-                listeners.Add(listener);
+                listenersDelayedAdd.Add(listener);
             }
 
             public void RemoveListener(Listener<TEvent> listener)
             {
-                listeners.Remove(listener);
+                listenersDelayedRemove.Add(listener);
             }
 
-            public bool IsEmpty() => listeners.Count <= 0;
+            void ApplyDelayedListenerAddOrRemove()
+            {
+                for (int i = 0; i < listenersDelayedAdd.Count; ++i)
+                    listeners.Add(listenersDelayedAdd[i]);
 
-            public override void Invoke(
+                listenersDelayedAdd.Clear();
+
+                for (int i = 0; i < listenersDelayedRemove.Count; ++i)
+                    listeners.Remove(listenersDelayedRemove[i]);
+
+                listenersDelayedRemove.Clear();
+            }
+
+            public override bool Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput)
             {
+                ApplyDelayedListenerAddOrRemove();
+
                 TEvent @event = (TEvent)baseEvent;
 
                 foreach (var listener in listeners)
@@ -173,6 +188,10 @@ namespace JiksLib.Control
                         exceptionsOutput?.Add(e);
                     }
                 }
+
+                ApplyDelayedListenerAddOrRemove();
+
+                return listeners.Count <= 0;
             }
         }
     }
