@@ -8,7 +8,8 @@ namespace JiksLib.Control
     /// <summary>
     /// 超级事件
     /// 可以发布以某一类型为基础的不同类型的事件
-    /// 不支持多线程
+    /// TBaseEvent不能是接口类型
+    /// 仅支持在主线程上使用
     /// </summary>
     public sealed class SuperEvent<TBaseEvent>
         where TBaseEvent : class
@@ -34,7 +35,6 @@ namespace JiksLib.Control
         /// <summary>
         /// 注册某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
-        /// TBaseEvent不能是接口类型
         /// </summary>
         public void AddListener<TEvent>(Listener<TEvent> listener)
         {
@@ -44,14 +44,42 @@ namespace JiksLib.Control
                 typeHandlers.Add(typeof(TEvent), handler);
             }
 
-            var typedHandler = (TypeHandler<TEvent>)handler;
-            typedHandler.AddListener(listener);
+            var typeHandler = (TypeHandler<TEvent>)handler;
+            typeHandler.AddListener(listener);
+        }
+
+        /// <summary>
+        /// 注册某一类型的事件监听器，但是仅监听一次
+        /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
+        /// </summary>
+        public void AddOnceListener<TEvent>(Listener<TEvent> listener)
+        {
+            if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
+            {
+                handler = new TypeHandler<TEvent>();
+                typeHandlers.Add(typeof(TEvent), handler);
+            }
+
+            var typeHandler = (TypeHandler<TEvent>)handler;
+
+            void wrappedListener(TEvent e)
+            {
+                try
+                {
+                    listener(e);
+                }
+                finally
+                {
+                    typeHandler.RemoveListener(wrappedListener);
+                }
+            }
+
+            typeHandler.AddListener(wrappedListener);
         }
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
-        /// TBaseEvent不能是接口类型
         /// </summary>
         public void RemoveListener<TEvent>(Listener<TEvent> listener)
         {
