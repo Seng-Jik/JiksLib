@@ -531,5 +531,131 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region 动态监听器管理测试
+
+        [Test]
+        public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
+        {
+            // Arrange
+            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var originalCallCount = 0;
+            var addedDuringPublishCallCount = 0;
+
+            // 原始监听器，在调用时会添加一个新的监听器
+            void OriginalListener(TestEventA e)
+            {
+                originalCallCount++;
+
+                // 在事件处理过程中添加新的监听器
+                superEvent.AddListener<TestEventA>(e => addedDuringPublishCallCount++);
+            }
+
+            superEvent.AddListener<TestEventA>(OriginalListener);
+            var testEvent = new TestEventA("Test");
+
+            // Act - 第一次发布
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Assert - 验证只有原始监听器被调用，新添加的监听器未被调用
+            Assert.That(originalCallCount, Is.EqualTo(1));
+            Assert.That(addedDuringPublishCallCount, Is.EqualTo(0));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert - 验证第二次发布时，两个监听器都被调用
+            Assert.That(originalCallCount, Is.EqualTo(2));
+            Assert.That(addedDuringPublishCallCount, Is.EqualTo(1));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
+        {
+            // Arrange
+            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            void ListenerToRemove(TestEventA e) => callCount++;
+
+            // 添加一个监听器，在事件处理过程中移除自身
+            void OriginalListener(TestEventA e)
+            {
+                callCount++;
+                superEvent.RemoveListener<TestEventA>(ListenerToRemove);
+            }
+
+            superEvent.AddListener<TestEventA>(OriginalListener);
+            superEvent.AddListener<TestEventA>(ListenerToRemove);
+            var testEvent = new TestEventA("Test");
+
+            // Act - 第一次发布
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Assert - 验证两个监听器都被调用（因为移除是延迟的）
+            Assert.That(callCount, Is.EqualTo(2));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert - 验证只有 OriginalListener 被调用，ListenerToRemove 已被移除
+            // callCount 应该增加 1（仅 OriginalListener）
+            Assert.That(callCount, Is.EqualTo(3));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
+        {
+            // Arrange
+            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var callCountA = 0;
+            var callCountB = 0;
+            var callCountC = 0;
+
+            void ListenerB(TestEventA e) => callCountB++;
+            void ListenerC(TestEventA e) => callCountC++;
+
+            // 监听器 A，在事件处理过程中添加 B 并移除 C
+            void ListenerA(TestEventA e)
+            {
+                callCountA++;
+                superEvent.AddListener<TestEventA>(ListenerB);
+                superEvent.RemoveListener<TestEventA>(ListenerC);
+            }
+
+            superEvent.AddListener<TestEventA>(ListenerA);
+            superEvent.AddListener<TestEventA>(ListenerC); // 稍后会被移除
+            var testEvent = new TestEventA("Test");
+
+            // Act - 第一次发布
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Assert - 验证只有 A 和 C 被调用（B 尚未添加，C 的移除延迟）
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(0));
+            Assert.That(callCountC, Is.EqualTo(1));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert - 验证 A 和 B 被调用，C 已被移除
+            Assert.That(callCountA, Is.EqualTo(2));
+            Assert.That(callCountB, Is.EqualTo(1));
+            Assert.That(callCountC, Is.EqualTo(1)); // 未增加
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        #endregion
     }
 }
