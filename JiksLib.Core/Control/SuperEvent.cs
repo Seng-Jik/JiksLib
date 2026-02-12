@@ -129,10 +129,7 @@ namespace JiksLib.Control
                     foreach (var i in typeChain)
                     {
                         if (superEvent.typeHandlers.TryGetValue(i, out var h))
-                        {
-                            if (h.Invoke(@event, exceptionsOutput))
-                                superEvent.typeHandlers.Remove(i);
-                        }
+                            h.Invoke(@event, exceptionsOutput);
                     }
                 }
                 finally
@@ -187,7 +184,7 @@ namespace JiksLib.Control
 
         private abstract class TypeHandler
         {
-            public abstract bool Invoke(
+            public abstract void Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput);
         }
@@ -260,7 +257,7 @@ namespace JiksLib.Control
                     RemoveListener(listenersDelayedRemove.Dequeue());
             }
 
-            public override bool Invoke(
+            public override void Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput)
             {
@@ -290,9 +287,8 @@ namespace JiksLib.Control
                 }
 
                 listenersCount = rewriteIndex;
-
-                return listenersCount <= 0;
             }
         }
     }
 }
+
