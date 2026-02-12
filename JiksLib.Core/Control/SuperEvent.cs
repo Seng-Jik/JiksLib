@@ -67,14 +67,8 @@ namespace JiksLib.Control
 
             void wrappedListener(TEvent e)
             {
-                try
-                {
-                    listener(e);
-                }
-                finally
-                {
-                    typeHandler.RemoveListener(wrappedListener);
-                }
+                typeHandler.RemoveListenerDelayed(wrappedListener);
+                listener(e);
             }
 
             if (invoking)
