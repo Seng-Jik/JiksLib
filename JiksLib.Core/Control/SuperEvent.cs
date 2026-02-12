@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using JiksLib.Collections;
 using JiksLib.Extensions;
 
 namespace JiksLib.Control
@@ -45,7 +44,11 @@ namespace JiksLib.Control
             }
 
             var typeHandler = (TypeHandler<TEvent>)handler;
-            typeHandler.AddListener(listener);
+
+            if (invoking)
+                typeHandler.AddListenerDelayed(listener);
+            else
+                typeHandler.AddListener(listener);
         }
 
         /// <summary>
@@ -74,7 +77,10 @@ namespace JiksLib.Control
                 }
             }
 
-            typeHandler.AddListener(wrappedListener);
+            if (invoking)
+                typeHandler.AddListenerDelayed(wrappedListener);
+            else
+                typeHandler.AddListener(wrappedListener);
         }
 
         /// <summary>
@@ -86,8 +92,12 @@ namespace JiksLib.Control
             if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
                 return;
 
-            var typedHandler = (TypeHandler<TEvent>)handler;
-            typedHandler.RemoveListener(listener);
+            var typeHandler = (TypeHandler<TEvent>)handler;
+
+            if (invoking)
+                typeHandler.RemoveListenerDelayed(listener);
+            else
+                typeHandler.RemoveListener(listener);
         }
 
         /// <summary>
@@ -104,17 +114,30 @@ namespace JiksLib.Control
                 TBaseEvent @event,
                 IList<Exception>? exceptionsOutput)
             {
-                var typeChain = superEvent
-                    .GetTypeChain(@event.ThrowIfNull().GetType())
-                    .Types;
+                if (superEvent.invoking)
+                    throw new InvalidOperationException(
+                        "Cannot publish event while another event is being published.");
 
-                foreach (var i in typeChain)
+                try
                 {
-                    if (superEvent.typeHandlers.TryGetValue(i, out var h))
+                    superEvent.invoking = true;
+
+                    var typeChain = superEvent
+                        .GetTypeChain(@event.ThrowIfNull().GetType())
+                        .Types;
+
+                    foreach (var i in typeChain)
                     {
-                        if (h.Invoke(@event, exceptionsOutput))
-                            superEvent.typeHandlers.Remove(i);
+                        if (superEvent.typeHandlers.TryGetValue(i, out var h))
+                        {
+                            if (h.Invoke(@event, exceptionsOutput))
+                                superEvent.typeHandlers.Remove(i);
+                        }
                     }
+                }
+                finally
+                {
+                    superEvent.invoking = false;
                 }
             }
 
@@ -137,6 +160,7 @@ namespace JiksLib.Control
             return chain;
         }
 
+        bool invoking = false;
         readonly Dictionary<Type, TypeChain> typeChains = new();
         readonly Dictionary<Type, TypeHandler> typeHandlers = new();
 
@@ -170,16 +194,59 @@ namespace JiksLib.Control
 
         private sealed class TypeHandler<TEvent> : TypeHandler
         {
-            readonly MultiHashSet<Listener<TEvent>> listeners = new();
+            readonly List<Listener<TEvent>?> listeners = new();
+            int listenersCount = 0;
             readonly Queue<Listener<TEvent>> listenersDelayedAdd = new();
             readonly Queue<Listener<TEvent>> listenersDelayedRemove = new();
+            int removeIndex = 0;
 
             public void AddListener(Listener<TEvent> listener)
+            {
+                if (listenersCount < listeners.Count)
+                {
+                    listeners[listenersCount++] = listener;
+                }
+                else
+                {
+                    listeners.Add(listener);
+                    listenersCount = listeners.Count;
+                }
+
+                removeIndex = listenersCount - 1;
+            }
+
+            public void AddListenerDelayed(Listener<TEvent> listener)
             {
                 listenersDelayedAdd.Enqueue(listener);
             }
 
             public void RemoveListener(Listener<TEvent> listener)
+            {
+                if (removeIndex >= listeners.Count || removeIndex < 0)
+                    removeIndex = listeners.Count - 1;
+
+                for (int i = removeIndex; i >= 0; --i)
+                {
+                    if (listeners[i] == listener)
+                    {
+                        listeners[i] = null;
+                        removeIndex = i - 1;
+                        return;
+                    }
+                }
+
+                for (int i = removeIndex + 1; i < listeners.Count; ++i)
+                {
+                    if (listeners[i] == listener)
+                    {
+                        listeners[i] = null;
+                        removeIndex = i - 1;
+                        return;
+                    }
+                }
+            }
+
+            public void RemoveListenerDelayed(Listener<TEvent> listener)
             {
                 listenersDelayedRemove.Enqueue(listener);
             }
@@ -187,22 +254,31 @@ namespace JiksLib.Control
             void ApplyDelayedListenerAddOrRemove()
             {
                 while (listenersDelayedAdd.Count > 0)
-                    listeners.Add(listenersDelayedAdd.Dequeue());
+                    AddListener(listenersDelayedAdd.Dequeue());
 
                 while (listenersDelayedRemove.Count > 0)
-                    listeners.Remove(listenersDelayedRemove.Dequeue());
+                    RemoveListener(listenersDelayedRemove.Dequeue());
             }
 
             public override bool Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput)
             {
+                TEvent @event = (TEvent)baseEvent;
+                int rewriteIndex = 0;
+
                 ApplyDelayedListenerAddOrRemove();
 
-                TEvent @event = (TEvent)baseEvent;
-
-                foreach (var listener in listeners)
+                for (int i = 0; i < listenersCount; ++i)
                 {
+                    var listener = listeners[i];
+
+                    if (listener == null)
+                        continue;
+
+                    listeners[i] = null;
+                    listeners[rewriteIndex++] = listener;
+
                     try
                     {
                         listener(@event);
@@ -213,9 +289,9 @@ namespace JiksLib.Control
                     }
                 }
 
-                ApplyDelayedListenerAddOrRemove();
+                listenersCount = rewriteIndex;
 
-                return listeners.Count <= 0;
+                return listenersCount <= 0;
             }
         }
     }
