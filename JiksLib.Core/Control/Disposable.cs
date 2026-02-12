@@ -13,7 +13,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 空的 IDisposable 实例
         /// </summary>
-        public static readonly IDisposable Null = FromAction(() => { });
+        public static readonly IDisposable Null = FromAction(static () => { });
 
         /// <summary>
         /// 从 Action 创建 IDisposable 实例
