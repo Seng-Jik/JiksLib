@@ -896,6 +896,101 @@ namespace JiksLib.Test.Control
             Assert.That(exceptions2.Count, Is.EqualTo(0));
         }
 
+        [Test]
+        public void AddOnceListenerDuringPublish_ListenerNotCalledUntilNextPublishButCalledOnlyOnce()
+        {
+            // Arrange
+            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var originalCallCount = 0;
+            var onceListenerCallCount = 0;
+            var onceListenerAdded = false;
+
+            // 原始监听器，只在第一次调用时添加一个一次性监听器
+            void OriginalListener(TestEventA e)
+            {
+                originalCallCount++;
+
+                // 只在第一次调用时添加一次性监听器
+                if (!onceListenerAdded)
+                {
+                    onceListenerAdded = true;
+                    superEvent.AddOnceListener<TestEventA>(e => onceListenerCallCount++);
+                }
+            }
+
+            superEvent.AddListener<TestEventA>(OriginalListener);
+            var testEvent = new TestEventA("Test");
+
+            // Act - 第一次发布
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Assert - 验证只有原始监听器被调用，一次性监听器未被调用
+            Assert.That(originalCallCount, Is.EqualTo(1));
+            Assert.That(onceListenerCallCount, Is.EqualTo(0));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert - 验证一次性监听器被调用一次，原始监听器被再次调用
+            Assert.That(originalCallCount, Is.EqualTo(2));
+            Assert.That(onceListenerCallCount, Is.EqualTo(1));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+
+            // Act - 第三次发布
+            var exceptions3 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions3);
+
+            // Assert - 验证一次性监听器没有被再次调用，原始监听器被调用第三次
+            Assert.That(originalCallCount, Is.EqualTo(3));
+            Assert.That(onceListenerCallCount, Is.EqualTo(1), "一次性监听器不应被调用第二次");
+            Assert.That(exceptions3.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AddOnceListener_WhenInvoking_RemovedSafely()
+        {
+            // Arrange
+            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var callCount = 0;
+            var onceListenerCallCount = 0;
+
+            // 添加一个一次性监听器
+            superEvent.AddOnceListener<TestEventA>(e => onceListenerCallCount++);
+
+            // 添加一个普通监听器，在事件处理过程中触发一次性监听器的移除
+            void RegularListener(TestEventA e)
+            {
+                callCount++;
+                // 这个监听器在一次性监听器之后被调用（因为添加顺序）
+                // 一次性监听器会调用 RemoveListenerDelayed，但移除是延迟的
+                // 这个测试验证不会出现集合修改异常
+            }
+
+            superEvent.AddListener<TestEventA>(RegularListener);
+            var testEvent = new TestEventA("Test");
+
+            // Act - 发布事件
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert - 验证两个监听器都被调用，没有异常
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(onceListenerCallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert - 验证一次性监听器没有被再次调用，普通监听器仍被调用
+            Assert.That(callCount, Is.EqualTo(2));
+            Assert.That(onceListenerCallCount, Is.EqualTo(1));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
         #endregion
     }
 }
