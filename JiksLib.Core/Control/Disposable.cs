@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using JiksLib.Collections;
 using JiksLib.Extensions;
 
 namespace JiksLib.Control
@@ -29,13 +28,8 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="disposables">要合并的 IDisposables</param>
         /// <returns>合并后的 IDisposable</returns>
-        public static IDisposable Merge(IEnumerable<IDisposable> disposables)
-        {
-            return Scope(f =>
-            {
-                foreach (var i in disposables) f(i);
-            });
-        }
+        public static IDisposable Merge(IEnumerable<IDisposable> disposables) =>
+            Scope(f => { foreach (var i in disposables) f(i); });
 
         /// <summary>
         /// 合并多个 IDisposable 实例为一个
@@ -44,7 +38,7 @@ namespace JiksLib.Control
         /// <param name="disposables">要合并的 IDisposables</param>
         /// <returns>合并后的 IDisposable</returns>
         public static IDisposable Merge(params IDisposable[] disposables) =>
-            Merge((IEnumerable<IDisposable>)disposables);
+            Scope(f => { for (int i = 0; i < disposables.Length; ++i) f(disposables[i]); });
 
         /// <summary>
         /// 这个委托用于向 Disposable.Scope 提交一个 IDisposable 实例
@@ -63,27 +57,59 @@ namespace JiksLib.Control
             Func<SubmitDisposable, R> scope)
         {
             Stack<IDisposable> disposableStack = new();
-            Cell<bool> inScope = new(true);
+            bool scopeEnded = false;
 
-            var result = scope(x =>
+            void dispose()
             {
-                if (!inScope.Value)
-                    throw new InvalidOperationException(
-                        "Cannot submit IDisposable outside of scope.");
+                List<Exception>? exceptions = null;
 
-                disposableStack.Push(x.ThrowIfNull());
-            });
-
-            inScope.Value = false;
-
-            var disposable = FromAction(() =>
-            {
-                inScope.Value = false;
                 while (disposableStack.Count > 0)
-                    disposableStack.Pop().Dispose();
-            });
+                {
+                    try
+                    {
+                        disposableStack.Pop().Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        exceptions ??= new();
+                        exceptions.Add(e);
+                    }
+                }
 
-            return (result, disposable);
+                if (exceptions != null)
+                {
+                    throw new AggregateException(
+                        "One or more exceptions occurred while disposing.",
+                        exceptions);
+                }
+            }
+
+            ActionDisposable d = new(dispose);
+
+            try
+            {
+                var result = scope(x =>
+                {
+                    if (d.Disposed)
+                        throw new InvalidOperationException(
+                            "Cannot submit IDisposable after scope is already disposed.");
+
+                    if (scopeEnded)
+                        throw new InvalidOperationException(
+                            "Cannot submit IDisposable after scope function has already returned.");
+
+                    disposableStack.Push(x.ThrowIfNull());
+                });
+
+                scopeEnded = true;
+
+                return (result, d);
+            }
+            catch
+            {
+                d.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -98,8 +124,9 @@ namespace JiksLib.Control
 
         private class ActionDisposable : IDisposable
         {
+            internal bool Disposed { get; private set; } = false;
+
             readonly Action disposeAction;
-            bool disposed = false;
 
             public ActionDisposable(Action disposeAction)
             {
@@ -108,12 +135,12 @@ namespace JiksLib.Control
 
             public void Dispose()
             {
-                if (disposed)
+                if (Disposed)
                     throw new InvalidOperationException(
                         "This IDisposable has already been disposed.");
 
                 disposeAction();
-                disposed = true;
+                Disposed = true;
             }
         }
     }

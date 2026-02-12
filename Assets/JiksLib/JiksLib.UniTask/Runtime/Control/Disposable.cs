@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using JiksLib.Collections;
+using JiksLib.Extensions;
 using static JiksLib.Control.Disposable;
 
 namespace JiksLib.Control.UniTask
@@ -25,26 +25,61 @@ namespace JiksLib.Control.UniTask
             Func<SubmitDisposable, UniTask<R>> scope)
         {
             Stack<IDisposable> disposableStack = new();
-            Cell<bool> inScope = new(true);
-            var result = await scope(x =>
+            bool disposed = false;
+            bool scopeEnded = false;
+
+            void dispose()
             {
-                if (!inScope.Value)
-                    throw new InvalidOperationException(
-                        "Cannot submit IDisposable outside of scope.");
+                List<Exception>? exceptions = null;
+                disposed = true;
 
-                disposableStack.Push(x);
-            });
-
-            inScope.Value = false;
-
-            var disposable = FromAction(() =>
-            {
-                inScope.Value = false;
                 while (disposableStack.Count > 0)
-                    disposableStack.Pop().Dispose();
-            });
+                {
+                    try
+                    {
+                        disposableStack.Pop().Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        exceptions ??= new();
+                        exceptions.Add(e);
+                    }
+                }
 
-            return (result, disposable);
+                if (exceptions != null)
+                {
+                    throw new AggregateException(
+                        "One or more exceptions occurred while disposing.",
+                        exceptions);
+                }
+            }
+
+            var d = FromAction(dispose);
+
+            try
+            {
+                var result = await scope(x =>
+                {
+                    if (disposed)
+                        throw new InvalidOperationException(
+                            "Cannot submit IDisposable after scope is already disposed.");
+
+                    if (scopeEnded)
+                        throw new InvalidOperationException(
+                            "Cannot submit IDisposable after scope function has already returned.");
+
+                    disposableStack.Push(x.ThrowIfNull());
+                });
+
+                scopeEnded = true;
+
+                return (result, d);
+            }
+            catch
+            {
+                d.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
