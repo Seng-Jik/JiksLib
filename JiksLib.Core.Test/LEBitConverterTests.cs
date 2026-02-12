@@ -1062,6 +1062,211 @@ namespace JiksLib.Test
 
         #endregion
 
+        #region SByte Tests
+
+        [Test]
+        public void ToSByte_ArraySegment_ReturnsCorrectValue()
+        {
+            // Arrange
+            byte[] positiveBytes = { 42 };
+            byte[] negativeBytes = { 0x86 }; // -122 in two's complement
+            byte[] zeroBytes = { 0 };
+            byte[] maxBytes = { 127 };
+            byte[] minBytes = { 0x80 }; // -128 in two's complement
+
+            var positiveSegment = new ArraySegment<byte>(positiveBytes);
+            var negativeSegment = new ArraySegment<byte>(negativeBytes);
+            var zeroSegment = new ArraySegment<byte>(zeroBytes);
+            var maxSegment = new ArraySegment<byte>(maxBytes);
+            var minSegment = new ArraySegment<byte>(minBytes);
+
+            // Act & Assert
+            Assert.That(LEBitConverter.ToSByte(positiveSegment), Is.EqualTo((sbyte)42));
+            Assert.That(LEBitConverter.ToSByte(negativeSegment), Is.EqualTo((sbyte)-122));
+            Assert.That(LEBitConverter.ToSByte(zeroSegment), Is.EqualTo((sbyte)0));
+            Assert.That(LEBitConverter.ToSByte(maxSegment), Is.EqualTo(sbyte.MaxValue));
+            Assert.That(LEBitConverter.ToSByte(minSegment), Is.EqualTo(sbyte.MinValue));
+        }
+
+        [Test]
+        public void ToSByte_ArraySegment_WithOffset_ReadsFromCorrectPosition()
+        {
+            // Arrange
+            byte[] bytes = { 0xFF, 0x00, 0x2A, 0xFF }; // 0x2A = 42
+            var segment = new ArraySegment<byte>(bytes, 2, 1);
+
+            // Act
+            sbyte result = LEBitConverter.ToSByte(segment);
+
+            // Assert
+            Assert.That(result, Is.EqualTo((sbyte)42));
+        }
+
+        [Test]
+        public void ToSByte_InsufficientLength_ThrowsArgumentException()
+        {
+            // Arrange
+            byte[] bytes = new byte[0];
+            var segment = new ArraySegment<byte>(bytes);
+
+            // Act & Assert
+            Assert.That(() => LEBitConverter.ToSByte(segment),
+                Throws.TypeOf<ArgumentException>()
+                    .With.Message.Contains("ArraySegment length must be 1"));
+        }
+
+        [Test]
+        public void GetBytes_SByte_ArraySegment_WritesCorrectByte()
+        {
+            // Arrange
+            sbyte[] testValues = { 0, 42, -42, sbyte.MaxValue, sbyte.MinValue };
+
+            foreach (var value in testValues)
+            {
+                byte[] buffer = new byte[1];
+                var segment = new ArraySegment<byte>(buffer);
+
+                // Act
+                LEBitConverter.GetBytes(value, segment);
+
+                // Assert
+                Assert.That(buffer[0], Is.EqualTo((byte)value),
+                    $"Value {value} should write byte {(byte)value}");
+            }
+        }
+
+        [Test]
+        public void GetBytes_SByte_ArraySegment_WithOffset_WritesToCorrectPosition()
+        {
+            // Arrange
+            sbyte value = 42;
+            byte[] buffer = { 0xFF, 0xFF, 0xFF };
+            var segment = new ArraySegment<byte>(buffer, 1, 1);
+
+            // Act
+            LEBitConverter.GetBytes(value, segment);
+
+            // Assert
+            Assert.That(buffer[0], Is.EqualTo(0xFF));
+            Assert.That(buffer[1], Is.EqualTo(42));
+            Assert.That(buffer[2], Is.EqualTo(0xFF));
+        }
+
+        [Test]
+        public void GetBytes_SByte_ArraySegment_InsufficientLength_ThrowsArgumentException()
+        {
+            // Arrange
+            sbyte value = 42;
+            byte[] buffer = new byte[0];
+            var segment = new ArraySegment<byte>(buffer);
+
+            // Act & Assert
+            Assert.That(() => LEBitConverter.GetBytes(value, segment),
+                Throws.TypeOf<ArgumentException>()
+                    .With.Message.Contains("ArraySegment length must be 1"));
+        }
+
+        [Test]
+        public void GetBytes_SByte_ReturnsByteArray()
+        {
+            // Arrange
+            sbyte[] testValues = { 0, 42, -42, sbyte.MaxValue, sbyte.MinValue };
+
+            foreach (var value in testValues)
+            {
+                // Act
+                byte[] bytes = LEBitConverter.GetBytes(value);
+
+                // Assert
+                Assert.That(bytes, Has.Length.EqualTo(1));
+                Assert.That(bytes[0], Is.EqualTo((byte)value),
+                    $"Value {value} should return byte array with {(byte)value}");
+            }
+        }
+
+        [Test]
+        public void SByte_RoundTrip_ReturnsOriginalValue()
+        {
+            // Test various values
+            sbyte[] testValues = { 0, 1, -1, 42, -42, sbyte.MaxValue, sbyte.MinValue };
+
+            foreach (var original in testValues)
+            {
+                byte[] buffer = new byte[1];
+                var segment = new ArraySegment<byte>(buffer);
+
+                // Act
+                LEBitConverter.GetBytes(original, segment);
+                sbyte result = LEBitConverter.ToSByte(segment);
+
+                // Assert
+                Assert.That(result, Is.EqualTo(original),
+                    $"Round trip failed for value {original}");
+            }
+        }
+
+        [Test]
+        public void SByte_RoundTrip_WithByteArray_ReturnsOriginalValue()
+        {
+            // Arrange
+            sbyte original = -100;
+
+            // Act
+            byte[] bytes = LEBitConverter.GetBytes(original);
+            sbyte result = LEBitConverter.ToSByte(new ArraySegment<byte>(bytes));
+
+            // Assert
+            Assert.That(result, Is.EqualTo(original));
+        }
+
+        [Test]
+        public void ToSByte_MinValue_ReturnsCorrectValue()
+        {
+            // Arrange
+            sbyte minValue = sbyte.MinValue;
+            byte[] buffer = new byte[1];
+            var segment = new ArraySegment<byte>(buffer);
+            LEBitConverter.GetBytes(minValue, segment);
+
+            // Act
+            sbyte result = LEBitConverter.ToSByte(segment);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(minValue));
+        }
+
+        [Test]
+        public void ToSByte_MaxValue_ReturnsCorrectValue()
+        {
+            // Arrange
+            sbyte maxValue = sbyte.MaxValue;
+            byte[] buffer = new byte[1];
+            var segment = new ArraySegment<byte>(buffer);
+            LEBitConverter.GetBytes(maxValue, segment);
+
+            // Act
+            sbyte result = LEBitConverter.ToSByte(segment);
+
+            // Assert
+            Assert.That(result, Is.EqualTo(maxValue));
+        }
+
+        [Test]
+        public void GetBytes_SByte_Zero_WritesZeroByte()
+        {
+            // Arrange
+            byte[] buffer = new byte[1];
+            var segment = new ArraySegment<byte>(buffer);
+
+            // Act
+            LEBitConverter.GetBytes((sbyte)0, segment);
+
+            // Assert
+            Assert.That(buffer[0], Is.EqualTo(0));
+        }
+
+        #endregion
+
         #region Char Tests
 
         [Test]

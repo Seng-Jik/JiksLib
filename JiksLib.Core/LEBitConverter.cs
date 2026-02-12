@@ -41,6 +41,27 @@ namespace JiksLib
         public static byte[] GetBytes(bool value) =>
             NormalGetBytes(1, value, GetBytes);
 
+        public static sbyte ToSByte(ArraySegment<byte> bytes)
+        {
+            if (bytes.Count != 1)
+                throw new ArgumentException(
+                    "ArraySegment length must be 1 for SByte conversion.");
+
+            return (sbyte)bytes.Array![bytes.Offset];
+        }
+
+        public static void GetBytes(sbyte value, ArraySegment<byte> output)
+        {
+            if (output.Count != 1)
+                throw new ArgumentException(
+                    "ArraySegment length must be 1 for SByte conversion.");
+
+            output.Array![output.Offset] = (byte)value;
+        }
+
+        public static byte[] GetBytes(sbyte value) =>
+            NormalGetBytes(1, value, GetBytes);
+
         public static short ToInt16(ArraySegment<byte> bytes)
         {
             if (bytes.Count != 2)
