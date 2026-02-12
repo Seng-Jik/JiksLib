@@ -3,7 +3,7 @@ using System;
 namespace JiksLib
 {
     /// <summary>
-    /// 无论在什么样的机器上运行，均提供以小端字节序进行转换的BitConverter
+    /// 无论在什么样的机器上运行，均提供以小端字节序进行转换的 BitConverter
     /// </summary>
     public static class LEBitConverter
     {
