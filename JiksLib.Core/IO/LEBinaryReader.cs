@@ -6,7 +6,7 @@ using JiksLib.Extensions;
 namespace JiksLib.IO
 {
     /// <summary>
-    /// 无论在什么平台上均以小端序读取数据的二进制读取器。
+    /// 无论在什么平台上均以小端序读取数据的二进制流读取器
     /// </summary>
     public sealed class LEBinaryReader : IDisposable
     {
@@ -22,7 +22,8 @@ namespace JiksLib.IO
 
         /// <summary>
         /// 当前流位置
-        /// 可以设置该属性以移动流位置，需要 CanSeek = true
+        /// 可以设置该属性以移动流位置
+        /// 仅当 CanSeek = true 时可用
         /// </summary>
         public long Position
         {
@@ -78,10 +79,7 @@ namespace JiksLib.IO
         public void Dispose()
         {
             if (!leaveOpen)
-            {
-                BaseStream.Close();
                 BaseStream.Dispose();
-            }
         }
 
         /// <summary>
