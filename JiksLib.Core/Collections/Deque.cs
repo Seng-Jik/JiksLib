@@ -94,18 +94,17 @@ namespace JiksLib.Collections
         /// <summary>
         /// 添加一组元素到末尾
         /// </summary>
-        public void AddRange(IEnumerable<T> items) =>
-            AddRange(items.ToList());
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// </summary>
-        public void AddRange(IReadOnlyCollection<T> items) =>
-            AddRange(items, items.ThrowIfNull().Count);
-
-        void AddRange(IEnumerable<T> items, int count)
+        public void AddRange(IEnumerable<T> items)
         {
             items.ThrowIfNull();
+
+            int count = items switch
+            {
+                IReadOnlyCollection<T> roc => roc.Count,
+                ICollection<T> c => c.Count,
+                ICollection c => c.Count,
+                var x => x.Count()
+            };
 
             if (Count + count > buffer.Length)
                 Reserve(Math.Max(4, (Count + count) * 2));
@@ -190,18 +189,17 @@ namespace JiksLib.Collections
         /// <summary>
         /// 添加一组元素到开头
         /// </summary>
-        public void AddRangeFront(IEnumerable<T> items) =>
-            AddRangeFront(items.ToList());
-
-        /// <summary>
-        /// 添加一组元素到开头
-        /// </summary>
-        public void AddRangeFront(IReadOnlyCollection<T> items) =>
-            AddRangeFront(items, items.ThrowIfNull().Count);
-
-        void AddRangeFront(IEnumerable<T> items, int count)
+        public void AddRangeFront(IEnumerable<T> items)
         {
             items.ThrowIfNull();
+
+            int count = items switch
+            {
+                IReadOnlyCollection<T> roc => roc.Count,
+                ICollection<T> c => c.Count,
+                ICollection c => c.Count,
+                var x => x.Count()
+            };
 
             if (Count + count > buffer.Length)
                 Reserve(Math.Max(4, (Count + count) * 2));

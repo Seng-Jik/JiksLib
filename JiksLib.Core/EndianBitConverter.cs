@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace JiksLib
 {
@@ -352,6 +353,7 @@ namespace JiksLib
         public static EndianBitConverter SystemEndian { get; private set; } =
             BitConverter.IsLittleEndian ? LittleEndian : BigEndian;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static void CheckBuffer(
             ArraySegment<byte> buf,
             int size,
@@ -365,6 +367,7 @@ namespace JiksLib
                     $"ArraySegment length must be {size} for {typeName} conversion.");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static byte[] NormalGetBytes<T>(
             int size,
             T arg,

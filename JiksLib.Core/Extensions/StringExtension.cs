@@ -12,6 +12,7 @@ namespace JiksLib.Extensions
         /// <returns></returns>
         public static string[] Split0(this string s, char sep = ',')
         {
+            s.ThrowIfNull();
             if (s == "") return Array.Empty<string>();
             else return s.Split(sep);
         }
@@ -26,8 +27,11 @@ namespace JiksLib.Extensions
             ulong seed = 131;
             ulong hash = inputHash;
 
-            foreach (var i in s)
-                hash = hash * seed + i;
+            unchecked
+            {
+                foreach (var i in s)
+                    hash = hash * seed + i;
+            }
 
             return hash;
         }

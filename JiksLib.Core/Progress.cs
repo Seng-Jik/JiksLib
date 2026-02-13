@@ -40,6 +40,16 @@ namespace JiksLib
         {
             parentProgress.ThrowIfNull();
 
+            if (float.IsNaN(startProgress) || float.IsInfinity(startProgress))
+                throw new ArgumentOutOfRangeException(
+                    nameof(startProgress),
+                    "Value cannot be NaN or infinity.");
+
+            if (float.IsNaN(endProgress) || float.IsInfinity(endProgress))
+                throw new ArgumentOutOfRangeException(
+                    nameof(endProgress),
+                    "Value cannot be NaN or infinity.");
+
             if (parentProgress is NullProgressImpl<float>)
                 return NullProgressImpl<float>.Instance;
 
