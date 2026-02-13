@@ -6,9 +6,9 @@ using JiksLib.Extensions;
 namespace JiksLib.IO
 {
     /// <summary>
-    /// 无论在什么平台上均以小端序读取数据的二进制流读取器
+    /// 以指定端序读取数据的二进制流读取器
     /// </summary>
-    public sealed class LEBinaryReader : IDisposable
+    public sealed class EndianBinaryReader : IDisposable
     {
         /// <summary>
         /// 基础流
@@ -45,7 +45,8 @@ namespace JiksLib.IO
             }
         }
 
-        public LEBinaryReader(
+        public EndianBinaryReader(
+            EndianBitConverter endianBitConverter,
             Stream stream,
             Encoding encoding,
             bool leaveOpen = false)
@@ -56,12 +57,16 @@ namespace JiksLib.IO
 
             BaseStream = stream;
             CanSeek = stream.CanSeek;
+            endian = endianBitConverter.ThrowIfNull();
             this.encoding = encoding.ThrowIfNull();
             this.leaveOpen = leaveOpen;
         }
 
-        public LEBinaryReader(Stream stream, bool leaveOpen = false) :
-            this(stream, Encoding.UTF8, leaveOpen)
+        public EndianBinaryReader(
+            EndianBitConverter endianBitConverter,
+            Stream stream,
+            bool leaveOpen = false) :
+            this(endianBitConverter, stream, Encoding.UTF8, leaveOpen)
         { }
 
         /// <summary>
@@ -124,8 +129,7 @@ namespace JiksLib.IO
             ReadByte() switch
             {
                 -1 => throw new EndOfStreamException(),
-                0 => false,
-                _ => true,
+                var x => endian.ToBoolean((byte)x),
             };
 
         /// <summary>
@@ -145,49 +149,49 @@ namespace JiksLib.IO
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public char ReadChar() => ReadInt(LEBitConverter.ToChar, 2);
+        public char ReadChar() => ReadInt(endian.ToChar, 2);
 
         /// <summary>
         /// 读取一个 Int16
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public short ReadInt16() => ReadInt(LEBitConverter.ToInt16, 2);
+        public short ReadInt16() => ReadInt(endian.ToInt16, 2);
 
         /// <summary>
         /// 读取一个 UInt16
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public ushort ReadUInt16() => ReadInt(LEBitConverter.ToUInt16, 2);
+        public ushort ReadUInt16() => ReadInt(endian.ToUInt16, 2);
 
         /// <summary>
         /// 读取一个 Int32
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public int ReadInt32() => ReadInt(LEBitConverter.ToInt32, 4);
+        public int ReadInt32() => ReadInt(endian.ToInt32, 4);
 
         /// <summary>
         /// 读取一个 UInt32
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public uint ReadUInt32() => ReadInt(LEBitConverter.ToUInt32, 4);
+        public uint ReadUInt32() => ReadInt(endian.ToUInt32, 4);
 
         /// <summary>
         /// 读取一个 Int64
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public long ReadInt64() => ReadInt(LEBitConverter.ToInt64, 8);
+        public long ReadInt64() => ReadInt(endian.ToInt64, 8);
 
         /// <summary>
         /// 读取一个 UInt64
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public ulong ReadUInt64() => ReadInt(LEBitConverter.ToUInt64, 8);
+        public ulong ReadUInt64() => ReadInt(endian.ToUInt64, 8);
 
         /// <summary>
         /// 以指定编码读取一个字符串，字符串的字节长度由前置的 Int32 指定
@@ -217,6 +221,7 @@ namespace JiksLib.IO
             return converter(buf);
         }
 
+        readonly EndianBitConverter endian;
         readonly Encoding encoding;
         readonly bool leaveOpen;
         byte[]? readBuffer = null;

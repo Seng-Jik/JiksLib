@@ -8,9 +8,9 @@ using JiksLib.Extensions;
 namespace JiksLib.IO
 {
     /// <summary>
-    /// 无论在什么平台上均以小端序写入数据的二进制写入器
+    /// 以指定端序读取数据的二进制流读取器
     /// </summary>
-    public sealed class LEBinaryWriter : IDisposable
+    public sealed class EndianBinaryWriter : IDisposable
     {
         /// <summary>
         /// 基本流
@@ -48,7 +48,8 @@ namespace JiksLib.IO
         /// </summary>
         public bool CanSeek { get; private set; }
 
-        public LEBinaryWriter(
+        public EndianBinaryWriter(
+            EndianBitConverter endianBitConverter,
             Stream stream,
             Encoding encoding,
             bool leaveOpen = false)
@@ -58,13 +59,17 @@ namespace JiksLib.IO
                     "The stream must be writable.", nameof(stream));
 
             BaseStream = stream;
+            endian = endianBitConverter.ThrowIfNull();
             this.encoding = encoding.ThrowIfNull();
             this.leaveOpen = leaveOpen;
             CanSeek = stream.CanSeek;
         }
 
-        public LEBinaryWriter(Stream stream, bool leaveOpen = false) :
-            this(stream, Encoding.UTF8, leaveOpen)
+        public EndianBinaryWriter(
+            EndianBitConverter endianBitConverter,
+            Stream stream,
+            bool leaveOpen = false) :
+            this(endianBitConverter, stream, Encoding.UTF8, leaveOpen)
         { }
 
         /// <summary>
@@ -126,7 +131,7 @@ namespace JiksLib.IO
         /// <summary>
         /// 写入一个布尔值
         /// </summary>
-        public void Write(bool b) => BaseStream.WriteByte(b ? (byte)1 : (byte)0);
+        public void Write(bool b) => BaseStream.WriteByte(endian.GetByte(b));
 
         /// <summary>
         /// 写入一个字节数组片段
@@ -198,43 +203,43 @@ namespace JiksLib.IO
         /// 写入一个字符
         /// </summary>
         public void Write(char c) =>
-            WriteInt(c, 2, LEBitConverter.GetBytes);
+            WriteInt(c, 2, endian.GetBytes);
 
         /// <summary>
         /// 写入一个短整数
         /// </summary>
         public void Write(short value) =>
-            WriteInt(value, 2, LEBitConverter.GetBytes);
+            WriteInt(value, 2, endian.GetBytes);
 
         /// <summary>
         /// 写入一个无符号短整数
         /// </summary>
         public void Write(ushort value) =>
-            WriteInt(value, 2, LEBitConverter.GetBytes);
+            WriteInt(value, 2, endian.GetBytes);
 
         /// <summary>
         /// 写入一个整数
         /// </summary>
         public void Write(int value) =>
-            WriteInt(value, 4, LEBitConverter.GetBytes);
+            WriteInt(value, 4, endian.GetBytes);
 
         /// <summary>
         /// 写入一个无符号整数
         /// </summary>
         public void Write(uint value) =>
-            WriteInt(value, 4, LEBitConverter.GetBytes);
+            WriteInt(value, 4, endian.GetBytes);
 
         /// <summary>
         /// 写入一个长整数
         /// </summary>
         public void Write(long value) =>
-            WriteInt(value, 8, LEBitConverter.GetBytes);
+            WriteInt(value, 8, endian.GetBytes);
 
         /// <summary>
         /// 写入一个无符号长整数
         /// </summary>
         public void Write(ulong value) =>
-            WriteInt(value, 8, LEBitConverter.GetBytes);
+            WriteInt(value, 8, endian.GetBytes);
 
         /// <summary>
         /// 写入一个字符串
@@ -289,6 +294,7 @@ namespace JiksLib.IO
             return b;
         }
 
+        readonly EndianBitConverter endian;
         readonly Encoding encoding;
         readonly bool leaveOpen;
     }
