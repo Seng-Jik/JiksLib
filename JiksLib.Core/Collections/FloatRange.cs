@@ -59,12 +59,19 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="value">要判断的值</param>
         /// <returns>是否在浮点数范围内</returns>
-        public readonly bool Contains(int value)
+        public readonly bool Contains(float value)
         {
             if (value > Min && value < Max) return true;
             if (IncludeMin && value == Min) return true;
             if (IncludeMax && value == Max) return true;
             return false;
+        }
+
+        public override string ToString()
+        {
+            char left = IncludeMin ? '[' : '(';
+            char right = IncludeMax ? ']' : ')';
+            return $"{left}{Min}, {Max}{right}";
         }
     }
 }

@@ -109,5 +109,35 @@ namespace JiksLib.Collections
             && IncludeMin == other.IncludeMin
             && Max == other.Max
             && IncludeMax == other.IncludeMax;
+
+        public override string ToString()
+        {
+            char left = IncludeMin ? '[' : '(';
+            char right = IncludeMax ? ']' : ')';
+            return $"{left}{Min}, {Max}{right}";
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is IntRange i)
+                return Equals(i);
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + Min.GetHashCode();
+                hash = hash * 23 + IncludeMin.GetHashCode();
+                hash = hash * 23 + Max.GetHashCode();
+                hash = hash * 23 + IncludeMax.GetHashCode();
+                return hash;
+            }
+        }
+
+        public static bool operator ==(IntRange left, IntRange right) => left.Equals(right);
+        public static bool operator !=(IntRange left, IntRange right) => !left.Equals(right);
     }
 }
