@@ -48,6 +48,8 @@ namespace JiksLib
         /// <returns>可执行文件的信息</returns>
         public static FileInfo? FindExecutable(string executableName)
         {
+            executableName.ThrowIfNull();
+
             var path = Environment.GetEnvironmentVariable("PATH") ?? "";
             var paths = path.Split0(Path.PathSeparator);
 
