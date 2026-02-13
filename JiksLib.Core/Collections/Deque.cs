@@ -48,36 +48,6 @@ namespace JiksLib.Collections
         /// <summary>
         /// 添加一组元素到末尾
         /// </summary>
-        public void AddRange(IReadOnlyList<T> items, int start, int count)
-        {
-            items.ThrowIfNull();
-
-            if (start < 0)
-                throw new ArgumentOutOfRangeException(nameof(start), "Start index cannot be negative.");
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
-            if (start + count > items.Count)
-                throw new ArgumentOutOfRangeException(nameof(count), "Start index and count exceed list bounds.");
-
-            if (Count + count > buffer.Length)
-                Reserve(Math.Max(4, (Count + count) * 2));
-
-            for (int i = 0; i < count; ++i)
-                buffer[(rear + i) % buffer.Length] = items[start + i];
-
-            rear = (rear + count) % buffer.Length;
-            Count += count;
-        }
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// </summary>
-        public void AddRange(IReadOnlyList<T> items) =>
-            AddRange(items, 0, items.ThrowIfNull().Count);
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// </summary>
         public void AddRange(ArraySegment<T> items)
         {
             items.Array.ThrowIfNull();
@@ -125,13 +95,7 @@ namespace JiksLib.Collections
         /// 添加一组元素到末尾
         /// </summary>
         public void AddRange(IEnumerable<T> items) =>
-            AddRange(items, items.ThrowIfNull().Count());
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// </summary>
-        public void AddRange(ICollection<T> items) =>
-            AddRange(items, items.ThrowIfNull().Count);
+            AddRange(items.ToList());
 
         /// <summary>
         /// 添加一组元素到末尾
@@ -168,40 +132,6 @@ namespace JiksLib.Collections
             buffer[front] = x;
             Count++;
         }
-
-        /// <summary>
-        /// 添加一组元素到开头
-        /// </summary>
-        public void AddRangeFront(IReadOnlyList<T> items, int start, int count)
-        {
-            items.ThrowIfNull();
-
-            if (start < 0)
-                throw new ArgumentOutOfRangeException(nameof(start), "Start index cannot be negative.");
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
-            if (start + count > items.Count)
-                throw new ArgumentOutOfRangeException(nameof(count), "Start index and count exceed list bounds.");
-
-            if (Count + count > buffer.Length)
-                Reserve(Math.Max(4, (Count + count) * 2));
-
-            // 计算新的front位置（向前移动count个位置）
-            front -= count;
-            if (front < 0) front += buffer.Length;
-
-            // 复制元素到新位置
-            for (int i = 0; i < count; ++i)
-                buffer[(front + i) % buffer.Length] = items[start + i];
-
-            Count += count;
-        }
-
-        /// <summary>
-        /// 添加一组元素到开头
-        /// </summary>
-        public void AddRangeFront(IReadOnlyList<T> items) =>
-            AddRangeFront(items, 0, items.ThrowIfNull().Count);
 
         /// <summary>
         /// 添加一组元素到开头
@@ -261,13 +191,7 @@ namespace JiksLib.Collections
         /// 添加一组元素到开头
         /// </summary>
         public void AddRangeFront(IEnumerable<T> items) =>
-            AddRangeFront(items, items.ThrowIfNull().Count());
-
-        /// <summary>
-        /// 添加一组元素到开头
-        /// </summary>
-        public void AddRangeFront(ICollection<T> items) =>
-            AddRangeFront(items, items.ThrowIfNull().Count);
+            AddRangeFront(items.ToList());
 
         /// <summary>
         /// 添加一组元素到开头

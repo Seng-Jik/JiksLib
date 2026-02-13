@@ -197,11 +197,6 @@ namespace JiksLib.Test.Text
 
             // Act
             reader.Dispose();
-
-            // Assert - StringReader.Dispose doesn't throw, but we can verify it's disposed
-            // by checking that we can't read from it (StringReader doesn't actually
-            // throw on read after dispose, so we'll just verify the method completes)
-            Assert.Pass("Dispose completed without error");
         }
 
         [Test]

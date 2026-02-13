@@ -170,6 +170,7 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 判断字典中是否包含某个值
+        /// O(n) 操作
         /// </summary>
         /// <param name="value">要判断的值</param>
         /// <returns>是否包含</returns>

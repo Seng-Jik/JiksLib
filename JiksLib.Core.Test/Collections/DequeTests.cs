@@ -890,7 +890,7 @@ namespace JiksLib.Test.Collections
             var items = new List<string> { "a", "b", "c", "d", "e", "f" };
 
             // Act: Add only elements 2-4 (c, d, e)
-            deque.AddRange(items, 2, 3);
+            deque.AddRange(items.Skip(2).Take(3));
 
             // Assert
             Assert.That(deque.Count, Is.EqualTo(3));
@@ -909,7 +909,7 @@ namespace JiksLib.Test.Collections
             var items = new List<int> { 100, 200, 300 };
 
             // Act: Add empty range (count = 0)
-            deque.AddRange(items, 1, 0);
+            deque.AddRange(items.Skip(1).Take(0));
 
             // Assert: Should not modify deque
             Assert.That(deque.Count, Is.EqualTo(2));
@@ -1098,34 +1098,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void AddRange_IReadOnlyList_InvalidStartAndCount_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var deque = new Deque<int>();
-            var items = new List<int> { 1, 2, 3 };
-
-            // Act & Assert: start out of range
-            Assert.That(() => deque.AddRange(items, 5, 1), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: count out of range
-            Assert.That(() => deque.AddRange(items, 1, 5), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: negative start
-            Assert.That(() => deque.AddRange(items, -1, 1), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: negative count
-            Assert.That(() => deque.AddRange(items, 0, -1), Throws.TypeOf<ArgumentOutOfRangeException>());
-        }
-
-        [Test]
         public void AddRange_MultipleRanges_AccumulateCorrectly()
         {
             // Arrange
             var deque = new Deque<int>();
 
             // Act: Add multiple ranges
-            deque.AddRange((IReadOnlyList<int>)new[] { 1, 2, 3 });
-            deque.AddRange((IReadOnlyList<int>)new List<int> { 4, 5 });
+            deque.AddRange(new[] { 1, 2, 3 });
+            deque.AddRange(new List<int> { 4, 5 });
             deque.AddRange(new ArraySegment<int>(new[] { 6, 7, 8 }, 0, 2)); // 6, 7
 
             // Assert
@@ -1186,7 +1166,7 @@ namespace JiksLib.Test.Collections
             var items = new List<int> { 1, 2, 3, 4, 5 };
 
             // Act: Add items[1..3] (2,3,4)
-            deque.AddRangeFront(items, 1, 3);
+            deque.AddRangeFront(items.Skip(1).Take(3));
 
             // Assert
             Assert.That(deque.Count, Is.EqualTo(5));
@@ -1326,26 +1306,6 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void AddRangeFront_IReadOnlyList_InvalidStartAndCount_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var deque = new Deque<int>();
-            var items = new List<int> { 1, 2, 3 };
-
-            // Act & Assert: start out of range
-            Assert.That(() => deque.AddRangeFront(items, 5, 1), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: count out of range
-            Assert.That(() => deque.AddRangeFront(items, 1, 5), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: negative start
-            Assert.That(() => deque.AddRangeFront(items, -1, 1), Throws.TypeOf<ArgumentOutOfRangeException>());
-
-            // Act & Assert: negative count
-            Assert.That(() => deque.AddRangeFront(items, 0, -1), Throws.TypeOf<ArgumentOutOfRangeException>());
-        }
-
-        [Test]
         public void AddRangeFront_NullIReadOnlyList_ThrowsArgumentNullException()
         {
             // Arrange
@@ -1353,7 +1313,7 @@ namespace JiksLib.Test.Collections
 
             // Act & Assert
             // Implementation now checks for null via ThrowIfNull which throws ArgumentNullException
-            Assert.That(() => deque.AddRangeFront((IReadOnlyList<int>)null!), Throws.TypeOf<ArgumentNullException>());
+            Assert.That(() => deque.AddRangeFront((IReadOnlyCollection<int>)null!), Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]

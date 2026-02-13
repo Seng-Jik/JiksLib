@@ -25,13 +25,11 @@ namespace JiksLib.Control.UniTask
             Func<SubmitDisposable, UniTask<R>> scope)
         {
             Stack<IDisposable> disposableStack = new();
-            bool disposed = false;
             bool scopeEnded = false;
 
             void dispose()
             {
                 List<Exception>? exceptions = null;
-                disposed = true;
 
                 while (disposableStack.Count > 0)
                 {
@@ -60,9 +58,6 @@ namespace JiksLib.Control.UniTask
             {
                 var result = await scope(x =>
                 {
-                    if (disposed)
-                        throw new InvalidOperationException(
-                            "Cannot submit IDisposable after scope is already disposed.");
 
                     if (scopeEnded)
                         throw new InvalidOperationException(

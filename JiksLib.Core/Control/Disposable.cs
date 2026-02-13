@@ -84,16 +84,12 @@ namespace JiksLib.Control
                 }
             }
 
-            ActionDisposable d = new(dispose);
+            var d = FromAction(dispose);
 
             try
             {
                 var result = scope(x =>
                 {
-                    if (d.Disposed)
-                        throw new InvalidOperationException(
-                            "Cannot submit IDisposable after scope is already disposed.");
-
                     if (scopeEnded)
                         throw new InvalidOperationException(
                             "Cannot submit IDisposable after scope function has already returned.");
@@ -135,10 +131,7 @@ namespace JiksLib.Control
 
             public void Dispose()
             {
-                if (Disposed)
-                    throw new InvalidOperationException(
-                        "This IDisposable has already been disposed.");
-
+                if (Disposed) return;
                 disposeAction();
                 Disposed = true;
             }

@@ -87,7 +87,8 @@ namespace JiksLib.Text
                                 $"Unexpected character after field closure: {(char)afterDoubleQuote}");
                         }
                     }
-                    else csv.Read();
+                    else
+                        csv.Read();
                 }
                 else if (
                     peek == separator ||
@@ -95,7 +96,8 @@ namespace JiksLib.Text
                     peek == '\r' ||
                     peek == -1)
                     break;
-                else csv.Read();
+                else
+                    csv.Read();
 
                 fieldSb.Append((char)peek);
             }

@@ -56,7 +56,7 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void FromAction_DisposeTwice_ThrowsInvalidOperationException()
+        public void FromAction_DisposeTwice_DoesNotThrow()
         {
             // Arrange
             var actionCalledCount = 0;
@@ -65,8 +65,8 @@ namespace JiksLib.Test.Control
             disposable.Dispose();
 
             // Act & Assert
-            Assert.That(() => disposable.Dispose(), Throws.TypeOf<InvalidOperationException>());
-            Assert.That(actionCalledCount, Is.EqualTo(1));
+            Assert.DoesNotThrow(() => disposable.Dispose());
+            Assert.That(actionCalledCount, Is.EqualTo(1)); // Should only be disposed once
         }
 
         [Test]
@@ -305,7 +305,7 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Scope_Generic_DisposeCalledTwice_ThrowsInvalidOperationException()
+        public void Scope_Generic_DisposeCalledTwice_DoesNotThrow()
         {
             // Arrange
             var disposeCount = 0;
@@ -319,7 +319,7 @@ namespace JiksLib.Test.Control
             disposable.Dispose();
 
             // Act & Assert
-            Assert.That(() => disposable.Dispose(), Throws.TypeOf<InvalidOperationException>());
+            Assert.DoesNotThrow(() => disposable.Dispose());
             Assert.That(disposeCount, Is.EqualTo(1)); // Should only be disposed once
         }
 
