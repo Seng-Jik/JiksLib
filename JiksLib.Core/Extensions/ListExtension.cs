@@ -122,7 +122,7 @@ namespace JiksLib.Extensions
         {
             if (ls.Count == 0)
                 throw new InvalidOperationException(
-                    "Can not random select on a zero length list.");
+                    "Cannot random select on a zero length list.");
 
             if (ls.Count == 1) return 0;
 

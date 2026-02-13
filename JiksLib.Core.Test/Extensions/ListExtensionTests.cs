@@ -759,7 +759,7 @@ namespace JiksLib.Test.Extensions
             Assert.That(
                 () => emptyList.RandomSelectIndex(randomNumber, getWeight),
                 Throws.TypeOf<InvalidOperationException>()
-                    .With.Message.Contains("Can not random select on a zero length list."));
+                    .With.Message.Contains("Cannot random select on a zero length list."));
         }
 
         [Test]
