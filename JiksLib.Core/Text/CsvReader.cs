@@ -63,7 +63,7 @@ namespace JiksLib.Text
                 if (isQuoted)
                 {
                     if (peek == -1)
-                        throw new InvalidDataException("字段双引号未闭合");
+                        throw new InvalidDataException("Unclosed double quote in field");
 
                     if (peek == '\"')
                     {
@@ -84,7 +84,7 @@ namespace JiksLib.Text
                         {
                             csv.Read();
                             throw new InvalidDataException(
-                                $"在字段闭合后发现意外字符{(char)afterDoubleQuote}");
+                                $"Unexpected character after field closure: {(char)afterDoubleQuote}");
                         }
                     }
                     else csv.Read();

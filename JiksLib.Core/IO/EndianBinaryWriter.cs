@@ -287,9 +287,7 @@ namespace JiksLib.IO
 
         ArraySegment<byte> GetWriteBuffer(int size)
         {
-            if (writeBuffer == null)
-                writeBuffer = new byte[8];
-
+            writeBuffer ??= new byte[8];
             ArraySegment<byte> b = new(writeBuffer, 0, size);
             return b;
         }

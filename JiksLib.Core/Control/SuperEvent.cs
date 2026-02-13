@@ -187,9 +187,10 @@ namespace JiksLib.Control
         {
             readonly List<Listener<TEvent>?> listeners = new();
             int listenersCount = 0;
-            readonly Queue<Listener<TEvent>> listenersDelayedAdd = new();
-            readonly Queue<Listener<TEvent>> listenersDelayedRemove = new();
             int removeIndex = 0;
+
+            readonly Queue<(bool isAddOrRemove, Listener<TEvent>)>
+                listenersDelayedOperation = new();
 
             public void AddListener(Listener<TEvent> listener)
             {
@@ -208,7 +209,7 @@ namespace JiksLib.Control
 
             public void AddListenerDelayed(Listener<TEvent> listener)
             {
-                listenersDelayedAdd.Enqueue(listener);
+                listenersDelayedOperation.Enqueue((true, listener));
             }
 
             public void RemoveListener(Listener<TEvent> listener)
@@ -239,16 +240,18 @@ namespace JiksLib.Control
 
             public void RemoveListenerDelayed(Listener<TEvent> listener)
             {
-                listenersDelayedRemove.Enqueue(listener);
+                listenersDelayedOperation.Enqueue((false, listener));
             }
 
             void ApplyDelayedListenerAddOrRemove()
             {
-                while (listenersDelayedAdd.Count > 0)
-                    AddListener(listenersDelayedAdd.Dequeue());
+                while (listenersDelayedOperation.Count > 0)
+                {
+                    var op = listenersDelayedOperation.Dequeue();
 
-                while (listenersDelayedRemove.Count > 0)
-                    RemoveListener(listenersDelayedRemove.Dequeue());
+                    if (op.isAddOrRemove) AddListener(op.Item2);
+                    else RemoveListener(op.Item2);
+                }
             }
 
             public override void Invoke(
