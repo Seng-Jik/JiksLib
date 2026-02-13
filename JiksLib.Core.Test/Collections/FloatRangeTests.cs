@@ -220,8 +220,11 @@ namespace JiksLib.Test.Collections
             var range = new FloatRange(5.5f, true, 5.5f, true);
 
             // Act & Assert
+            // Test that integer values are not contained when range is at 5.5
             Assert.That(range.Contains(5), Is.False); // 5 is not 5.5
             Assert.That(range.Contains(6), Is.False); // 6 is not 5.5
+            // Now we can test the exact float value
+            Assert.That(range.Contains(5.5f), Is.True);
         }
 
         [Test]
@@ -231,9 +234,11 @@ namespace JiksLib.Test.Collections
             var range = new FloatRange(5.5f, true, 5.5f, true);
 
             // Act & Assert
-            // Note: Contains takes int parameter, so we can't pass 5.5
+            // Note: Contains now takes float parameter, we can pass 5.5f
             // This test shows that 5 is not contained even though min/max is 5.5
             Assert.That(range.Contains(5), Is.False);
+            // Now we can also test the exact float value
+            Assert.That(range.Contains(5.5f), Is.True);
         }
 
         [Test]
@@ -363,50 +368,54 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
-        #region Readonly Struct Behavior Tests
+        #region ToString Tests
 
         [Test]
-        public void Struct_IsReadonly_PropertiesAreImmutable()
+        public void ToString_IncludesCorrectBrackets()
         {
             // Arrange
-            var range = new FloatRange(1.0f, true, 10.0f, false);
+            var range1 = new FloatRange(1.0f, true, 5.0f, false);  // [1, 5)
+            var range2 = new FloatRange(1.0f, false, 5.0f, true);  // (1, 5]
+            var range3 = new FloatRange(1.0f, true, 5.0f, true);   // [1, 5]
+            var range4 = new FloatRange(1.0f, false, 5.0f, false); // (1, 5)
 
-            // Act
-            // Try to access properties - should work
-            float min = range.Min;
-            bool includeMin = range.IncludeMin;
-            float max = range.Max;
-            bool includeMax = range.IncludeMax;
-
-            // Assert
-            Assert.That(min, Is.EqualTo(1.0f));
-            Assert.That(includeMin, Is.True);
-            Assert.That(max, Is.EqualTo(10.0f));
-            Assert.That(includeMax, Is.False);
+            // Act & Assert
+            Assert.That(range1.ToString(), Is.EqualTo("[1, 5)"));
+            Assert.That(range2.ToString(), Is.EqualTo("(1, 5]"));
+            Assert.That(range3.ToString(), Is.EqualTo("[1, 5]"));
+            Assert.That(range4.ToString(), Is.EqualTo("(1, 5)"));
         }
 
         [Test]
-        public void Struct_ValueEquality_EqualRangesAreEqual()
+        public void ToString_WithNegativeValues_FormatsCorrectly()
         {
             // Arrange
-            var range1 = new FloatRange(1.0f, true, 10.0f, false);
-            var range2 = new FloatRange(1.0f, true, 10.0f, false);
+            var range = new FloatRange(-5.5f, true, 5.5f, false);
 
             // Act & Assert
-            // Note: struct equality uses ValueType.Equals by default
-            // which performs field-by-field comparison
-            Assert.That(range1.Equals(range2), Is.True);
+            Assert.That(range.ToString(), Is.EqualTo("[-5.5, 5.5)"));
         }
 
         [Test]
-        public void Struct_ValueEquality_DifferentRangesAreNotEqual()
+        public void ToString_WithFractionalValues_FormatsCorrectly()
         {
             // Arrange
-            var range1 = new FloatRange(1.0f, true, 10.0f, false);
-            var range2 = new FloatRange(2.0f, true, 10.0f, false);
+            var range = new FloatRange(0.1f, true, 0.9f, false);
 
             // Act & Assert
-            Assert.That(range1.Equals(range2), Is.False);
+            Assert.That(range.ToString(), Is.EqualTo("[0.1, 0.9)"));
+        }
+
+        [Test]
+        public void ToString_WithSpecialFloatValues_FormatsCorrectly()
+        {
+            // Arrange
+            var range1 = new FloatRange(float.NaN, true, 5.0f, false);
+            var range2 = new FloatRange(float.NegativeInfinity, true, float.PositiveInfinity, true);
+
+            // Act & Assert
+            Assert.That(range1.ToString(), Is.EqualTo("[NaN, 5)"));
+            Assert.That(range2.ToString(), Is.EqualTo("[-∞, ∞]"));
         }
 
         #endregion

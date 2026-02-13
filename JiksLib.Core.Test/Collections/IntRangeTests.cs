@@ -375,5 +375,173 @@ namespace JiksLib.Test.Collections
         }
 
         #endregion
+
+        #region Equality Tests
+
+        [Test]
+        public void Equals_SameValues_ReturnsTrue()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(1, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range1.Equals(range2), Is.True);
+            Assert.That(range1.Equals((object)range2), Is.True);
+        }
+
+        [Test]
+        public void Equals_DifferentValues_ReturnsFalse()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(2, true, 5, false);
+            var range3 = new IntRange(1, false, 5, false);
+            var range4 = new IntRange(1, true, 6, false);
+            var range5 = new IntRange(1, true, 5, true);
+
+            // Act & Assert
+            Assert.That(range1.Equals(range2), Is.False);
+            Assert.That(range1.Equals(range3), Is.False);
+            Assert.That(range1.Equals(range4), Is.False);
+            Assert.That(range1.Equals(range5), Is.False);
+        }
+
+        [Test]
+        public void Equals_Null_ReturnsFalse()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range.Equals(null), Is.False);
+        }
+
+        [Test]
+        public void GetHashCode_SameValues_SameHashCode()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(1, true, 5, false);
+
+            // Act
+            var hash1 = range1.GetHashCode();
+            var hash2 = range2.GetHashCode();
+
+            // Assert
+            Assert.That(hash1, Is.EqualTo(hash2));
+        }
+
+        [Test]
+        public void GetHashCode_DifferentValues_DifferentHashCode()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(2, true, 5, false);
+            var range3 = new IntRange(1, false, 5, false);
+            var range4 = new IntRange(1, true, 6, false);
+            var range5 = new IntRange(1, true, 5, true);
+
+            // Act
+            var hash1 = range1.GetHashCode();
+            var hash2 = range2.GetHashCode();
+            var hash3 = range3.GetHashCode();
+            var hash4 = range4.GetHashCode();
+            var hash5 = range5.GetHashCode();
+
+            // Assert
+            // Hash codes should ideally be different, but collisions can happen
+            // At least verify they are not all equal
+            Assert.That(hash1, Is.Not.EqualTo(hash2));
+            Assert.That(hash1, Is.Not.EqualTo(hash3));
+            Assert.That(hash1, Is.Not.EqualTo(hash4));
+            Assert.That(hash1, Is.Not.EqualTo(hash5));
+        }
+
+        [Test]
+        public void EqualityOperator_SameValues_ReturnsTrue()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(1, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range1 == range2, Is.True);
+        }
+
+        [Test]
+        public void EqualityOperator_DifferentValues_ReturnsFalse()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(2, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range1 == range2, Is.False);
+        }
+
+        [Test]
+        public void InequalityOperator_SameValues_ReturnsFalse()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(1, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range1 != range2, Is.False);
+        }
+
+        [Test]
+        public void InequalityOperator_DifferentValues_ReturnsTrue()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);
+            var range2 = new IntRange(2, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range1 != range2, Is.True);
+        }
+
+        #endregion
+
+        #region ToString Tests
+
+        [Test]
+        public void ToString_IncludesCorrectBrackets()
+        {
+            // Arrange
+            var range1 = new IntRange(1, true, 5, false);  // [1, 5)
+            var range2 = new IntRange(1, false, 5, true);  // (1, 5]
+            var range3 = new IntRange(1, true, 5, true);   // [1, 5]
+            var range4 = new IntRange(1, false, 5, false); // (1, 5)
+
+            // Act & Assert
+            Assert.That(range1.ToString(), Is.EqualTo("[1, 5)"));
+            Assert.That(range2.ToString(), Is.EqualTo("(1, 5]"));
+            Assert.That(range3.ToString(), Is.EqualTo("[1, 5]"));
+            Assert.That(range4.ToString(), Is.EqualTo("(1, 5)"));
+        }
+
+        [Test]
+        public void ToString_WithNegativeValues_FormatsCorrectly()
+        {
+            // Arrange
+            var range = new IntRange(-5, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range.ToString(), Is.EqualTo("[-5, 5)"));
+        }
+
+        [Test]
+        public void ToString_SingleValueIncluded_FormatsCorrectly()
+        {
+            // Arrange
+            var range = new IntRange(5, true, 5, true);
+
+            // Act & Assert
+            Assert.That(range.ToString(), Is.EqualTo("[5, 5]"));
+        }
+
+        #endregion
     }
 }
