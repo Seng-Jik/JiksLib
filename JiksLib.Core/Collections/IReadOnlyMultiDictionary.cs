@@ -67,7 +67,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 所有的键
         /// </summary>
-        IEnumerable<TKey> Keys { get; }
+        IReadOnlyCollection<TKey> Keys { get; }
 
         /// <summary>
         /// 所有的值

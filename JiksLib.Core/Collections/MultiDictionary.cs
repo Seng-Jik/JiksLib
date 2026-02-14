@@ -13,8 +13,7 @@ namespace JiksLib.Collections
     /// <typeparam name="TKey">键的类型</typeparam>
     /// <typeparam name="TValue">值的类型</typeparam>
     public sealed class MultiDictionary<TKey, TValue> :
-        IReadOnlyMultiDictionary<TKey, TValue>,
-        ICloneable
+        IReadOnlyMultiDictionary<TKey, TValue>
         where TKey : notnull
         where TValue : notnull
     {
@@ -133,23 +132,23 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 获取指定键所有值的迭代器
+        /// 获取指定键所有值的只读容器
         /// </summary>
-        public IEnumerable<TValue> this[TKey key]
+        public IReadOnlyCollection<TValue> this[TKey key]
         {
             get
             {
                 if (dict.TryGetValue(key.ThrowIfNull(), out var set))
                     return set;
                 else
-                    return Enumerable.Empty<TValue>();
+                    return Array.Empty<TValue>();
             }
         }
 
         /// <summary>
         /// 所有的键
         /// </summary>
-        public IEnumerable<TKey> Keys => dict.Keys;
+        public IReadOnlyCollection<TKey> Keys => dict.Keys;
 
         /// <summary>
         /// 所有的值
@@ -266,8 +265,6 @@ namespace JiksLib.Collections
         /// </summary>
         public IReadOnlyMultiDictionary<TKey, TValue> AsReadOnly() => this;
 
-        object ICloneable.Clone() => Clone();
-
         /// <summary>
         /// 获得所有键值对的枚举器
         /// </summary>
@@ -286,6 +283,9 @@ namespace JiksLib.Collections
 
         bool ILookup<TKey, TValue>.Contains(TKey key) =>
             ContainsKey(key);
+
+        IEnumerable<TValue> ILookup<TKey, TValue>.this[TKey key] =>
+            this[key];
 
         IEnumerator<IGrouping<TKey, TValue>> IEnumerable<IGrouping<TKey, TValue>>.GetEnumerator()
         {
