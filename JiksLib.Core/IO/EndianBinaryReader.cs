@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using JiksLib.Extensions;
 
@@ -214,6 +215,7 @@ namespace JiksLib.IO
             return encoding.GetString(buf.Array!, buf.Offset, buf.Count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         T ReadInt<T>(Func<ArraySegment<byte>, T> converter, int size)
         {
             var buf = GetReadBuffer(size);
@@ -226,6 +228,7 @@ namespace JiksLib.IO
         readonly bool leaveOpen;
         byte[]? readBuffer = null;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ArraySegment<byte> GetReadBuffer(int size)
         {
             if (readBuffer == null || readBuffer.Length < size)

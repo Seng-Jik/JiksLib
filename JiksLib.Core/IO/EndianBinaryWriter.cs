@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -273,6 +274,7 @@ namespace JiksLib.IO
             return WriteAsync(bytes, cancellationToken);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void WriteInt<T>(
             T value,
             int size,
@@ -285,6 +287,7 @@ namespace JiksLib.IO
 
         byte[]? writeBuffer = null;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ArraySegment<byte> GetWriteBuffer(int size)
         {
             writeBuffer ??= new byte[8];

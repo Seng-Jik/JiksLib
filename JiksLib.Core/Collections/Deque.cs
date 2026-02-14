@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using JiksLib.Extensions;
 
 namespace JiksLib.Collections
@@ -380,6 +381,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 根据Deque下标计算其在缓冲区内的下标
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         int CalcIndex(int index)
         {
             if (index >= Count || index < 0)
