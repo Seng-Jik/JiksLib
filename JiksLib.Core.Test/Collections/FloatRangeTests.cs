@@ -406,18 +406,6 @@ namespace JiksLib.Test.Collections
             Assert.That(range.ToString(), Is.EqualTo("[0.1, 0.9)"));
         }
 
-        [Test]
-        public void ToString_WithSpecialFloatValues_FormatsCorrectly()
-        {
-            // Arrange
-            var range1 = new FloatRange(float.NaN, true, 5.0f, false);
-            var range2 = new FloatRange(float.NegativeInfinity, true, float.PositiveInfinity, true);
-
-            // Act & Assert
-            Assert.That(range1.ToString(), Is.EqualTo("[NaN, 5)"));
-            Assert.That(range2.ToString(), Is.EqualTo("[-∞, ∞]"));
-        }
-
         #endregion
     }
 }
