@@ -121,14 +121,15 @@ namespace JiksLib.Collections
         /// <summary>
         /// 移除某个键下所有的键值对
         /// </summary>
-        public bool Remove(TKey key)
+        /// <returns>移除的元素数量</returns>
+        public int Remove(TKey key)
         {
             if (!dict.TryGetValue(key.ThrowIfNull(), out var set))
-                return false;
+                return 0;
 
             dict.Remove(key);
             Count -= set.Count;
-            return true;
+            return set.Count;
         }
 
         /// <summary>

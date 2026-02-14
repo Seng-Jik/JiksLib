@@ -275,7 +275,7 @@ namespace JiksLib.Test.Collections
             var result = dict.Remove("key1");
 
             // Assert
-            Assert.That(result, Is.True);
+            Assert.That(result, Is.EqualTo(2));
             Assert.That(dict.Count, Is.EqualTo(1));
             Assert.That(dict.ContainsKey("key1"), Is.False);
             Assert.That(dict.Contains("key1", 100), Is.False);
@@ -294,7 +294,7 @@ namespace JiksLib.Test.Collections
             var result = dict.Remove("key2");
 
             // Assert
-            Assert.That(result, Is.False);
+            Assert.That(result, Is.EqualTo(0));
             Assert.That(dict.Count, Is.EqualTo(1));
         }
 
@@ -830,7 +830,7 @@ namespace JiksLib.Test.Collections
             var result = dict.Remove("key1");
 
             // Assert
-            Assert.That(result, Is.True);
+            Assert.That(result, Is.EqualTo(3));
             Assert.That(dict.Count, Is.EqualTo(originalCount - 3));
             Assert.That(dict.ContainsKey("key1"), Is.False);
             Assert.That(dict.ContainsKey("key2"), Is.True);
@@ -844,7 +844,7 @@ namespace JiksLib.Test.Collections
             var dict = new MultiDictionary<string, int>();
 
             // Act & Assert
-            Assert.That(dict.Remove("nonexistent"), Is.False);
+            Assert.That(dict.Remove("nonexistent"), Is.EqualTo(0));
         }
 
         [Test]
