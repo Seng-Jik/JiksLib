@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace JiksLib.Extensions
@@ -7,12 +8,10 @@ namespace JiksLib.Extensions
     /// </summary>
     public static class AsReadOnlyExtension
     {
-        public static IReadOnlyDictionary<T, U> AsReadOnly<T, U>(
-            this Dictionary<T, U> d) where T : notnull => d.ThrowIfNull();
-
-        public static IReadOnlyList<T> AsReadOnly<T>(this List<T> ls) => ls.ThrowIfNull();
-        public static IReadOnlyList<T> AsReadOnly<T>(this T[] ls) => ls.ThrowIfNull();
-        public static IReadOnlyCollection<T> AsReadOnly<T>(this HashSet<T> s) => s.ThrowIfNull();
-        public static IReadOnlyCollection<T> AsReadOnly<T>(this LinkedList<T> s) => s.ThrowIfNull();
+        public static IReadOnlyDictionary<T, U> AsReadOnly<T, U>(this Dictionary<T, U>? d) where T : notnull => d.ThrowIfNull();
+        public static IReadOnlyList<T> AsReadOnly<T>(this List<T>? ls) => ls.ThrowIfNull();
+        public static IReadOnlyList<T> AsReadOnly<T>(this T[]? ls) => ls.ThrowIfNull();
+        public static IReadOnlyCollection<T> AsReadOnly<T>(this HashSet<T>? s) => s.ThrowIfNull();
+        public static IReadOnlyCollection<T> AsReadOnly<T>(this LinkedList<T>? s) => s.ThrowIfNull();
     }
 }

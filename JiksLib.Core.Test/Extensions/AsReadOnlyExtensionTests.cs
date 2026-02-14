@@ -223,8 +223,7 @@ namespace JiksLib.Test.Extensions
             List<string>? nullList = null;
 
             // Act & Assert
-            // Extension method calls ThrowIfNull which throws ArgumentNullException
-            // Temporarily expecting NullReferenceException to debug
+            // Extension method on null instance throws NullReferenceException
             Assert.That(() => nullList!.AsReadOnly(), Throws.TypeOf<NullReferenceException>());
         }
 
