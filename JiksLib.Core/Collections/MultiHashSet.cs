@@ -71,16 +71,16 @@ namespace JiksLib.Collections
         {
             item.ThrowIfNull();
 
-            Count++;
-
             if (dict.TryGetValue(item, out var count))
             {
                 dict[item] = count + 1;
+                Count++;
                 return count + 1;
             }
             else
             {
                 dict[item] = 1;
+                Count++;
                 return 1;
             }
         }
@@ -96,16 +96,16 @@ namespace JiksLib.Collections
 
             if (dict.TryGetValue(item, out var count))
             {
-                Count--;
-
                 if (count > 1)
                 {
                     dict[item] = count - 1;
+                    Count--;
                     return (true, count - 1);
                 }
                 else
                 {
                     dict.Remove(item);
+                    Count--;
                     return (true, 0);
                 }
             }

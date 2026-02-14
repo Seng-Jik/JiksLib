@@ -100,10 +100,10 @@ namespace JiksLib.Collections
 
             if (success)
             {
-                Count--;
-
                 if (set.Count == 0)
                     dict.Remove(key);
+
+                Count--;
             }
 
             return success;
