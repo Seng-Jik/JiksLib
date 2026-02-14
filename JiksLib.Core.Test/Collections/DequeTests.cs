@@ -232,7 +232,7 @@ namespace JiksLib.Test.Collections
             // Assume current buffer length is 2
 
             // Act
-            deque.Reserve(10);
+            deque.EnsureCapacity(10);
 
             // Assert
             // Count should remain unchanged
@@ -258,7 +258,7 @@ namespace JiksLib.Test.Collections
             int initialCapacity = deque.Count; // Not real capacity, but we can't access it
 
             // Act
-            deque.Reserve(1); // Smaller than current capacity
+            deque.EnsureCapacity(1); // Smaller than current capacity
 
             // Assert
             // Should not affect existing elements
@@ -690,7 +690,7 @@ namespace JiksLib.Test.Collections
             int initialCapacity = deque.Capacity;
 
             // Act
-            deque.Reserve(0);
+            deque.EnsureCapacity(0);
 
             // Assert
             Assert.That(deque.Capacity, Is.EqualTo(initialCapacity));

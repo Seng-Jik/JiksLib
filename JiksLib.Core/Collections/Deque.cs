@@ -39,7 +39,7 @@ namespace JiksLib.Collections
         public void Add(T x)
         {
             if (Count + 1 > buffer.Length)
-                Reserve(Math.Max(4, (Count + 1) * 2));
+                EnsureCapacity(Math.Max(4, (Count + 1) * 2));
 
             buffer[rear] = x;
             rear = (rear + 1) % buffer.Length;
@@ -54,7 +54,7 @@ namespace JiksLib.Collections
             items.Array.ThrowIfNull();
 
             if (Count + items.Count > buffer.Length)
-                Reserve(Math.Max(4, (Count + items.Count) * 2));
+                EnsureCapacity(Math.Max(4, (Count + items.Count) * 2));
 
             if (rear + items.Count <= buffer.Length)
             {
@@ -108,7 +108,7 @@ namespace JiksLib.Collections
             };
 
             if (Count + count > buffer.Length)
-                Reserve(Math.Max(4, (Count + count) * 2));
+                EnsureCapacity(Math.Max(4, (Count + count) * 2));
 
             int i = 0;
 
@@ -125,7 +125,7 @@ namespace JiksLib.Collections
         public void AddFront(T x)
         {
             if (Count + 1 > buffer.Length)
-                Reserve(Math.Max(4, (Count + 1) * 2));
+                EnsureCapacity(Math.Max(4, (Count + 1) * 2));
 
             front--;
             if (front < 0) front += buffer.Length;
@@ -141,7 +141,7 @@ namespace JiksLib.Collections
             items.Array!.ThrowIfNull();
 
             if (Count + items.Count > buffer.Length)
-                Reserve(Math.Max(4, (Count + items.Count) * 2));
+                EnsureCapacity(Math.Max(4, (Count + items.Count) * 2));
 
             // 计算新的front位置（向前移动items.Count个位置）
             front -= items.Count;
@@ -203,7 +203,7 @@ namespace JiksLib.Collections
             };
 
             if (Count + count > buffer.Length)
-                Reserve(Math.Max(4, (Count + count) * 2));
+                EnsureCapacity(Math.Max(4, (Count + count) * 2));
 
             // 计算新的front位置（向前移动count个位置）
             front -= count;
@@ -288,7 +288,7 @@ namespace JiksLib.Collections
         /// <exception cref="ArgumentOutOfRangeException">
         /// 当<paramref name="capacity"/>为负数时抛出
         /// </exception>
-        public void Reserve(int capacity)
+        public void EnsureCapacity(int capacity)
         {
             if (capacity < 0)
                 throw new ArgumentOutOfRangeException(
