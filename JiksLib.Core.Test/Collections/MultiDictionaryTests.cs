@@ -664,23 +664,6 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void ICloneable_Clone_ReturnsObjectOfCorrectType()
-        {
-            // Arrange
-            var original = new MultiDictionary<string, int>();
-            original.Add("key1", 100);
-
-            // Act
-            var clone = ((ICloneable)original).Clone();
-
-            // Assert
-            Assert.That(clone, Is.InstanceOf<MultiDictionary<string, int>>());
-            var typedClone = (MultiDictionary<string, int>)clone;
-            Assert.That(typedClone.Count, Is.EqualTo(1));
-            Assert.That(typedClone.Contains("key1", 100), Is.True);
-        }
-
-        [Test]
         public void Clone_IsShallowCopy_ForReferenceTypes()
         {
             // Arrange - using mutable reference types

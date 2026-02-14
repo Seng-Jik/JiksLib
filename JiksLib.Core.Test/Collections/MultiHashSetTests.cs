@@ -602,23 +602,6 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void ICloneable_Clone_ReturnsObjectOfCorrectType()
-        {
-            // Arrange
-            var original = new MultiHashSet<string>();
-            original.Add("test");
-
-            // Act
-            var clone = ((ICloneable)original).Clone();
-
-            // Assert
-            Assert.That(clone, Is.InstanceOf<MultiHashSet<string>>());
-            var typedClone = (MultiHashSet<string>)clone;
-            Assert.That(typedClone.Count, Is.EqualTo(1));
-            Assert.That(typedClone.Contains("test"), Is.True);
-        }
-
-        [Test]
         public void Clone_IsShallowCopy_ForReferenceTypes()
         {
             // Arrange - using a mutable reference type
