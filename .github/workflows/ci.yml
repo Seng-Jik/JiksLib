@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_FRAMEWORK: 'net48'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ./JiksLib.Core.sln
+
+    - name: Build
+      run: dotnet build ./JiksLib.Core.sln --configuration Release --no-restore
+
+    - name: Test .NET 10.0
+      run: dotnet test ./JiksLib.Core.Test/JiksLib.Core.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
+
+    - name: Test .NET Framework 4.8
+      run: dotnet test ./JiksLib.Core.Test/JiksLib.Core.Test.csproj --configuration Release --framework net48 --no-build --verbosity normal
+
+    - name: Build Unity Package (Windows)
+      run: |
+        # Ensure Assets/JiksLib directory exists
+        $assetsDir = "./Assets/JiksLib"
+        if (-not (Test-Path $assetsDir)) {
+          Write-Host "Creating directory: $assetsDir"
+          New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
+        }
+
+        # Build for .NET Framework 4.8 which is compatible with Unity
+        dotnet publish ./JiksLib.Core/JiksLib.Core.csproj -c Release -f net48 --no-build
+
+        # Copy DLL to Unity Assets directory (simulating the copy-dll.ps1 script)
+        $sourceDll = "./JiksLib.Core/bin/Release/net48/publish/JiksLib.Core.dll"
+        $destDll = "$assetsDir/JiksLib.Core.dll"
+
+        if (Test-Path $sourceDll) {
+          Write-Host "Copying DLL from $sourceDll to $destDll"
+          Copy-Item -Path $sourceDll -Destination $destDll -Force
+
+          # Verify the DLL was copied successfully
+          if (Test-Path $destDll) {
+            $dllInfo = Get-Item $destDll
+            Write-Host "✅ Successfully copied DLL: $($dllInfo.FullName)"
+            Write-Host "  Size: $($dllInfo.Length) bytes"
+            Write-Host "  Last Modified: $($dllInfo.LastWriteTime)"
+          } else {
+            Write-Error "❌ Failed to copy DLL to $destDll"
+            exit 1
+          }
+        } else {
+          Write-Error "❌ Source DLL not found: $sourceDll"
+          exit 1
+        }
+      shell: pwsh
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ./JiksLib.Core.sln
+
+    - name: Build
+      run: dotnet build ./JiksLib.Core.sln --configuration Release --no-restore
+
+    - name: Test .NET 10.0
+      run: dotnet test ./JiksLib.Core.Test/JiksLib.Core.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
+
+    - name: Test .NET Standard 2.1
+      # Note: Test project doesn't target netstandard2.1, but we can build the library for it
+      run: dotnet build ./JiksLib.Core/JiksLib.Core.csproj --configuration Release --framework netstandard2.1 --no-restore
+
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ./JiksLib.Core.sln
+
+    - name: Build
+      run: dotnet build ./JiksLib.Core.sln --configuration Release --no-restore
+
+    - name: Test .NET 10.0
+      run: dotnet test ./JiksLib.Core.Test/JiksLib.Core.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
+
+    - name: Test .NET Standard 2.1
+      run: dotnet build ./JiksLib.Core/JiksLib.Core.csproj --configuration Release --framework netstandard2.1 --no-restore
