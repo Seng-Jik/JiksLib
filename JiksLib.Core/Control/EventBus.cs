@@ -25,13 +25,13 @@ namespace JiksLib.Control
         /// <summary>
         /// 事件监听器
         /// </summary>
-        public delegate void Listener<TEvent>(TEvent @event);
+        public delegate void Listener<TEvent>(TEvent @event) where TEvent : TBaseEvent;
 
         /// <summary>
         /// 注册某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void AddListener<TEvent>(Listener<TEvent> listener)
+        public void AddListener<TEvent>(Listener<TEvent> listener) where TEvent : TBaseEvent
         {
             if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
             {
@@ -52,7 +52,7 @@ namespace JiksLib.Control
         /// 该监听器不能使用RemoveListener移除
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void ListenOnce<TEvent>(Listener<TEvent> listener)
+        public void ListenOnce<TEvent>(Listener<TEvent> listener) where TEvent : TBaseEvent
         {
             if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
             {
@@ -78,7 +78,7 @@ namespace JiksLib.Control
         /// 移除某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void RemoveListener<TEvent>(Listener<TEvent> listener)
+        public void RemoveListener<TEvent>(Listener<TEvent> listener) where TEvent : TBaseEvent
         {
             if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
                 return;
@@ -162,13 +162,27 @@ namespace JiksLib.Control
 
                 var t = type;
 
-                while (t != null)
+                if (typeof(TBaseEvent).IsInterface)
                 {
-                    listenerTypes.Add(t);
-                    t = t.BaseType;
+                    while (t != typeof(object) && t != null)
+                    {
+                        listenerTypes.Add(t);
+                        t = t.BaseType;
+                        // 如果不实现 TBaseEvent 则不添加
+                    }
+
+                    listenerTypes.AddRange(type.GetInterfaces()); // 改为只添加 TBaseEvent 的子接口
+                }
+                else
+                {
+                    while (t != null)
+                    {
+                        listenerTypes.Add(t);
+                        if (t == typeof(TBaseEvent)) break;
+                        t = t.BaseType;
+                    }
                 }
 
-                listenerTypes.AddRange(type.GetInterfaces());
                 Types = listenerTypes;
             }
         }
@@ -176,11 +190,12 @@ namespace JiksLib.Control
         private abstract class TypeHandler
         {
             internal abstract void Invoke(
-                object baseEvent,
+                TBaseEvent baseEvent,
                 IList<Exception>? exceptionsOutput);
         }
 
         private sealed class TypeHandler<TEvent> : TypeHandler
+            where TEvent : TBaseEvent
         {
             readonly List<Listener<TEvent>?> listeners = new();
             int removeIndex = 0;
@@ -242,7 +257,7 @@ namespace JiksLib.Control
             }
 
             internal override void Invoke(
-                object baseEvent,
+                TBaseEvent baseEvent,
                 IList<Exception>? exceptionsOutput)
             {
                 TEvent @event = (TEvent)baseEvent;
@@ -280,3 +295,4 @@ namespace JiksLib.Control
         }
     }
 }
+
