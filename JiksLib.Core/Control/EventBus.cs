@@ -7,7 +7,7 @@ namespace JiksLib.Control
     /// <summary>
     /// 事件总线
     /// 可以发布以某一类型为基础的不同类型的事件
-    /// TBaseEvent不能是接口类型
+    /// TBaseEvent可以是类或接口类型
     /// 仅支持在主线程上使用
     /// </summary>
     public sealed class EventBus<TBaseEvent>
@@ -19,10 +19,6 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         public EventBus(out Publisher publisher)
         {
-            if (typeof(TBaseEvent).IsInterface)
-                throw new InvalidOperationException(
-                    "Interface types are not supported by super event.");
-
             publisher = new(this);
         }
 

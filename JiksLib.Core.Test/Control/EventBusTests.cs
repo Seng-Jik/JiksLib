@@ -40,6 +40,13 @@ namespace JiksLib.Test.Control
     public interface ITestEventInterface { }
     public class TestEventWithInterface : TestEventBase, ITestEventInterface { }
 
+    // 接口作为TBaseEvent的测试
+    public interface IEventInterface { }
+    public interface IDerivedEventInterface : IEventInterface { }
+    public class EventImplementingInterface : IEventInterface { }
+    public class EventImplementingDerivedInterface : IDerivedEventInterface { }
+    public class EventImplementingMultipleInterfaces : IEventInterface, ITestEventInterface { }
+
     [TestFixture]
     public class EventBusTests
     {
@@ -989,6 +996,157 @@ namespace JiksLib.Test.Control
             Assert.That(callCount, Is.EqualTo(2));
             Assert.That(onceListenerCallCount, Is.EqualTo(1));
             Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        #endregion
+
+        #region 接口作为TBaseEvent测试
+
+        [Test]
+        public void InterfaceAsTBaseEvent_BasicFunctionality()
+        {
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var callCount = 0;
+            IEventInterface? receivedEvent = null;
+
+            eventBus.AddListener<IEventInterface>(e =>
+            {
+                callCount++;
+                receivedEvent = e;
+            });
+
+            var testEvent = new EventImplementingInterface();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(receivedEvent, Is.SameAs(testEvent));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InterfaceAsTBaseEvent_DerivedInterface()
+        {
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var baseCallCount = 0;
+            var derivedCallCount = 0;
+
+            eventBus.AddListener<IEventInterface>(e => baseCallCount++);
+            eventBus.AddListener<IDerivedEventInterface>(e => derivedCallCount++);
+
+            var derivedEvent = new EventImplementingDerivedInterface();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(derivedEvent, exceptions);
+
+            // Assert
+            // 实现派生接口的事件应该触发基接口监听器
+            Assert.That(baseCallCount, Is.EqualTo(1));
+            // 也应该触发派生接口监听器，因为事件类型实现了IDerivedEventInterface
+            Assert.That(derivedCallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InterfaceAsTBaseEvent_EventBusWithDerivedInterface()
+        {
+            // Arrange
+            var eventBus = new EventBus<IDerivedEventInterface>(out var publisher);
+            var baseCallCount = 0;
+            var derivedCallCount = 0;
+
+            eventBus.AddListener<IEventInterface>(e => baseCallCount++);
+            eventBus.AddListener<IDerivedEventInterface>(e => derivedCallCount++);
+
+            var derivedEvent = new EventImplementingDerivedInterface();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(derivedEvent, exceptions);
+
+            // Assert
+            // 事件实现IDerivedEventInterface，应该触发两个监听器
+            Assert.That(baseCallCount, Is.EqualTo(1));
+            Assert.That(derivedCallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InterfaceAsTBaseEvent_MultipleInterfaces()
+        {
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var interface1CallCount = 0;
+            var interface2CallCount = 0;
+
+            eventBus.AddListener<IEventInterface>(e => interface1CallCount++);
+            eventBus.AddListener<ITestEventInterface>(e => interface2CallCount++);
+
+            var multiInterfaceEvent = new EventImplementingMultipleInterfaces();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(multiInterfaceEvent, exceptions);
+
+            // Assert
+            // 事件实现两个接口，应该触发两个接口的监听器
+            Assert.That(interface1CallCount, Is.EqualTo(1));
+            Assert.That(interface2CallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InterfaceAsTBaseEvent_ListenOnce()
+        {
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var callCount = 0;
+
+            eventBus.ListenOnce<IEventInterface>(e => callCount++);
+
+            var testEvent = new EventImplementingInterface();
+
+            // Act - 第一次发布
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InterfaceAsTBaseEvent_RemoveListener()
+        {
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var callCount = 0;
+
+            void Listener(IEventInterface e) => callCount++;
+
+            eventBus.AddListener<IEventInterface>(Listener);
+            eventBus.RemoveListener<IEventInterface>(Listener);
+
+            var testEvent = new EventImplementingInterface();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
         #endregion
