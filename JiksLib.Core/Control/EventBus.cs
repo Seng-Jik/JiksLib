@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using JiksLib.Extensions;
 
 namespace JiksLib.Control
@@ -307,5 +306,6 @@ namespace JiksLib.Control
         }
     }
 }
+
 
 
