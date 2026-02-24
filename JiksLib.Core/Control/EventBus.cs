@@ -159,23 +159,33 @@ namespace JiksLib.Control
 
             internal TypeChain(Type type)
             {
-                List<Type> listenerTypes = new();
+                List<Type> listenerTypes;
 
                 var t = type;
 
                 if (typeof(TBaseEvent).IsInterface)
                 {
-                    while (t != typeof(object) && t != null)
+                    var interfaces = type.GetInterfaces();
+                    listenerTypes = new(8 + interfaces.Length);
+
+                    for (int i = 0; i < interfaces.Length; ++i)
+                        if (typeof(TBaseEvent).IsAssignableFrom(interfaces[i]))
+                            listenerTypes.Add(interfaces[i]);
+                    
+                    while (t != null)
                     {
                         if (typeof(TBaseEvent).IsAssignableFrom(t))
                             listenerTypes.Add(t);
+                        else
+                            break;
+
                         t = t.BaseType;
                     }
-
-                    listenerTypes.AddRange(type.GetInterfaces().Where(i => typeof(TBaseEvent).IsAssignableFrom(i))); // 只添加 TBaseEvent 的子接口
                 }
                 else
                 {
+                    listenerTypes = new(8);
+
                     while (t != null)
                     {
                         listenerTypes.Add(t);
@@ -184,6 +194,7 @@ namespace JiksLib.Control
                     }
                 }
 
+                listenerTypes.TrimExcess();
                 Types = listenerTypes;
             }
         }
@@ -296,4 +307,5 @@ namespace JiksLib.Control
         }
     }
 }
+
 
