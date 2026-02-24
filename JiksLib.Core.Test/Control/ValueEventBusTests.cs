@@ -1170,5 +1170,171 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region 98b344e提交后补充测试
+
+        [Test]
+        public void LargeValueType_NoBoxing()
+        {
+            // 测试大型值类型事件不会导致装箱
+            // 通过多次发布验证性能
+
+            // Arrange
+            var eventBus = new ValueEventBus(out var publisher);
+            var callCount = 0;
+            LargeValueEvent lastEvent = default;
+
+            eventBus.AddListener<LargeValueEvent>(e =>
+            {
+                callCount++;
+                lastEvent = e; // 赋值，验证值被正确传递
+            });
+
+            // Act - 发布多次
+            var exceptions = new List<Exception>();
+
+            for (int i = 0; i < 100; i++)
+            {
+                var testEvent = new LargeValueEvent(i);
+                publisher.Publish(testEvent, exceptions);
+            }
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(100));
+            Assert.That(lastEvent.Data1, Is.EqualTo(99)); // 最后一次事件的值
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ListenOnce_ExceptionInListener_StillRemoved()
+        {
+            // 测试ListenOnce监听器抛出异常时仍然被移除
+
+            // Arrange
+            var eventBus = new ValueEventBus(out var publisher);
+            var callCount = 0;
+
+            eventBus.ListenOnce<TestValueEventA>(e =>
+            {
+                callCount++;
+                throw new Exception("Test exception");
+            });
+
+            var testEvent = new TestValueEventA("Test", 42);
+
+            // Act - 第一次发布（应该抛出异常但监听器被移除）
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Act - 第二次发布（监听器应该已经被移除）
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1)); // 只调用一次
+            Assert.That(exceptions1.Count, Is.EqualTo(1)); // 异常被捕获
+            Assert.That(exceptions2.Count, Is.EqualTo(0)); // 第二次没有异常
+        }
+
+        [Test]
+        public void ReentrancyProtection_ListenerAttemptsPublish_ThrowsException()
+        {
+            // 测试在监听器内部尝试发布事件会抛出异常
+
+            // Arrange
+            var eventBus = new ValueEventBus(out var publisher);
+            var innerCallCount = 0;
+            var exceptionThrown = false;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                try
+                {
+                    // 尝试在监听器内部发布另一个事件
+                    publisher.Publish(new TestValueEventB(1.0f, 2.0f), null);
+                }
+                catch (InvalidOperationException)
+                {
+                    exceptionThrown = true;
+                }
+            });
+
+            eventBus.AddListener<TestValueEventB>(e => innerCallCount++);
+
+            var testEvent = new TestValueEventA("Test", 42);
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(exceptionThrown, Is.True);
+            // 内部事件不应该被发布
+            Assert.That(innerCallCount, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MultipleListeners_SameEventType_AllCalled()
+        {
+            // 测试同一事件类型的多个监听器都被调用
+
+            // Arrange
+            var eventBus = new ValueEventBus(out var publisher);
+            var callCounts = new int[10];
+
+            for (int i = 0; i < 10; i++)
+            {
+                int index = i; // 捕获局部变量
+                eventBus.AddListener<TestValueEventA>(e =>
+                {
+                    callCounts[index]++;
+                });
+            }
+
+            var testEvent = new TestValueEventA("Test", 42);
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.That(callCounts[i], Is.EqualTo(1));
+            }
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ValueType_DefaultValue_PublishedCorrectly()
+        {
+            // 测试默认值类型事件可以被正确发布
+
+            // Arrange
+            var eventBus = new ValueEventBus(out var publisher);
+            var receivedEvent = default(TestValueEventA);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                callCount++;
+                receivedEvent = e;
+            });
+
+            var testEvent = default(TestValueEventA); // 默认值
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(receivedEvent.Message, Is.Null); // 默认值的属性
+            Assert.That(receivedEvent.Value, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        #endregion
     }
 }

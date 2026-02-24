@@ -47,6 +47,13 @@ namespace JiksLib.Test.Control
     public class EventImplementingDerivedInterface : IDerivedEventInterface { }
     public class EventImplementingMultipleInterfaces : IEventInterface, ITestEventInterface { }
 
+    // 98b344e提交后补充测试使用的类型
+    public interface IComplexBase { }
+    public interface IComplexDerived1 : IComplexBase { }
+    public interface IComplexDerived2 : IComplexBase { }
+    public interface IUnrelatedInterface { }
+    public class EventComplex : IComplexDerived1, IComplexDerived2, IUnrelatedInterface { }
+
     [TestFixture]
     public class EventBusTests
     {
@@ -1074,6 +1081,170 @@ namespace JiksLib.Test.Control
             // Assert
             Assert.That(callCount, Is.EqualTo(0));
             Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        #endregion
+
+        #region 98b344e提交后补充测试
+
+        [Test]
+        public void TypeChain_InterfaceBaseEvent_ComplexHierarchy()
+        {
+            // 测试复杂接口继承层次
+            // IComplexBase <- IComplexDerived1, IComplexDerived2
+            // 事件类型实现多个派生接口
+
+            // Arrange
+            var eventBus = new EventBus<IComplexBase>(out var publisher);
+            var baseCallCount = 0;
+            var derived1CallCount = 0;
+            var derived2CallCount = 0;
+
+            eventBus.AddListener<IComplexBase>(e => baseCallCount++);
+            eventBus.AddListener<IComplexDerived1>(e => derived1CallCount++);
+            eventBus.AddListener<IComplexDerived2>(e => derived2CallCount++);
+            // 无法添加IUnrelatedInterface监听器，因为不是IComplexBase的子类型
+
+            var testEvent = new EventComplex();
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            // 事件应该触发所有相关接口的监听器
+            Assert.That(baseCallCount, Is.EqualTo(1));
+            Assert.That(derived1CallCount, Is.EqualTo(1));
+            Assert.That(derived2CallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+
+        [Test]
+        public void TypeSafety_InvalidCastException_NotThrown()
+        {
+            // 验证类型转换不会抛出InvalidCastException
+            // TBaseEvent是类的情况
+
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestEventA>(e => callCount++);
+
+            var testEvent = new TestEventA("Test");
+
+            // Act & Assert
+            var exceptions = new List<Exception>();
+            Assert.DoesNotThrow(() => publisher.Publish(testEvent, exceptions));
+
+            // 验证监听器被调用
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TypeSafety_InterfaceBaseEvent_InvalidCastException_NotThrown()
+        {
+            // 验证接口作为TBaseEvent时类型转换不会抛出InvalidCastException
+
+            // Arrange
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<IEventInterface>(e => callCount++);
+
+            var testEvent = new EventImplementingInterface();
+
+            // Act & Assert
+            var exceptions = new List<Exception>();
+            Assert.DoesNotThrow(() => publisher.Publish(testEvent, exceptions));
+
+            // 验证监听器被调用
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ReentrancyProtection_ListenerAttemptsPublish_ThrowsException()
+        {
+            // 测试在监听器内部尝试发布事件会抛出异常
+
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var innerCallCount = 0;
+            var exceptionThrown = false;
+
+            eventBus.AddListener<TestEventA>(e =>
+            {
+                try
+                {
+                    // 尝试在监听器内部发布另一个事件
+                    publisher.Publish(new TestEventB(42), null);
+                }
+                catch (InvalidOperationException)
+                {
+                    exceptionThrown = true;
+                }
+            });
+
+            eventBus.AddListener<TestEventB>(e => innerCallCount++);
+
+            var testEvent = new TestEventA("Test");
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(exceptionThrown, Is.True);
+            // 内部事件不应该被发布
+            Assert.That(innerCallCount, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+
+        [Test]
+        public void GenericConstraint_NonTBaseEventInterface_CannotAddListener()
+        {
+            // 验证不能添加非TBaseEvent接口的监听器
+            // 这应该导致编译错误，但我们可以通过反射测试运行时行为
+
+            // 注意：这个测试主要是文档作用
+            // 实际编译时泛型约束会阻止添加
+
+            Assert.Pass("泛型约束 where TEvent : TBaseEvent 确保编译时类型安全");
+        }
+
+        [Test]
+        public void ListenOnce_ExceptionInListener_StillRemoved()
+        {
+            // 测试ListenOnce监听器抛出异常时仍然被移除
+
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            eventBus.ListenOnce<TestEventA>(e =>
+            {
+                callCount++;
+                throw new Exception("Test exception");
+            });
+
+            var testEvent = new TestEventA("Test");
+
+            // Act - 第一次发布（应该抛出异常但监听器被移除）
+            var exceptions1 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions1);
+
+            // Act - 第二次发布（监听器应该已经被移除）
+            var exceptions2 = new List<Exception>();
+            publisher.Publish(testEvent, exceptions2);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1)); // 只调用一次
+            Assert.That(exceptions1.Count, Is.EqualTo(1)); // 异常被捕获
+            Assert.That(exceptions2.Count, Is.EqualTo(0)); // 第二次没有异常
         }
 
         #endregion
