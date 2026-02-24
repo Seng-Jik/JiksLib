@@ -41,7 +41,7 @@ namespace JiksLib.Test.Control
     public class TestEventWithInterface : TestEventBase, ITestEventInterface { }
 
     [TestFixture]
-    public class SuperEventTests
+    public class EventBusTests
     {
         #region 基础功能测试
 
@@ -49,7 +49,7 @@ namespace JiksLib.Test.Control
         public void Constructor_CreatesPublisher()
         {
             // Arrange & Act
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
 
             // Assert
             Assert.That(superEvent, Is.Not.Null);
@@ -60,7 +60,7 @@ namespace JiksLib.Test.Control
         public void AddListener_ThenPublish_CallsListener()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var eventReceived = false;
             TestEventA? receivedEvent = null;
 
@@ -87,7 +87,7 @@ namespace JiksLib.Test.Control
         public void AddMultipleListeners_AllAreCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
 
@@ -110,7 +110,7 @@ namespace JiksLib.Test.Control
         public void RemoveListener_ListenerNotCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void Listener(TestEventA e) => callCount++;
@@ -133,7 +133,7 @@ namespace JiksLib.Test.Control
         public void RemoveListener_OtherListenersStillCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
 
@@ -164,7 +164,7 @@ namespace JiksLib.Test.Control
         public void ListenerThrowsException_ExceptionCollected()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var exceptionMessage = "Test exception";
 
             superEvent.AddListener<TestEventA>(e => throw new InvalidOperationException(exceptionMessage));
@@ -185,7 +185,7 @@ namespace JiksLib.Test.Control
         public void MultipleListenersThrowExceptions_AllExceptionsCollected()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
 
             superEvent.AddListener<TestEventA>(e => throw new InvalidOperationException("Exception 1"));
             superEvent.AddListener<TestEventA>(e => throw new ArgumentException("Exception 2"));
@@ -206,7 +206,7 @@ namespace JiksLib.Test.Control
         public void SomeListenersThrowExceptions_OthersStillCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var successfulCallCount = 0;
 
             superEvent.AddListener<TestEventA>(e => throw new InvalidOperationException("Error"));
@@ -231,7 +231,7 @@ namespace JiksLib.Test.Control
         public void PublishDerivedEvent_CallsBaseClassListeners()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var baseCallCount = 0;
             var derivedCallCount = 0;
 
@@ -255,7 +255,7 @@ namespace JiksLib.Test.Control
         public void PublishBaseEvent_DoesNotCallDerivedClassListeners()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var baseCallCount = 0;
             var derivedCallCount = 0;
 
@@ -278,7 +278,7 @@ namespace JiksLib.Test.Control
         public void MultipleLevelInheritance_AllRelevantListenersCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var baseCallCount = 0;
             var intermediateCallCount = 0;
             var derivedCallCount = 0;
@@ -309,7 +309,7 @@ namespace JiksLib.Test.Control
         public void PublishEventWithInterface_CallsInterfaceListeners()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var interfaceCallCount = 0;
             var concreteCallCount = 0;
 
@@ -337,7 +337,7 @@ namespace JiksLib.Test.Control
         public void PublishEventWithNoListeners_DoesNothing()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var testEvent = new TestEventA("Test");
 
             // Act
@@ -353,7 +353,7 @@ namespace JiksLib.Test.Control
         public void AddSameListenerMultipleTimes_CalledMultipleTimes()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void Listener(TestEventA e) => callCount++;
@@ -377,7 +377,7 @@ namespace JiksLib.Test.Control
         public void RemoveListenerNotAdded_NoEffect()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void Listener(TestEventA e) => callCount++;
@@ -401,7 +401,7 @@ namespace JiksLib.Test.Control
         public void PublishNullEvent_ThrowsArgumentNullException()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
 
             // Act & Assert
             var exceptions = new List<Exception>();
@@ -418,7 +418,7 @@ namespace JiksLib.Test.Control
         public void MultipleEventTypes_ListenersOnlyRespondToTheirType()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var eventACount = 0;
             var eventBCount = 0;
 
@@ -443,7 +443,7 @@ namespace JiksLib.Test.Control
         public void ListenerForBaseType_ReceivesAllEvents()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var baseCallCount = 0;
 
             superEvent.AddListener<TestEventBase>(e => baseCallCount++);
@@ -471,7 +471,7 @@ namespace JiksLib.Test.Control
         public void AddManyListeners_AllCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             const int listenerCount = 100;
             var callCounts = new int[listenerCount];
 
@@ -500,14 +500,14 @@ namespace JiksLib.Test.Control
         public void RemoveManyListeners_NoneCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new SuperEvent<TestEventBase>.Listener<TestEventA>[listenerCount];
+            var listeners = new EventBus<TestEventBase>.Listener<TestEventA>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                SuperEvent<TestEventBase>.Listener<TestEventA> listener = e => callCount++;
+                EventBus<TestEventBase>.Listener<TestEventA> listener = e => callCount++;
                 listeners[i] = listener;
                 superEvent.AddListener(listener);
             }
@@ -538,7 +538,7 @@ namespace JiksLib.Test.Control
         public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var originalCallCount = 0;
             var addedDuringPublishCallCount = 0;
 
@@ -577,7 +577,7 @@ namespace JiksLib.Test.Control
         public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void ListenerToRemove(TestEventA e) => callCount++;
@@ -615,7 +615,7 @@ namespace JiksLib.Test.Control
         public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCountA = 0;
             var callCountB = 0;
             var callCountC = 0;
@@ -664,10 +664,10 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_CalledOnlyOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
-            superEvent.AddOnceListener<TestEventA>(e => callCount++);
+            superEvent.ListenOnce<TestEventA>(e => callCount++);
 
             var testEvent = new TestEventA("Test");
 
@@ -692,14 +692,14 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_MultipleOnceListeners_EachCalledOnlyOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
             var callCount3 = 0;
 
-            superEvent.AddOnceListener<TestEventA>(e => callCount1++);
-            superEvent.AddOnceListener<TestEventA>(e => callCount2++);
-            superEvent.AddOnceListener<TestEventA>(e => callCount3++);
+            superEvent.ListenOnce<TestEventA>(e => callCount1++);
+            superEvent.ListenOnce<TestEventA>(e => callCount2++);
+            superEvent.ListenOnce<TestEventA>(e => callCount3++);
 
             var testEvent = new TestEventA("Test");
 
@@ -728,11 +728,11 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_WithRegularListener_BothWorkCorrectly()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var onceCallCount = 0;
             var regularCallCount = 0;
 
-            superEvent.AddOnceListener<TestEventA>(e => onceCallCount++);
+            superEvent.ListenOnce<TestEventA>(e => onceCallCount++);
             superEvent.AddListener<TestEventA>(e => regularCallCount++);
 
             var testEvent = new TestEventA("Test");
@@ -760,11 +760,11 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_ThrowsException_StillRemoved()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var exceptionMessage = "一次性监听器异常";
             var exceptionsCollected = new List<Exception>();
 
-            superEvent.AddOnceListener<TestEventA>(e => throw new InvalidOperationException(exceptionMessage));
+            superEvent.ListenOnce<TestEventA>(e => throw new InvalidOperationException(exceptionMessage));
 
             var testEvent = new TestEventA("Test");
 
@@ -788,10 +788,10 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_WithDerivedEvent_CalledOnlyOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
-            superEvent.AddOnceListener<TestEventA>(e => callCount++);
+            superEvent.ListenOnce<TestEventA>(e => callCount++);
 
             var derivedEvent = new TestEventDerived("Derived");
 
@@ -816,10 +816,10 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_WithInterfaceEvent_CalledOnlyOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
-            superEvent.AddOnceListener<ITestEventInterface>(e => callCount++);
+            superEvent.ListenOnce<ITestEventInterface>(e => callCount++);
 
             var eventWithInterface = new TestEventWithInterface();
 
@@ -844,12 +844,12 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_CannotRemoveBeforePublish_StillCalled()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void OnceListener(TestEventA e) => callCount++;
 
-            superEvent.AddOnceListener<TestEventA>(OnceListener);
+            superEvent.ListenOnce<TestEventA>(OnceListener);
             superEvent.RemoveListener<TestEventA>(OnceListener); // 尝试移除，但由于包装委托不同，可能无效
 
             var testEvent = new TestEventA("Test");
@@ -867,15 +867,15 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_SameListenerAddedMultipleTimes_EachCalledOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
 
             void OnceListener(TestEventA e) => callCount++;
 
             // 同一监听器添加多次
-            superEvent.AddOnceListener<TestEventA>(OnceListener);
-            superEvent.AddOnceListener<TestEventA>(OnceListener);
-            superEvent.AddOnceListener<TestEventA>(OnceListener);
+            superEvent.ListenOnce<TestEventA>(OnceListener);
+            superEvent.ListenOnce<TestEventA>(OnceListener);
+            superEvent.ListenOnce<TestEventA>(OnceListener);
 
             var testEvent = new TestEventA("Test");
 
@@ -900,7 +900,7 @@ namespace JiksLib.Test.Control
         public void AddOnceListenerDuringPublish_ListenerNotCalledUntilNextPublishButCalledOnlyOnce()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var originalCallCount = 0;
             var onceListenerCallCount = 0;
             var onceListenerAdded = false;
@@ -914,7 +914,7 @@ namespace JiksLib.Test.Control
                 if (!onceListenerAdded)
                 {
                     onceListenerAdded = true;
-                    superEvent.AddOnceListener<TestEventA>(e => onceListenerCallCount++);
+                    superEvent.ListenOnce<TestEventA>(e => onceListenerCallCount++);
                 }
             }
 
@@ -953,12 +953,12 @@ namespace JiksLib.Test.Control
         public void AddOnceListener_WhenInvoking_RemovedSafely()
         {
             // Arrange
-            var superEvent = new SuperEvent<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(out var publisher);
             var callCount = 0;
             var onceListenerCallCount = 0;
 
             // 添加一个一次性监听器
-            superEvent.AddOnceListener<TestEventA>(e => onceListenerCallCount++);
+            superEvent.ListenOnce<TestEventA>(e => onceListenerCallCount++);
 
             // 添加一个普通监听器，在事件处理过程中触发一次性监听器的移除
             void RegularListener(TestEventA e)

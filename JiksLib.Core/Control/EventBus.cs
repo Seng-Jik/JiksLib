@@ -5,19 +5,19 @@ using JiksLib.Extensions;
 namespace JiksLib.Control
 {
     /// <summary>
-    /// 超级事件
+    /// 事件总线
     /// 可以发布以某一类型为基础的不同类型的事件
     /// TBaseEvent不能是接口类型
     /// 仅支持在主线程上使用
     /// </summary>
-    public sealed class SuperEvent<TBaseEvent>
+    public sealed class EventBus<TBaseEvent>
         where TBaseEvent : class
     {
         /// <summary>
-        /// 构造超级事件，同时构造其事件发布器
+        /// 构造事件总线，同时构造其事件发布器
         /// </summary>
         /// <param name="publisher">构造出的事件发布器</param>
-        public SuperEvent(out Publisher publisher)
+        public EventBus(out Publisher publisher)
         {
             if (typeof(TBaseEvent).IsInterface)
                 throw new InvalidOperationException(
@@ -52,10 +52,11 @@ namespace JiksLib.Control
         }
 
         /// <summary>
-        /// 注册某一类型的事件监听器，但是仅监听一次
+        /// 仅监听一次某个事件，之后自动移除监听器
+        /// 该监听器不能使用RemoveListener移除
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void AddOnceListener<TEvent>(Listener<TEvent> listener)
+        public void ListenOnce<TEvent>(Listener<TEvent> listener)
         {
             if (!typeHandlers.TryGetValue(typeof(TEvent), out var handler))
             {
@@ -108,35 +109,35 @@ namespace JiksLib.Control
                 TBaseEvent @event,
                 IList<Exception>? exceptionsOutput)
             {
-                if (superEvent.invoking)
+                if (eventBus.invoking)
                     throw new InvalidOperationException(
                         "Cannot publish event while another event is being published.");
 
                 try
                 {
-                    superEvent.invoking = true;
+                    eventBus.invoking = true;
 
-                    var typeChain = superEvent
+                    var typeChain = eventBus
                         .GetTypeChain(@event.ThrowIfNull().GetType())
                         .Types;
 
                     foreach (var i in typeChain)
                     {
-                        if (superEvent.typeHandlers.TryGetValue(i, out var h))
+                        if (eventBus.typeHandlers.TryGetValue(i, out var h))
                             h.Invoke(@event, exceptionsOutput);
                     }
                 }
                 finally
                 {
-                    superEvent.invoking = false;
+                    eventBus.invoking = false;
                 }
             }
 
-            readonly SuperEvent<TBaseEvent> superEvent;
+            readonly EventBus<TBaseEvent> eventBus;
 
-            internal Publisher(SuperEvent<TBaseEvent> superEvent)
+            internal Publisher(EventBus<TBaseEvent> eventBus)
             {
-                this.superEvent = superEvent;
+                this.eventBus = eventBus;
             }
         }
 
@@ -157,9 +158,9 @@ namespace JiksLib.Control
 
         private sealed class TypeChain
         {
-            public readonly IReadOnlyList<Type> Types;
+            internal readonly IReadOnlyList<Type> Types;
 
-            public TypeChain(Type type)
+            internal TypeChain(Type type)
             {
                 List<Type> listenerTypes = new();
 
@@ -178,7 +179,7 @@ namespace JiksLib.Control
 
         private abstract class TypeHandler
         {
-            public abstract void Invoke(
+            internal abstract void Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput);
         }
@@ -186,33 +187,23 @@ namespace JiksLib.Control
         private sealed class TypeHandler<TEvent> : TypeHandler
         {
             readonly List<Listener<TEvent>?> listeners = new();
-            int listenersCount = 0;
             int removeIndex = 0;
 
             readonly Queue<(bool isAddOrRemove, Listener<TEvent>)>
                 listenersDelayedOperation = new();
 
-            public void AddListener(Listener<TEvent> listener)
+            internal void AddListener(Listener<TEvent> listener)
             {
-                if (listenersCount < listeners.Count)
-                {
-                    listeners[listenersCount++] = listener;
-                }
-                else
-                {
-                    listeners.Add(listener);
-                    listenersCount = listeners.Count;
-                }
-
-                removeIndex = listenersCount - 1;
+                listeners.Add(listener);
+                removeIndex = listeners.Count - 1;
             }
 
-            public void AddListenerDelayed(Listener<TEvent> listener)
+            internal void AddListenerDelayed(Listener<TEvent> listener)
             {
                 listenersDelayedOperation.Enqueue((true, listener));
             }
 
-            public void RemoveListener(Listener<TEvent> listener)
+            internal void RemoveListener(Listener<TEvent> listener)
             {
                 if (removeIndex >= listeners.Count || removeIndex < 0)
                     removeIndex = listeners.Count - 1;
@@ -238,7 +229,7 @@ namespace JiksLib.Control
                 }
             }
 
-            public void RemoveListenerDelayed(Listener<TEvent> listener)
+            internal void RemoveListenerDelayed(Listener<TEvent> listener)
             {
                 listenersDelayedOperation.Enqueue((false, listener));
             }
@@ -254,7 +245,7 @@ namespace JiksLib.Control
                 }
             }
 
-            public override void Invoke(
+            internal override void Invoke(
                 object baseEvent,
                 IList<Exception>? exceptionsOutput)
             {
@@ -263,7 +254,7 @@ namespace JiksLib.Control
 
                 ApplyDelayedListenerAddOrRemove();
 
-                for (int i = 0; i < listenersCount; ++i)
+                for (int i = 0; i < listeners.Count; ++i)
                 {
                     var listener = listeners[i];
 
@@ -283,9 +274,13 @@ namespace JiksLib.Control
                     }
                 }
 
-                listenersCount = rewriteIndex;
+                if (rewriteIndex < listeners.Count)
+                {
+                    listeners.RemoveRange(
+                        rewriteIndex,
+                        listeners.Count - rewriteIndex);
+                }
             }
         }
     }
 }
-
