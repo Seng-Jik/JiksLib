@@ -312,29 +312,6 @@ namespace JiksLib.Test.Control
 
         #region 接口测试
 
-        [Test]
-        public void PublishEventWithInterface_CallsInterfaceListeners()
-        {
-            // Arrange
-            var superEvent = new EventBus<TestEventBase>(out var publisher);
-            var interfaceCallCount = 0;
-            var concreteCallCount = 0;
-
-            superEvent.AddListener<ITestEventInterface>(e => interfaceCallCount++);
-            superEvent.AddListener<TestEventWithInterface>(e => concreteCallCount++);
-
-            var eventWithInterface = new TestEventWithInterface();
-
-            // Act
-            var exceptions = new List<Exception>();
-            publisher.Publish(eventWithInterface, exceptions);
-
-            // Assert
-            // 实现接口的事件应该触发接口监听器
-            Assert.That(interfaceCallCount, Is.EqualTo(1));
-            Assert.That(concreteCallCount, Is.EqualTo(1));
-            Assert.That(exceptions.Count, Is.EqualTo(0));
-        }
 
         #endregion
 
@@ -819,33 +796,6 @@ namespace JiksLib.Test.Control
             Assert.That(exceptions2.Count, Is.EqualTo(0));
         }
 
-        [Test]
-        public void AddOnceListener_WithInterfaceEvent_CalledOnlyOnce()
-        {
-            // Arrange
-            var superEvent = new EventBus<TestEventBase>(out var publisher);
-            var callCount = 0;
-
-            superEvent.ListenOnce<ITestEventInterface>(e => callCount++);
-
-            var eventWithInterface = new TestEventWithInterface();
-
-            // Act - 第一次发布
-            var exceptions1 = new List<Exception>();
-            publisher.Publish(eventWithInterface, exceptions1);
-
-            // Assert - 验证监听器被调用一次
-            Assert.That(callCount, Is.EqualTo(1));
-            Assert.That(exceptions1.Count, Is.EqualTo(0));
-
-            // Act - 第二次发布
-            var exceptions2 = new List<Exception>();
-            publisher.Publish(eventWithInterface, exceptions2);
-
-            // Assert - 验证监听器没有被再次调用
-            Assert.That(callCount, Is.EqualTo(1));
-            Assert.That(exceptions2.Count, Is.EqualTo(0));
-        }
 
         [Test]
         public void AddOnceListener_CannotRemoveBeforePublish_StillCalled()
@@ -1057,7 +1007,7 @@ namespace JiksLib.Test.Control
         public void InterfaceAsTBaseEvent_EventBusWithDerivedInterface()
         {
             // Arrange
-            var eventBus = new EventBus<IDerivedEventInterface>(out var publisher);
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
             var baseCallCount = 0;
             var derivedCallCount = 0;
 
@@ -1077,29 +1027,6 @@ namespace JiksLib.Test.Control
             Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
-        [Test]
-        public void InterfaceAsTBaseEvent_MultipleInterfaces()
-        {
-            // Arrange
-            var eventBus = new EventBus<IEventInterface>(out var publisher);
-            var interface1CallCount = 0;
-            var interface2CallCount = 0;
-
-            eventBus.AddListener<IEventInterface>(e => interface1CallCount++);
-            eventBus.AddListener<ITestEventInterface>(e => interface2CallCount++);
-
-            var multiInterfaceEvent = new EventImplementingMultipleInterfaces();
-
-            // Act
-            var exceptions = new List<Exception>();
-            publisher.Publish(multiInterfaceEvent, exceptions);
-
-            // Assert
-            // 事件实现两个接口，应该触发两个接口的监听器
-            Assert.That(interface1CallCount, Is.EqualTo(1));
-            Assert.That(interface2CallCount, Is.EqualTo(1));
-            Assert.That(exceptions.Count, Is.EqualTo(0));
-        }
 
         [Test]
         public void InterfaceAsTBaseEvent_ListenOnce()

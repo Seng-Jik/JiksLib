@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JiksLib.Extensions;
 
 namespace JiksLib.Control
@@ -166,12 +167,12 @@ namespace JiksLib.Control
                 {
                     while (t != typeof(object) && t != null)
                     {
-                        listenerTypes.Add(t);
+                        if (typeof(TBaseEvent).IsAssignableFrom(t))
+                            listenerTypes.Add(t);
                         t = t.BaseType;
-                        // 如果不实现 TBaseEvent 则不添加
                     }
 
-                    listenerTypes.AddRange(type.GetInterfaces()); // 改为只添加 TBaseEvent 的子接口
+                    listenerTypes.AddRange(type.GetInterfaces().Where(i => typeof(TBaseEvent).IsAssignableFrom(i))); // 只添加 TBaseEvent 的子接口
                 }
                 else
                 {
