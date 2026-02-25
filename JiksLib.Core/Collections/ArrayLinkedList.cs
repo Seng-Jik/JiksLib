@@ -13,7 +13,7 @@ namespace JiksLib.Collections
         ICollection<T>,
         IReadOnlyCollection<T>,
         IEnumerable<T>,
-        System.Collections.ICollection
+        System.Collections.ICollection    // AI: 删除ICollection实现
     {
         /// <summary>
         /// 元素数量
@@ -107,22 +107,6 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 从集合初始化ArrayLinkedList
-        /// </summary>
-        /// <param name="collection">源集合</param>
-        public ArrayLinkedList(ICollection<T> collection) : this((IEnumerable<T>)collection)
-        {
-        }
-
-        /// <summary>
-        /// 从只读集合初始化ArrayLinkedList
-        /// </summary>
-        /// <param name="collection">源集合</param>
-        public ArrayLinkedList(IReadOnlyCollection<T> collection) : this((IEnumerable<T>)collection)
-        {
-        }
-
-        /// <summary>
         /// 从可枚举集合初始化ArrayLinkedList
         /// </summary>
         /// <param name="collection">源集合</param>
@@ -131,7 +115,13 @@ namespace JiksLib.Collections
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            // 如果是ICollection<T>或IReadOnlyCollection<T>，使用更高效的方法
+            // AI：化简这里的重复代码
+            // 思路：
+            // int count = collection switch {
+            //     ICollection c => c.Count,
+            //     IReadOnlyCollection c => c.Count,
+            //     IEnumerable c => c.Count()
+            // }
             if (collection is ICollection<T> coll)
             {
                 array = new Node[coll.Count];
@@ -194,7 +184,7 @@ namespace JiksLib.Collections
             }
             else
             {
-                // 对于普通IEnumerable，需要先收集到列表中
+                // 不要在这里分配新的List<T>，而是直接写入到
                 var list = new List<T>();
                 foreach (var item in collection)
                 {
@@ -229,6 +219,7 @@ namespace JiksLib.Collections
             }
         }
 
+        // 补全文档
         public T Get(int slotIndex, out int nextSlotIndex, out int prevSlotIndex)
         {
             EnsureSlotUsed(slotIndex);
@@ -238,6 +229,7 @@ namespace JiksLib.Collections
             return slot.Value!;
         }
 
+        // 补全文档
         public void AddFirst(T item)
         {
             int newSlotIndex = AllocateSlot();
@@ -256,6 +248,7 @@ namespace JiksLib.Collections
             Count++;
         }
 
+        // 补全文档
         public void AddLast(T item)
         {
             int newSlotIndex = AllocateSlot();
@@ -275,16 +268,11 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 将项添加到集合中（添加到末尾）
-        /// </summary>
-        /// <param name="item">要添加的项</param>
-        public void Add(T item) => AddLast(item);
-
-        /// <summary>
         /// 获取一个值，该值指示集合是否为只读
         /// </summary>
-        public bool IsReadOnly => false;
+        bool ICollection.IsReadOnly => false;
 
+        // 补全文档
         public void AddAfter(int slotIndex, T item)
         {
             EnsureSlotUsed(slotIndex);
@@ -305,6 +293,7 @@ namespace JiksLib.Collections
             Count++;
         }
 
+        // 补全文档
         public void AddBefore(int slotIndex, T item)
         {
             EnsureSlotUsed(slotIndex);
@@ -325,6 +314,7 @@ namespace JiksLib.Collections
             Count++;
         }
 
+        // 补全文档
         public void Clear()
         {
             Array.Clear(array, 0, arrayUsedCount);
@@ -394,6 +384,7 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="item">要在集合中定位的对象</param>
         /// <returns>如果在整个集合中找到 item 的第一个匹配项，则为该项的从零开始的索引；否则为 -1</returns>
+        // AI:改名为FindSlot，返回的应该是SlotIndex
         public int Find(T item)
         {
             int current = FirstSlotIndex;
@@ -413,6 +404,7 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="item">要在集合中定位的对象</param>
         /// <returns>如果在整个集合中找到 item 的最后一个匹配项，则为该项的从零开始的索引；否则为 -1</returns>
+        // AI:改名为FindSlot，返回的应该是SlotIndex
         public int FindLast(T item)
         {
             int current = LastSlotIndex;
@@ -447,6 +439,7 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="slotIndex">要移除的槽位索引</param>
         /// <exception cref="ArgumentOutOfRangeException">槽位索引无效</exception>
+        // AI：改名为RemoveBySlot
         public void RemoveBySlotID(int slotIndex)
         {
             EnsureSlotUsed(slotIndex);
@@ -506,7 +499,6 @@ namespace JiksLib.Collections
             return true;
         }
 
-        // 辅助方法：查找元素的槽位索引
         private int FindSlot(T item)
         {
             int current = FirstSlotIndex;
@@ -786,4 +778,5 @@ namespace JiksLib.Collections
             }
         }
     }
+
 }
