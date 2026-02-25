@@ -287,6 +287,8 @@ namespace JiksLib.Collections
         IEnumerator IEnumerable.GetEnumerator() =>
             ((IEnumerable)sequential).GetEnumerator();
 
+        public Dictionary<TKey, TValue>.Enumerator GetEnumerator() =>
+            sequential.GetEnumerator();
 
         BidirectionalDictionary(
             Dictionary<TKey, TValue> sequential,

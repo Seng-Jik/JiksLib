@@ -266,14 +266,109 @@ namespace JiksLib.Collections
         public IReadOnlyMultiDictionary<TKey, TValue> AsReadOnly() => this;
 
         /// <summary>
+        /// 枚举器
+        /// </summary>
+        public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+        {
+            private Dictionary<TKey, MultiHashSet<TValue>>.Enumerator dictEnumerator;
+            private KeyValuePair<TKey, MultiHashSet<TValue>> currentDictEntry;
+            private MultiHashSet<TValue>.Enumerator valueEnumerator;
+            private TKey currentKey;
+            private TValue currentValue;
+            private bool started;
+            private bool valueEnumeratorActive;
+
+            internal Enumerator(Dictionary<TKey, MultiHashSet<TValue>> dict)
+            {
+                dictEnumerator = dict.GetEnumerator();
+                currentDictEntry = default;
+                valueEnumerator = default;
+                currentKey = default!;
+                currentValue = default!;
+                started = false;
+                valueEnumeratorActive = false;
+            }
+
+            public KeyValuePair<TKey, TValue> Current
+            {
+                get
+                {
+                    if (!started || !valueEnumeratorActive)
+                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                    return new KeyValuePair<TKey, TValue>(currentKey, currentValue);
+                }
+            }
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    started = true;
+                }
+
+                while (true)
+                {
+                    if (valueEnumeratorActive)
+                    {
+                        if (valueEnumerator.MoveNext())
+                        {
+                            currentValue = valueEnumerator.Current;
+                            return true;
+                        }
+                        else
+                        {
+                            valueEnumerator.Dispose();
+                            valueEnumeratorActive = false;
+                        }
+                    }
+
+                    if (!dictEnumerator.MoveNext())
+                    {
+                        currentKey = default!;
+                        currentValue = default!;
+                        valueEnumeratorActive = false;
+                        return false;
+                    }
+
+                    currentDictEntry = dictEnumerator.Current;
+                    currentKey = currentDictEntry.Key;
+                    valueEnumerator = currentDictEntry.Value.GetEnumerator();
+                    valueEnumeratorActive = true;
+                }
+            }
+
+            public void Reset()
+            {
+                // 重置枚举器到初始状态
+                // 由于内部枚举器不支持Reset，我们抛出NotSupportedException
+                throw new NotSupportedException("Reset is not supported on MultiDictionary enumerator.");
+            }
+
+            public void Dispose()
+            {
+                if (valueEnumeratorActive)
+                {
+                    valueEnumerator.Dispose();
+                    valueEnumeratorActive = false;
+                }
+                dictEnumerator.Dispose();
+            }
+        }
+
+        /// <summary>
         /// 获得所有键值对的枚举器
         /// </summary>
         /// <returns>所有键值对的枚举器</returns>
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
-            foreach (var i in dict)
-                foreach (var j in i.Value)
-                    yield return new KeyValuePair<TKey, TValue>(i.Key, j);
+            return new Enumerator(dict);
+        }
+
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
