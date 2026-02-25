@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using JiksLib.Extensions;
@@ -116,14 +117,85 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 枚举器
+        /// </summary>
+        public struct Enumerator : IEnumerator<T>
+        {
+            private Dictionary<T, int>.Enumerator dictEnumerator;
+            private T currentKey;
+            private int totalCount;    // 当前键的总重复次数
+            private int returnedCount; // 当前键已返回的次数
+            private bool started;
+
+            internal Enumerator(Dictionary<T, int> dict)
+            {
+                dictEnumerator = dict.GetEnumerator();
+                currentKey = default!;
+                totalCount = 0;
+                returnedCount = 0;
+                started = false;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (!started || returnedCount == 0)
+                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                    return currentKey;
+                }
+            }
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    started = true;
+                }
+
+                while (returnedCount >= totalCount)
+                {
+                    if (!dictEnumerator.MoveNext())
+                    {
+                        currentKey = default!;
+                        totalCount = 0;
+                        returnedCount = 0;
+                        return false;
+                    }
+
+                    var current = dictEnumerator.Current;
+                    currentKey = current.Key;
+                    totalCount = current.Value;
+                    returnedCount = 0;
+                }
+
+                returnedCount++;
+                return true;
+            }
+
+            public void Reset()
+            {
+                // 重置枚举器到初始状态
+                // 由于Dictionary.Enumerator不支持Reset，我们重新创建枚举器
+                // 但Reset方法很少使用，我们可以抛出NotSupportedException
+                throw new NotSupportedException("Reset is not supported on MultiHashSet enumerator.");
+            }
+
+            public void Dispose()
+            {
+                dictEnumerator.Dispose();
+            }
+        }
+
+        /// <summary>
         /// 获得集合的枚举器
         /// </summary>
         /// <returns>集合的枚举器</returns>
-        public IEnumerator<T> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
-            foreach (var i in dict)
-                for (int j = 0; j < i.Value; j++)
-                    yield return i.Key;
+            return new Enumerator(dict);
         }
 
         /// <summary>
@@ -142,6 +214,11 @@ namespace JiksLib.Collections
         {
             this.dict = dict;
             Count = count;
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

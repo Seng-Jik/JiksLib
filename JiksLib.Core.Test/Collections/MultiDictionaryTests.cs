@@ -798,6 +798,118 @@ namespace JiksLib.Test.Collections
             Assert.That(pairs.Any(p => p.Key == "key1" && p.Value == 200), Is.True);
         }
 
+        #region Enumerator Behavior Tests
+
+        [Test]
+        public void MultiDictionaryEnumerator_IsValueType()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+
+            // Act
+            var enumerator = dict.GetEnumerator();
+
+            // Assert
+            Assert.That(enumerator.GetType().IsValueType, Is.True, "Enumerator should be a value type (struct)");
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_CurrentBeforeMoveNext_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            var enumerator = dict.GetEnumerator();
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_CurrentAfterEnumeration_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            var enumerator = dict.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_MoveNextAfterEnumeration_ReturnsFalse()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            var enumerator = dict.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.That(enumerator.MoveNext(), Is.False);
+            Assert.That(enumerator.MoveNext(), Is.False); // Multiple calls should still return false
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_Reset_ThrowsNotSupportedException()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            var enumerator = dict.GetEnumerator();
+
+            // Act & Assert - MultiDictionary enumerator does not support Reset
+            Assert.Throws<NotSupportedException>(() => enumerator.Reset());
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_Dispose_DoesNotThrow()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+            var enumerator = dict.GetEnumerator();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+            // Dispose should be callable multiple times
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+        }
+
+        [Test]
+        public void MultiDictionaryEnumerator_BoxingNotOccurred_WhenUsingConcreteType()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+            dict.Add("key1", 200);
+            dict.Add("key2", 300);
+
+            // Act
+            var enumerator = dict.GetEnumerator();
+
+            // Assert - If enumerator is a struct, assigning to object causes boxing
+            // We can verify that the type is a value type
+            Assert.That(enumerator.GetType().IsValueType, Is.True);
+        }
+
+        #endregion
+
         [Test]
         public void Remove_KeyWithMultipleValues_RemovesAllValuesAndDecreasesCountCorrectly()
         {

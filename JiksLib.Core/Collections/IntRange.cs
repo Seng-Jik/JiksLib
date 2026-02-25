@@ -87,16 +87,133 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 枚举器
+        /// </summary>
+        public struct Enumerator : IEnumerator<int>
+        {
+            private readonly int min;
+            private readonly int max;
+            private readonly bool includeMin;
+            private readonly bool includeMax;
+            private int current;
+            private int nextValue;
+            private bool started;
+            private bool valid;
+
+            internal Enumerator(int min, bool includeMin, int max, bool includeMax)
+            {
+                this.min = min;
+                this.max = max;
+                this.includeMin = includeMin;
+                this.includeMax = includeMax;
+                current = -1;
+                started = false;
+                valid = false;
+                // 计算第一个要返回的值
+                if (min == max)
+                {
+                    // 处理相等情况
+                    if (includeMin || includeMax)
+                        nextValue = min;
+                    else
+                        nextValue = min + 1; // 确保无元素
+                }
+                else
+                {
+                    if (includeMin)
+                        nextValue = min;
+                    else
+                        nextValue = min + 1;
+                }
+            }
+
+            public int Current
+            {
+                get
+                {
+                    if (!valid)
+                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                    return current;
+                }
+            }
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    started = true;
+                }
+
+                valid = false;
+
+                // 处理min == max的特殊情况
+                if (min == max && nextValue == min && (includeMin || includeMax))
+                {
+                    current = nextValue;
+                    nextValue++;
+                    valid = true;
+                    return true;
+                }
+
+                if (nextValue < max)
+                {
+                    current = nextValue;
+                    nextValue++;
+                    valid = true;
+                    return true;
+                }
+
+                if (nextValue == max && includeMax && min != max)
+                {
+                    current = nextValue;
+                    nextValue++;
+                    valid = true;
+                    return true;
+                }
+
+                current = -1;
+                valid = false;
+                return false;
+            }
+
+            public void Reset()
+            {
+                current = -1;
+                started = false;
+                valid = false;
+                // 重新计算nextValue
+                if (min == max)
+                {
+                    if (includeMin || includeMax)
+                        nextValue = min;
+                    else
+                        nextValue = min + 1;
+                }
+                else
+                {
+                    if (includeMin)
+                        nextValue = min;
+                    else
+                        nextValue = min + 1;
+                }
+            }
+
+            public void Dispose() { }
+        }
+
+        /// <summary>
         /// 返回枚举器
         /// </summary>
-        public readonly IEnumerator<int> GetEnumerator()
+        public readonly Enumerator GetEnumerator()
         {
-            if (IncludeMin) yield return Min;
+            return new Enumerator(Min, IncludeMin, Max, IncludeMax);
+        }
 
-            for (int i = Min + 1; i < Max; ++i)
-                yield return i;
-
-            if (IncludeMax && Min != Max) yield return Max;
+        IEnumerator<int> IEnumerable<int>.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

@@ -394,24 +394,74 @@ namespace JiksLib.Collections
             return (index + front) % buffer.Length;
         }
 
-        public IEnumerator<T> GetEnumerator()
+        /// <summary>
+        /// 枚举器
+        /// </summary>
+        public struct Enumerator : IEnumerator<T>
         {
-            if (Count != 0)
+            private readonly Deque<T> deque;
+            private readonly int count;
+            private readonly int front;
+            private readonly T[] buffer;
+            private int position; // 0到count，position == count表示结束
+            private bool started;
+
+            internal Enumerator(Deque<T> deque)
             {
-                if (front < rear)
+                this.deque = deque;
+                this.count = deque.Count;
+                this.front = deque.front;
+                this.buffer = deque.buffer;
+                position = -1;
+                started = false;
+            }
+
+            public T Current
+            {
+                get
                 {
-                    for (int i = front; i < rear; i++)
-                        yield return buffer[i];
+                    if (position < 0 || position >= count)
+                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                    int index = (front + position) % buffer.Length;
+                    return buffer[index];
+                }
+            }
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    started = true;
+                    position = 0;
+                    return position < count;
                 }
                 else
                 {
-                    for (int i = front; i < buffer.Length; ++i)
-                        yield return buffer[i];
-
-                    for (int i = 0; i < rear; ++i)
-                        yield return buffer[i];
+                    if (position >= count) return false;
+                    position++;
+                    return position < count;
                 }
             }
+
+            public void Reset()
+            {
+                position = -1;
+                started = false;
+            }
+
+            public void Dispose() { }
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(this);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
