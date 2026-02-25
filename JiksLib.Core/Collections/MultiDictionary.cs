@@ -361,26 +361,14 @@ namespace JiksLib.Collections
         /// 获得所有键值对的枚举器
         /// </summary>
         /// <returns>所有键值对的枚举器</returns>
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(dict);
-        }
+        public Enumerator GetEnumerator() => new(dict);
 
-        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() =>
+            GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        bool ILookup<TKey, TValue>.Contains(TKey key) =>
-            ContainsKey(key);
-
-        IEnumerable<TValue> ILookup<TKey, TValue>.this[TKey key] =>
-            this[key];
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        bool ILookup<TKey, TValue>.Contains(TKey key) => ContainsKey(key);
+        IEnumerable<TValue> ILookup<TKey, TValue>.this[TKey key] => this[key];
 
         IEnumerator<IGrouping<TKey, TValue>> IEnumerable<IGrouping<TKey, TValue>>.GetEnumerator()
         {
@@ -400,16 +388,8 @@ namespace JiksLib.Collections
                 this.values = values;
             }
 
-            public IEnumerator<TValue> GetEnumerator()
-            {
-                return values.GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
-
+            public IEnumerator<TValue> GetEnumerator() => values.GetEnumerator();
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
             readonly IEnumerable<TValue> values;
         }
 

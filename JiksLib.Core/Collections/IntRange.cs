@@ -91,39 +91,33 @@ namespace JiksLib.Collections
         /// </summary>
         public struct Enumerator : IEnumerator<int>
         {
-            private readonly int min;
-            private readonly int max;
-            private readonly bool includeMin;
-            private readonly bool includeMax;
+            private readonly IntRange range;
             private int current;
             private int nextValue;
             private bool started;
             private bool valid;
 
-            internal Enumerator(int min, bool includeMin, int max, bool includeMax)
+            internal Enumerator(IntRange range)
             {
-                this.min = min;
-                this.max = max;
-                this.includeMin = includeMin;
-                this.includeMax = includeMax;
+                this.range = range;
                 current = -1;
                 started = false;
                 valid = false;
                 // 计算第一个要返回的值
-                if (min == max)
+                if (range.Min == range.Max)
                 {
                     // 处理相等情况
-                    if (includeMin || includeMax)
-                        nextValue = min;
+                    if (range.IncludeMin || range.IncludeMax)
+                        nextValue = range.Min;
                     else
-                        nextValue = min + 1; // 确保无元素
+                        nextValue = range.Min + 1; // 确保无元素
                 }
                 else
                 {
-                    if (includeMin)
-                        nextValue = min;
+                    if (range.IncludeMin)
+                        nextValue = range.Min;
                     else
-                        nextValue = min + 1;
+                        nextValue = range.Min + 1;
                 }
             }
 
@@ -149,7 +143,9 @@ namespace JiksLib.Collections
                 valid = false;
 
                 // 处理min == max的特殊情况
-                if (min == max && nextValue == min && (includeMin || includeMax))
+                if (range.Min == range.Max
+                    && nextValue == range.Min
+                    && (range.IncludeMin || range.IncludeMax))
                 {
                     current = nextValue;
                     nextValue++;
@@ -157,7 +153,7 @@ namespace JiksLib.Collections
                     return true;
                 }
 
-                if (nextValue < max)
+                if (nextValue < range.Max)
                 {
                     current = nextValue;
                     nextValue++;
@@ -165,7 +161,9 @@ namespace JiksLib.Collections
                     return true;
                 }
 
-                if (nextValue == max && includeMax && min != max)
+                if (nextValue == range.Max
+                    && range.IncludeMax
+                    && range.Min != range.Max)
                 {
                     current = nextValue;
                     nextValue++;
@@ -184,19 +182,19 @@ namespace JiksLib.Collections
                 started = false;
                 valid = false;
                 // 重新计算nextValue
-                if (min == max)
+                if (range.Min == range.Max)
                 {
-                    if (includeMin || includeMax)
-                        nextValue = min;
+                    if (range.IncludeMin || range.IncludeMax)
+                        nextValue = range.Min;
                     else
-                        nextValue = min + 1;
+                        nextValue = range.Min + 1;
                 }
                 else
                 {
-                    if (includeMin)
-                        nextValue = min;
+                    if (range.IncludeMin)
+                        nextValue = range.Min;
                     else
-                        nextValue = min + 1;
+                        nextValue = range.Min + 1;
                 }
             }
 
@@ -206,10 +204,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 返回枚举器
         /// </summary>
-        public readonly Enumerator GetEnumerator()
-        {
-            return new Enumerator(Min, IncludeMin, Max, IncludeMax);
-        }
+        public readonly Enumerator GetEnumerator() => new(this);
 
         IEnumerator<int> IEnumerable<int>.GetEnumerator()
         {

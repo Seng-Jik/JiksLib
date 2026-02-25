@@ -193,10 +193,7 @@ namespace JiksLib.Collections
         /// 获得集合的枚举器
         /// </summary>
         /// <returns>集合的枚举器</returns>
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(dict);
-        }
+        public Enumerator GetEnumerator() => new(dict);
 
         /// <summary>
         /// 转换为只读集合
@@ -216,16 +213,8 @@ namespace JiksLib.Collections
             Count = count;
         }
 
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         readonly Dictionary<T, int> dict;
     }
 }

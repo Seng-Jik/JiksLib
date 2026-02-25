@@ -399,7 +399,6 @@ namespace JiksLib.Collections
         /// </summary>
         public struct Enumerator : IEnumerator<T>
         {
-            private readonly Deque<T> deque;
             private readonly int count;
             private readonly int front;
             private readonly T[] buffer;
@@ -408,10 +407,9 @@ namespace JiksLib.Collections
 
             internal Enumerator(Deque<T> deque)
             {
-                this.deque = deque;
-                this.count = deque.Count;
-                this.front = deque.front;
-                this.buffer = deque.buffer;
+                count = deque.Count;
+                front = deque.front;
+                buffer = deque.buffer;
                 position = -1;
                 started = false;
             }
@@ -421,7 +419,9 @@ namespace JiksLib.Collections
                 get
                 {
                     if (position < 0 || position >= count)
-                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                        throw new InvalidOperationException(
+                            "Enumeration has not started or has already finished.");
+
                     int index = (front + position) % buffer.Length;
                     return buffer[index];
                 }
@@ -454,20 +454,9 @@ namespace JiksLib.Collections
             public void Dispose() { }
         }
 
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(this);
-        }
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        public Enumerator GetEnumerator() => new(this);
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         T[] buffer = Array.Empty<T>();
         int front = 0;
