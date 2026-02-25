@@ -21,8 +21,6 @@ namespace JiksLib.PerformanceTest.Control
         [GlobalSetup]
         public void GlobalSetup()
         {
-            valueEventBus = new ValueEventBus(out var pub);
-            publisher = pub;
             listeners = new List<EventBusListener<TestValueEvent>>(ListenerCount);
 
             // 预创建监听器
@@ -30,6 +28,37 @@ namespace JiksLib.PerformanceTest.Control
             {
                 int index = i;
                 listeners.Add(e => { /* 空操作 */ });
+            }
+        }
+
+        [IterationSetup]
+        public void IterationSetup()
+        {
+            valueEventBus = new ValueEventBus(out var pub);
+            publisher = pub;
+        }
+
+        [IterationSetup(Target = nameof(PublishEvent_WithListeners))]
+        public void IterationSetup_WithListeners()
+        {
+            // 初始化 valueEventBus
+            valueEventBus = new ValueEventBus(out var pub);
+            publisher = pub;
+
+            // 添加监听器
+            foreach (var listener in listeners)
+            {
+                valueEventBus.AddListener(listener);
+            }
+        }
+
+        [IterationCleanup(Target = nameof(PublishEvent_WithListeners))]
+        public void IterationCleanup_WithListeners()
+        {
+            // 移除监听器
+            foreach (var listener in listeners)
+            {
+                valueEventBus.RemoveListener(listener);
             }
         }
 
@@ -49,6 +78,12 @@ namespace JiksLib.PerformanceTest.Control
             {
                 valueEventBus.AddListener(listener);
             }
+
+            // 立即移除监听器以避免内存累积
+            foreach (var listener in listeners)
+            {
+                valueEventBus.RemoveListener(listener);
+            }
         }
 
         /// <summary>
@@ -57,6 +92,13 @@ namespace JiksLib.PerformanceTest.Control
         [Benchmark]
         public void RemoveListeners()
         {
+            // 先添加监听器以便测试移除操作
+            foreach (var listener in listeners)
+            {
+                valueEventBus.AddListener(listener);
+            }
+
+            // 移除监听器
             foreach (var listener in listeners)
             {
                 valueEventBus.RemoveListener(listener);
@@ -75,26 +117,14 @@ namespace JiksLib.PerformanceTest.Control
 
         /// <summary>
         /// 基准测试：发布事件（有监听器）
-        /// 先添加监听器，然后发布事件
+        /// 监听器在迭代设置中添加，在迭代清理中移除
         /// </summary>
         [Benchmark]
         public void PublishEvent_WithListeners()
         {
-            // 先添加监听器
-            foreach (var listener in listeners)
-            {
-                valueEventBus.AddListener(listener);
-            }
-
-            // 发布事件
+            // 发布事件（监听器已在 IterationSetup 中添加）
             var evt = new TestValueEvent { Value = 42 };
             publisher.Publish(evt, null);
-
-            // 清理监听器
-            foreach (var listener in listeners)
-            {
-                valueEventBus.RemoveListener(listener);
-            }
         }
     }
 }

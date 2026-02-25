@@ -47,6 +47,36 @@ namespace JiksLib.PerformanceTest.Control
             valueListeners.Clear();
         }
 
+        [IterationSetup(Target = nameof(PublishEvent_Comparison))]
+        public void IterationSetup_Comparison()
+        {
+            // 为引用类型事件总线添加监听器
+            foreach (var listener in refListeners)
+            {
+                refEventBus.AddListener(listener);
+            }
+
+            // 为值类型事件总线添加监听器
+            foreach (var listener in valueListeners)
+            {
+                valueEventBus.AddListener(listener);
+            }
+        }
+
+        [IterationCleanup(Target = nameof(PublishEvent_Comparison))]
+        public void IterationCleanup_Comparison()
+        {
+            // 清理监听器
+            foreach (var listener in refListeners)
+            {
+                refEventBus.RemoveListener(listener);
+            }
+            foreach (var listener in valueListeners)
+            {
+                valueEventBus.RemoveListener(listener);
+            }
+        }
+
         /// <summary>
         /// 对比基准测试：添加监听器（引用类型 vs 值类型）
         /// </summary>
@@ -68,22 +98,11 @@ namespace JiksLib.PerformanceTest.Control
 
         /// <summary>
         /// 对比基准测试：发布事件（引用类型 vs 值类型）
+        /// 监听器在 GlobalSetup 中添加
         /// </summary>
         [Benchmark]
         public void PublishEvent_Comparison()
         {
-            // 为引用类型事件总线添加监听器
-            foreach (var listener in refListeners)
-            {
-                refEventBus.AddListener(listener);
-            }
-
-            // 为值类型事件总线添加监听器
-            foreach (var listener in valueListeners)
-            {
-                valueEventBus.AddListener(listener);
-            }
-
             // 发布引用类型事件
             var refEvt = new TestEvent { Value = 42 };
             refPublisher.Publish(refEvt, null);
@@ -91,16 +110,6 @@ namespace JiksLib.PerformanceTest.Control
             // 发布值类型事件
             var valueEvt = new TestValueEvent { Value = 42 };
             valuePublisher.Publish(valueEvt, null);
-
-            // 清理监听器
-            foreach (var listener in refListeners)
-            {
-                refEventBus.RemoveListener(listener);
-            }
-            foreach (var listener in valueListeners)
-            {
-                valueEventBus.RemoveListener(listener);
-            }
         }
 
         /// <summary>
