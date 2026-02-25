@@ -67,7 +67,6 @@ namespace JiksLib.Test.Control
 
             // Assert
             Assert.That(superEvent, Is.Not.Null);
-            Assert.That(publisher, Is.Not.Null);
         }
 
         [Test]
@@ -493,12 +492,12 @@ namespace JiksLib.Test.Control
             // Arrange
             var superEvent = new EventBus<TestEventBase>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new EventBus<TestEventBase>.Listener<TestEventA>[listenerCount];
+            var listeners = new Listener<TestEventA>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                EventBus<TestEventBase>.Listener<TestEventA> listener = e => callCount++;
+                Listener<TestEventA> listener = e => callCount++;
                 listeners[i] = listener;
                 superEvent.AddListener(listener);
             }

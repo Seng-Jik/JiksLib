@@ -11,11 +11,6 @@ namespace JiksLib.Control
     public sealed class ValueEventBus
     {
         /// <summary>
-        /// 事件监听器
-        /// </summary>
-        public delegate void Listener<T>(T @event) where T : struct;
-
-        /// <summary>
         /// 构造值类型事件总线，同时构造其事件发布器
         /// </summary>
         /// <param name="publisher">构造出的事件发布器</param>
@@ -27,31 +22,27 @@ namespace JiksLib.Control
         /// <summary>
         /// 注册某一类型的事件监听器
         /// </summary>
-        public void AddListener<T>(Listener<T> listener) where T : struct
+        public void AddListener<TEvent>(Listener<TEvent> listener)
+            where TEvent : struct
         {
-            if (!typeHandlers.TryGetValue(typeof(T), out var handler))
-            {
-                handler = new TypeHandler<T>();
-                typeHandlers.Add(typeof(T), handler);
-            }
-
-            var typeHandler = (TypeHandler<T>)handler;
+            var listenerSet = GetOrCreateListenerSet<TEvent>();
 
             if (invoking)
-                typeHandler.AddListenerDelayed(listener);
+                listenerSet.AddListenerDelayed(listener);
             else
-                typeHandler.AddListener(listener);
+                listenerSet.AddListener(listener);
         }
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
-        public void RemoveListener<T>(Listener<T> listener) where T : struct
+        public void RemoveListener<TEvent>(Listener<TEvent> listener)
+            where TEvent : struct
         {
-            if (!typeHandlers.TryGetValue(typeof(T), out var handler))
+            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
                 return;
 
-            var typeHandler = (TypeHandler<T>)handler;
+            var typeHandler = (EventBusListenerSet<TEvent, ValueType>)handler;
 
             if (invoking)
                 typeHandler.RemoveListenerDelayed(listener);
@@ -63,29 +54,24 @@ namespace JiksLib.Control
         /// 仅监听一次某个事件，之后自动移除监听器
         /// 该监听器不能使用RemoveListener移除
         /// </summary>
-        public void ListenOnce<T>(Listener<T> listener) where T : struct
+        public void ListenOnce<TEvent>(Listener<TEvent> listener)
+            where TEvent : struct
         {
-            if (!typeHandlers.TryGetValue(typeof(T), out var handler))
-            {
-                handler = new TypeHandler<T>();
-                typeHandlers.Add(typeof(T), handler);
-            }
+            var listenerSet = GetOrCreateListenerSet<TEvent>();
 
-            var typeHandler = (TypeHandler<T>)handler;
-
-            void wrappedListener(T e)
+            void wrappedListener(TEvent e)
             {
-                typeHandler.RemoveListenerDelayed(wrappedListener);
+                listenerSet.RemoveListenerDelayed(wrappedListener);
                 listener(e);
             }
 
             if (invoking)
-                typeHandler.AddListenerDelayed(wrappedListener);
+                listenerSet.AddListenerDelayed(wrappedListener);
             else
-                typeHandler.AddListener(wrappedListener);
+                listenerSet.AddListener(wrappedListener);
         }
 
-        public sealed class Publisher
+        public readonly struct Publisher
         {
             internal Publisher(ValueEventBus eventBus)
             {
@@ -109,8 +95,10 @@ namespace JiksLib.Control
                 {
                     eventBus.invoking = true;
 
-                    if (eventBus.typeHandlers.TryGetValue(typeof(T), out var h))
-                        ((TypeHandler<T>)h).Invoke(@event, exceptionsOutput);
+                    if (eventBus.listenerSets.TryGetValue(typeof(T), out var h))
+                        ((EventBusListenerSet<T, ValueType>)h).Invoke(
+                            @event,
+                            exceptionsOutput);
                 }
                 finally
                 {
@@ -121,105 +109,19 @@ namespace JiksLib.Control
             readonly ValueEventBus eventBus;
         }
 
-        private sealed class TypeHandler<T> where T : struct
+        EventBusListenerSet<TEvent, ValueType> GetOrCreateListenerSet<TEvent>()
+            where TEvent : struct
         {
-            readonly List<Listener<T>?> listeners = new();
-            int removeIndex = 0;
-
-            readonly Queue<(bool isAddOrRemove, Listener<T>)>
-                listenersDelayedOperation = new();
-
-            internal void AddListener(Listener<T> listener)
+            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
             {
-                listeners.Add(listener);
-                removeIndex = listeners.Count - 1;
+                handler = new EventBusListenerSet<TEvent, ValueType>();
+                listenerSets.Add(typeof(TEvent), handler);
             }
 
-            internal void AddListenerDelayed(Listener<T> listener)
-            {
-                listenersDelayedOperation.Enqueue((true, listener));
-            }
-
-            internal void RemoveListener(Listener<T> listener)
-            {
-                if (removeIndex >= listeners.Count || removeIndex < 0)
-                    removeIndex = listeners.Count - 1;
-
-                for (int i = removeIndex; i >= 0; --i)
-                {
-                    if (listeners[i] == listener)
-                    {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        return;
-                    }
-                }
-
-                for (int i = removeIndex + 1; i < listeners.Count; ++i)
-                {
-                    if (listeners[i] == listener)
-                    {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        return;
-                    }
-                }
-            }
-
-            internal void RemoveListenerDelayed(Listener<T> listener)
-            {
-                listenersDelayedOperation.Enqueue((false, listener));
-            }
-
-            void ApplyDelayedListenerAddOrRemove()
-            {
-                while (listenersDelayedOperation.Count > 0)
-                {
-                    var op = listenersDelayedOperation.Dequeue();
-
-                    if (op.isAddOrRemove) AddListener(op.Item2);
-                    else RemoveListener(op.Item2);
-                }
-            }
-
-            internal void Invoke(
-                T @event,
-                IList<Exception>? exceptionsOutput)
-            {
-                int rewriteIndex = 0;
-
-                ApplyDelayedListenerAddOrRemove();
-
-                for (int i = 0; i < listeners.Count; ++i)
-                {
-                    var listener = listeners[i];
-
-                    if (listener == null)
-                        continue;
-
-                    listeners[i] = null;
-                    listeners[rewriteIndex++] = listener;
-
-                    try
-                    {
-                        listener(@event);
-                    }
-                    catch (Exception ex)
-                    {
-                        exceptionsOutput?.Add(ex);
-                    }
-                }
-
-                if (rewriteIndex < listeners.Count)
-                {
-                    listeners.RemoveRange(
-                        rewriteIndex,
-                        listeners.Count - rewriteIndex);
-                }
-            }
+            return (EventBusListenerSet<TEvent, ValueType>)handler;
         }
 
         bool invoking = false;
-        readonly Dictionary<Type, object> typeHandlers = new();
+        readonly Dictionary<Type, IEventBusListenerSet<ValueType>> listenerSets = new();
     }
 }
