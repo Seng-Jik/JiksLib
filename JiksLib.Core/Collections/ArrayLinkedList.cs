@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace JiksLib.Collections
 {
@@ -13,7 +14,7 @@ namespace JiksLib.Collections
         ICollection<T>,
         IReadOnlyCollection<T>,
         IEnumerable<T>,
-        System.Collections.ICollection    // AI: 删除ICollection实现
+        System.Collections.ICollection
     {
         /// <summary>
         /// 元素数量
@@ -115,108 +116,63 @@ namespace JiksLib.Collections
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            // AI：化简这里的重复代码
-            // 思路：
-            // int count = collection switch {
-            //     ICollection c => c.Count,
-            //     IReadOnlyCollection c => c.Count,
-            //     IEnumerable c => c.Count()
-            // }
-            if (collection is ICollection<T> coll)
+            // 获取元素数量
+            int count = collection switch
             {
-                array = new Node[coll.Count];
-                int index = 0;
-                foreach (var item in coll)
-                {
-                    array[index].Used = true;
-                    array[index].Value = item;
-                    array[index].Prev = index - 1;
-                    array[index].Next = index + 1;
-                    index++;
-                }
+                ICollection<T> c => c.Count,
+                IReadOnlyCollection<T> roc => roc.Count,
+                System.Collections.ICollection c => c.Count,
+                _ => collection.Count()
+            };
 
-                if (coll.Count > 0)
-                {
-                    array[0].Prev = -1;
-                    array[coll.Count - 1].Next = -1;
-                    FirstSlotIndex = 0;
-                    LastSlotIndex = coll.Count - 1;
-                }
-                else
-                {
-                    FirstSlotIndex = -1;
-                    LastSlotIndex = -1;
-                }
-
-                arrayUsedCount = coll.Count;
-                firstFreeNode = -1;
-                Count = coll.Count;
-            }
-            else if (collection is IReadOnlyCollection<T> roc)
+            // 对于无法直接获取数量的情况，需要先收集到列表
+            if (collection is ICollection<T> || collection is IReadOnlyCollection<T> || collection is System.Collections.ICollection)
             {
-                array = new Node[roc.Count];
-                int index = 0;
-                foreach (var item in roc)
-                {
-                    array[index].Used = true;
-                    array[index].Value = item;
-                    array[index].Prev = index - 1;
-                    array[index].Next = index + 1;
-                    index++;
-                }
-
-                if (roc.Count > 0)
-                {
-                    array[0].Prev = -1;
-                    array[roc.Count - 1].Next = -1;
-                    FirstSlotIndex = 0;
-                    LastSlotIndex = roc.Count - 1;
-                }
-                else
-                {
-                    FirstSlotIndex = -1;
-                    LastSlotIndex = -1;
-                }
-
-                arrayUsedCount = roc.Count;
-                firstFreeNode = -1;
-                Count = roc.Count;
+                // 可以直接使用原始集合
+                InitializeFromEnumerable(collection, count);
             }
             else
             {
-                // 不要在这里分配新的List<T>，而是直接写入到
+                // 需要先收集到列表，因为IEnumerable可能只能遍历一次
                 var list = new List<T>();
                 foreach (var item in collection)
                 {
                     list.Add(item);
                 }
-
-                array = new Node[list.Count];
-                for (int i = 0; i < list.Count; i++)
-                {
-                    array[i].Used = true;
-                    array[i].Value = list[i];
-                    array[i].Prev = i - 1;
-                    array[i].Next = i + 1;
-                }
-
-                if (list.Count > 0)
-                {
-                    array[0].Prev = -1;
-                    array[list.Count - 1].Next = -1;
-                    FirstSlotIndex = 0;
-                    LastSlotIndex = list.Count - 1;
-                }
-                else
-                {
-                    FirstSlotIndex = -1;
-                    LastSlotIndex = -1;
-                }
-
-                arrayUsedCount = list.Count;
-                firstFreeNode = -1;
-                Count = list.Count;
+                InitializeFromEnumerable(list, list.Count);
             }
+        }
+
+        // 辅助方法：从可枚举集合初始化数组
+        private void InitializeFromEnumerable(IEnumerable<T> collection, int count)
+        {
+            array = new Node[count];
+            int index = 0;
+            foreach (var item in collection)
+            {
+                array[index].Used = true;
+                array[index].Value = item;
+                array[index].Prev = index - 1;
+                array[index].Next = index + 1;
+                index++;
+            }
+
+            if (count > 0)
+            {
+                array[0].Prev = -1;
+                array[count - 1].Next = -1;
+                FirstSlotIndex = 0;
+                LastSlotIndex = count - 1;
+            }
+            else
+            {
+                FirstSlotIndex = -1;
+                LastSlotIndex = -1;
+            }
+
+            arrayUsedCount = count;
+            firstFreeNode = -1;
+            Count = count;
         }
 
         // 补全文档
@@ -268,9 +224,15 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 将项添加到集合中（添加到末尾）
+        /// </summary>
+        /// <param name="item">要添加的项</param>
+        public void Add(T item) => AddLast(item);
+
+        /// <summary>
         /// 获取一个值，该值指示集合是否为只读
         /// </summary>
-        bool ICollection.IsReadOnly => false;
+        bool ICollection<T>.IsReadOnly => false;
 
         // 补全文档
         public void AddAfter(int slotIndex, T item)
@@ -380,11 +342,11 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// <summary>
         /// 搜索指定的对象，并返回整个集合中第一个匹配项的从零开始的索引
         /// </summary>
         /// <param name="item">要在集合中定位的对象</param>
         /// <returns>如果在整个集合中找到 item 的第一个匹配项，则为该项的从零开始的索引；否则为 -1</returns>
-        // AI:改名为FindSlot，返回的应该是SlotIndex
         public int Find(T item)
         {
             int current = FirstSlotIndex;
@@ -404,7 +366,6 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="item">要在集合中定位的对象</param>
         /// <returns>如果在整个集合中找到 item 的最后一个匹配项，则为该项的从零开始的索引；否则为 -1</returns>
-        // AI:改名为FindSlot，返回的应该是SlotIndex
         public int FindLast(T item)
         {
             int current = LastSlotIndex;
@@ -430,7 +391,7 @@ namespace JiksLib.Collections
             if (slotIndex == -1)
                 return false;
 
-            RemoveBySlotID(slotIndex);
+            RemoveBySlot(slotIndex);
             return true;
         }
 
@@ -440,7 +401,7 @@ namespace JiksLib.Collections
         /// <param name="slotIndex">要移除的槽位索引</param>
         /// <exception cref="ArgumentOutOfRangeException">槽位索引无效</exception>
         // AI：改名为RemoveBySlot
-        public void RemoveBySlotID(int slotIndex)
+        public void RemoveBySlot(int slotIndex)
         {
             EnsureSlotUsed(slotIndex);
 
@@ -477,7 +438,7 @@ namespace JiksLib.Collections
             }
 
             item = array[FirstSlotIndex].Value!;
-            RemoveBySlotID(FirstSlotIndex);
+            RemoveBySlot(FirstSlotIndex);
             return true;
         }
 
@@ -495,7 +456,7 @@ namespace JiksLib.Collections
             }
 
             item = array[LastSlotIndex].Value!;
-            RemoveBySlotID(LastSlotIndex);
+            RemoveBySlot(LastSlotIndex);
             return true;
         }
 
@@ -740,7 +701,7 @@ namespace JiksLib.Collections
             public int Next;
         }
 
-        Node[] array;
+        Node[] array = Array.Empty<Node>();
         int arrayUsedCount = 0;
         int firstFreeNode = -1;
 
