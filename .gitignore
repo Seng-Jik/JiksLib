@@ -11,6 +11,6 @@
 /JiksLib.Core.Test/bin
 /JiksLib.Core.Test/obj
 /Assets/JiksLib/JiksLib.Core.dll
-JiksLib.PerformanceTest/BenchmarkDotNet.Artifacts
-JiksLib.PerformanceTest/bin
-JiksLib.PerformanceTest/obj
+JiksLib.Core.PerformanceTest/BenchmarkDotNet.Artifacts
+JiksLib.Core.PerformanceTest/bin
+JiksLib.Core.PerformanceTest/obj

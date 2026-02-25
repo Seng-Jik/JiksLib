@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib.Core", "JiksLib.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib.Core.Test", "JiksLib.Core.Test\JiksLib.Core.Test.csproj", "{36F19460-9CBB-462B-A55C-3E082A1495E6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JiksLib.Core.PerformanceTest", "JiksLib.Core.PerformanceTest\JiksLib.Core.PerformanceTest.csproj", "{4672D61E-C925-44D7-809B-D7814920A26A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{36F19460-9CBB-462B-A55C-3E082A1495E6}.Release|x64.Build.0 = Release|Any CPU
 		{36F19460-9CBB-462B-A55C-3E082A1495E6}.Release|x86.ActiveCfg = Release|Any CPU
 		{36F19460-9CBB-462B-A55C-3E082A1495E6}.Release|x86.Build.0 = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|x64.Build.0 = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Debug|x86.Build.0 = Debug|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|x64.ActiveCfg = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|x64.Build.0 = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|x86.ActiveCfg = Release|Any CPU
+		{4672D61E-C925-44D7-809B-D7814920A26A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

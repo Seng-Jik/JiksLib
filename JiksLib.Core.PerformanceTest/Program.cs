@@ -1,4 +1,5 @@
 ﻿using BenchmarkDotNet.Running;
+using JiksLib.PerformanceTest.Control;
 
 namespace JiksLib.PerformanceTest
 {
