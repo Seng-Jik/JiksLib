@@ -117,15 +117,43 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 获得集合的枚举器
+        /// </summary>
+        /// <returns>集合的枚举器</returns>
+        public Enumerator GetEnumerator() => new(dict);
+
+        /// <summary>
+        /// 转换为只读集合
+        /// </summary>
+        public IReadOnlyMultiSet<T> AsReadOnly() => this;
+
+        /// <summary>
+        /// 拷贝当前集合
+        /// 复制集合结构，但引用类型元素共享对象引用
+        /// </summary>
+        /// <returns>拷贝后的集合</returns>
+        public MultiHashSet<T> Clone() => new(Count, new(dict, dict.Comparer));
+
+        MultiHashSet(int count, Dictionary<T, int> dict)
+        {
+            this.dict = dict;
+            Count = count;
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        readonly Dictionary<T, int> dict;
+
+        /// <summary>
         /// 枚举器
         /// </summary>
         public struct Enumerator : IEnumerator<T>
         {
-            private Dictionary<T, int>.Enumerator dictEnumerator;
-            private T currentKey;
-            private int totalCount;    // 当前键的总重复次数
-            private int returnedCount; // 当前键已返回的次数
-            private bool started;
+            Dictionary<T, int>.Enumerator dictEnumerator;
+            T currentKey;
+            int totalCount;    // 当前键的总重复次数
+            int returnedCount; // 当前键已返回的次数
+            bool started;
 
             internal Enumerator(Dictionary<T, int> dict)
             {
@@ -188,33 +216,5 @@ namespace JiksLib.Collections
                 dictEnumerator.Dispose();
             }
         }
-
-        /// <summary>
-        /// 获得集合的枚举器
-        /// </summary>
-        /// <returns>集合的枚举器</returns>
-        public Enumerator GetEnumerator() => new(dict);
-
-        /// <summary>
-        /// 转换为只读集合
-        /// </summary>
-        public IReadOnlyMultiSet<T> AsReadOnly() => this;
-
-        /// <summary>
-        /// 拷贝当前集合
-        /// 复制集合结构，但引用类型元素共享对象引用
-        /// </summary>
-        /// <returns>拷贝后的集合</returns>
-        public MultiHashSet<T> Clone() => new(Count, new(dict, dict.Comparer));
-
-        private MultiHashSet(int count, Dictionary<T, int> dict)
-        {
-            this.dict = dict;
-            Count = count;
-        }
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        readonly Dictionary<T, int> dict;
     }
 }

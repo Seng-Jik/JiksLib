@@ -437,117 +437,9 @@ namespace JiksLib.Collections
         public IReadOnlyCollection<T> AsReadOnly() => this;
 
         /// <summary>
-        /// 枚举器
-        /// </summary>
-        public struct Enumerator : IEnumerator<T>
-        {
-            private readonly ArrayLinkedList<T> list;
-            private int currentSlot;
-            private bool started;
-
-            internal Enumerator(ArrayLinkedList<T> list)
-            {
-                this.list = list;
-                currentSlot = -1;
-                started = false;
-            }
-
-            public T Current
-            {
-                get
-                {
-                    if (currentSlot == -1)
-                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
-                    return list.array[currentSlot].Value;
-                }
-            }
-
-            object? IEnumerator.Current => Current;
-
-            public bool MoveNext()
-            {
-                if (!started)
-                {
-                    currentSlot = list.FirstSlot;
-                    started = true;
-                }
-                else
-                {
-                    if (currentSlot != -1)
-                        currentSlot = list.array[currentSlot].Next;
-                }
-
-                return currentSlot != -1;
-            }
-
-            public void Reset()
-            {
-                currentSlot = -1;
-                started = false;
-            }
-
-            public void Dispose() { }
-        }
-
-        /// <summary>
         /// 返回枚举器
         /// </summary>
-        public Enumerator GetEnumerator() => new Enumerator(this);
-
-        /// <summary>
-        /// 反向枚举器
-        /// </summary>
-        public struct ReversedEnumerator : IEnumerator<T>
-        {
-            private readonly ArrayLinkedList<T> list;
-            private int currentSlot;
-            private bool started;
-
-            internal ReversedEnumerator(ArrayLinkedList<T> list)
-            {
-                this.list = list;
-                currentSlot = -1;
-                started = false;
-            }
-
-            public T Current
-            {
-                get
-                {
-                    if (currentSlot == -1)
-                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
-                    return list.array[currentSlot].Value;
-                }
-            }
-
-            T IEnumerator<T>.Current => Current;
-
-            object? IEnumerator.Current => Current;
-
-            public bool MoveNext()
-            {
-                if (!started)
-                {
-                    currentSlot = list.LastSlot;
-                    started = true;
-                }
-                else
-                {
-                    if (currentSlot != -1)
-                        currentSlot = list.array[currentSlot].Prev;
-                }
-
-                return currentSlot != -1;
-            }
-
-            public void Reset()
-            {
-                currentSlot = -1;
-                started = false;
-            }
-
-            public void Dispose() { }
-        }
+        public Enumerator GetEnumerator() => new(this);
 
         /// <summary>
         /// 返回反向枚举器
@@ -639,6 +531,117 @@ namespace JiksLib.Collections
             array[slotIndex].Used = false;
             array[slotIndex].Next = firstFreeNode;
             firstFreeNode = slotIndex;
+        }
+
+        /// <summary>
+        /// 枚举器
+        /// </summary>
+        public struct Enumerator : IEnumerator<T>
+        {
+            internal Enumerator(ArrayLinkedList<T> list)
+            {
+                this.list = list;
+                currentSlot = -1;
+                started = false;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (currentSlot == -1)
+                        throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                    return list.array[currentSlot].Value;
+                }
+            }
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    currentSlot = list.FirstSlot;
+                    started = true;
+                }
+                else
+                {
+                    if (currentSlot != -1)
+                        currentSlot = list.array[currentSlot].Next;
+                }
+
+                return currentSlot != -1;
+            }
+
+            public void Reset()
+            {
+                currentSlot = -1;
+                started = false;
+            }
+
+            public void Dispose() { }
+
+            readonly ArrayLinkedList<T> list;
+            int currentSlot;
+            bool started;
+
+        }
+
+        /// <summary>
+        /// 反向枚举器
+        /// </summary>
+        public struct ReversedEnumerator : IEnumerator<T>
+        {
+            internal ReversedEnumerator(ArrayLinkedList<T> list)
+            {
+                this.list = list;
+                currentSlot = -1;
+                started = false;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (currentSlot == -1)
+                        throw new InvalidOperationException(
+                            "Enumeration has not started or has already finished.");
+
+                    return list.array[currentSlot].Value;
+                }
+            }
+
+            T IEnumerator<T>.Current => Current;
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (!started)
+                {
+                    currentSlot = list.LastSlot;
+                    started = true;
+                }
+                else
+                {
+                    if (currentSlot != -1)
+                        currentSlot = list.array[currentSlot].Prev;
+                }
+
+                return currentSlot != -1;
+            }
+
+            public void Reset()
+            {
+                currentSlot = -1;
+                started = false;
+            }
+
+            public void Dispose() { }
+
+            readonly ArrayLinkedList<T> list;
+            int currentSlot;
+            bool started;
         }
 
         private struct Node

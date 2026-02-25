@@ -399,12 +399,6 @@ namespace JiksLib.Collections
         /// </summary>
         public struct Enumerator : IEnumerator<T>
         {
-            private readonly int count;
-            private readonly int front;
-            private readonly T[] buffer;
-            private int position; // 0到count，position == count表示结束
-            private bool started;
-
             internal Enumerator(Deque<T> deque)
             {
                 count = deque.Count;
@@ -452,6 +446,13 @@ namespace JiksLib.Collections
             }
 
             public void Dispose() { }
+
+            readonly int count;
+            readonly int front;
+            readonly T[] buffer;
+            int position; // 0到count，position == count表示结束
+            bool started;
+
         }
 
         public Enumerator GetEnumerator() => new(this);
@@ -462,5 +463,4 @@ namespace JiksLib.Collections
         int front = 0;
         int rear = 0;
     }
-
 }

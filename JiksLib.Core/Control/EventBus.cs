@@ -5,9 +5,9 @@ using JiksLib.Extensions;
 namespace JiksLib.Control
 {
     /// <summary>
-    /// 事件监听器
+    /// 事件总线监听器
     /// </summary>
-    public delegate void Listener<TEvent>(TEvent @event);
+    public delegate void EventBusListener<TEvent>(TEvent @event);
 
     /// <summary>
     /// 事件总线
@@ -31,7 +31,7 @@ namespace JiksLib.Control
         /// 注册某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void AddListener<TEvent>(Listener<TEvent> listener)
+        public void AddListener<TEvent>(EventBusListener<TEvent> listener)
             where TEvent : TBaseEvent
         {
             var listenerSet = GetOrCreateListenerSet<TEvent>();
@@ -47,7 +47,7 @@ namespace JiksLib.Control
         /// 该监听器不能使用RemoveListener移除
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void ListenOnce<TEvent>(Listener<TEvent> listener)
+        public void ListenOnce<TEvent>(EventBusListener<TEvent> listener)
             where TEvent : TBaseEvent
         {
             var listenerSet = GetOrCreateListenerSet<TEvent>();
@@ -68,18 +68,18 @@ namespace JiksLib.Control
         /// 移除某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void RemoveListener<TEvent>(Listener<TEvent> listener)
+        public void RemoveListener<TEvent>(EventBusListener<TEvent> listener)
             where TEvent : TBaseEvent
         {
             if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
                 return;
 
-            var typeHandler = (EventBusListenerSet<TEvent, TBaseEvent>)handler;
+            var listenerSet = (EventBusListenerSet<TEvent>)handler;
 
             if (invoking)
-                typeHandler.RemoveListenerDelayed(listener);
+                listenerSet.RemoveListenerDelayed(listener);
             else
-                typeHandler.RemoveListener(listener);
+                listenerSet.RemoveListener(listener);
         }
 
         /// <summary>
@@ -104,8 +104,7 @@ namespace JiksLib.Control
                 {
                     eventBus.invoking = true;
 
-                    var typeChain = eventBus
-                        .GetTypeChain(@event.ThrowIfNull().GetType())
+                    var typeChain = GetTypeChain(@event.ThrowIfNull().GetType())
                         .Types;
 
                     foreach (var i in typeChain)
@@ -125,79 +124,196 @@ namespace JiksLib.Control
             internal Publisher(EventBus<TBaseEvent> eventBus)
             {
                 this.eventBus = eventBus;
+                typeChains = new();
             }
+
+            private sealed class TypeChain
+            {
+                internal readonly IReadOnlyList<Type> Types;
+
+                internal TypeChain(Type type)
+                {
+                    List<Type> listenerTypes;
+
+                    var t = type;
+
+                    if (typeof(TBaseEvent).IsInterface)
+                    {
+                        var interfaces = type.GetInterfaces();
+                        listenerTypes = new(8 + interfaces.Length);
+
+                        for (int i = 0; i < interfaces.Length; ++i)
+                            if (typeof(TBaseEvent).IsAssignableFrom(interfaces[i]))
+                                listenerTypes.Add(interfaces[i]);
+
+                        while (t != null)
+                        {
+                            if (typeof(TBaseEvent).IsAssignableFrom(t))
+                                listenerTypes.Add(t);
+                            else
+                                break;
+
+                            t = t.BaseType;
+                        }
+                    }
+                    else
+                    {
+                        listenerTypes = new(8);
+
+                        while (t != null)
+                        {
+                            listenerTypes.Add(t);
+                            if (t == typeof(TBaseEvent)) break;
+                            t = t.BaseType;
+                        }
+                    }
+
+                    listenerTypes.TrimExcess();
+                    Types = listenerTypes;
+                }
+            }
+
+            TypeChain GetTypeChain(Type type)
+            {
+                if (!typeChains.TryGetValue(type, out var chain))
+                {
+                    chain = new(type);
+                    typeChains.Add(type, chain);
+                }
+
+                return chain;
+            }
+
+            readonly Dictionary<Type, TypeChain> typeChains;
         }
 
-        EventBusListenerSet<TEvent, TBaseEvent> GetOrCreateListenerSet<TEvent>()
+        EventBusListenerSet<TEvent> GetOrCreateListenerSet<TEvent>()
             where TEvent : TBaseEvent
         {
             if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
             {
-                handler = new EventBusListenerSet<TEvent, TBaseEvent>();
+                handler = new EventBusListenerSet<TEvent>();
                 listenerSets.Add(typeof(TEvent), handler);
             }
 
-            return (EventBusListenerSet<TEvent, TBaseEvent>)handler;
+            return (EventBusListenerSet<TEvent>)handler;
         }
 
-        TypeChain GetTypeChain(Type type)
+        internal EventBus() { }
+        internal bool invoking = false;
+        internal readonly Dictionary<Type, IEventBusListenerSet> listenerSets = new();
+
+        internal interface IEventBusListenerSet
         {
-            if (!typeChains.TryGetValue(type, out var chain))
+            internal abstract void Invoke(
+                TBaseEvent baseEvent,
+                IList<Exception>? exceptionsOutput);
+        }
+
+        internal sealed class EventBusListenerSet<T> :
+            IEventBusListenerSet
+            where T : notnull, TBaseEvent
+        {
+            readonly List<EventBusListener<T>?> listeners = new();
+            int removeIndex = 0;
+
+            readonly Queue<(bool isAddOrRemove, EventBusListener<T>)>
+                listenersDelayedOperation = new();
+
+            internal void AddListener(EventBusListener<T> listener)
             {
-                chain = new(type);
-                typeChains.Add(type, chain);
+                listeners.Add(listener);
+                removeIndex = listeners.Count - 1;
             }
 
-            return chain;
-        }
-
-        bool invoking = false;
-        readonly Dictionary<Type, TypeChain> typeChains = new();
-        readonly Dictionary<Type, IEventBusListenerSet<TBaseEvent>> listenerSets = new();
-
-        private sealed class TypeChain
-        {
-            internal readonly IReadOnlyList<Type> Types;
-
-            internal TypeChain(Type type)
+            internal void AddListenerDelayed(EventBusListener<T> listener)
             {
-                List<Type> listenerTypes;
+                listenersDelayedOperation.Enqueue((true, listener));
+            }
 
-                var t = type;
+            internal void RemoveListener(EventBusListener<T> listener)
+            {
+                if (removeIndex >= listeners.Count || removeIndex < 0)
+                    removeIndex = listeners.Count - 1;
 
-                if (typeof(TBaseEvent).IsInterface)
+                for (int i = removeIndex; i >= 0; --i)
                 {
-                    var interfaces = type.GetInterfaces();
-                    listenerTypes = new(8 + interfaces.Length);
-
-                    for (int i = 0; i < interfaces.Length; ++i)
-                        if (typeof(TBaseEvent).IsAssignableFrom(interfaces[i]))
-                            listenerTypes.Add(interfaces[i]);
-
-                    while (t != null)
+                    if (listeners[i] == listener)
                     {
-                        if (typeof(TBaseEvent).IsAssignableFrom(t))
-                            listenerTypes.Add(t);
-                        else
-                            break;
-
-                        t = t.BaseType;
-                    }
-                }
-                else
-                {
-                    listenerTypes = new(8);
-
-                    while (t != null)
-                    {
-                        listenerTypes.Add(t);
-                        if (t == typeof(TBaseEvent)) break;
-                        t = t.BaseType;
+                        listeners[i] = null;
+                        removeIndex = i - 1;
+                        return;
                     }
                 }
 
-                listenerTypes.TrimExcess();
-                Types = listenerTypes;
+                for (int i = removeIndex + 1; i < listeners.Count; ++i)
+                {
+                    if (listeners[i] == listener)
+                    {
+                        listeners[i] = null;
+                        removeIndex = i - 1;
+                        return;
+                    }
+                }
+            }
+
+            internal void RemoveListenerDelayed(EventBusListener<T> listener)
+            {
+                listenersDelayedOperation.Enqueue((false, listener));
+            }
+
+            void ApplyDelayedListenerAddOrRemove()
+            {
+                while (listenersDelayedOperation.Count > 0)
+                {
+                    var op = listenersDelayedOperation.Dequeue();
+
+                    if (op.isAddOrRemove) AddListener(op.Item2);
+                    else RemoveListener(op.Item2);
+                }
+            }
+
+            internal void Invoke(
+                T @event,
+                IList<Exception>? exceptionsOutput)
+            {
+                int rewriteIndex = 0;
+
+                ApplyDelayedListenerAddOrRemove();
+
+                for (int i = 0; i < listeners.Count; ++i)
+                {
+                    var listener = listeners[i];
+
+                    if (listener == null)
+                        continue;
+
+                    listeners[i] = null;
+                    listeners[rewriteIndex++] = listener;
+
+                    try
+                    {
+                        listener(@event);
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptionsOutput?.Add(ex);
+                    }
+                }
+
+                if (rewriteIndex < listeners.Count)
+                {
+                    listeners.RemoveRange(
+                        rewriteIndex,
+                        listeners.Count - rewriteIndex);
+                }
+            }
+
+            void IEventBusListenerSet.Invoke(
+                TBaseEvent baseEvent,
+                IList<Exception>? exceptionsOutput)
+            {
+                Invoke((T)baseEvent, exceptionsOutput);
             }
         }
     }

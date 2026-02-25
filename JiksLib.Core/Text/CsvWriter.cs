@@ -83,6 +83,5 @@ namespace JiksLib.Text
         readonly string separatorString;
         readonly StringBuilder sb = new();
         bool isFirstFieldOfCurrentLine = true;
-
     }
 }

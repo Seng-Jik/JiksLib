@@ -16,64 +16,35 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         public ValueEventBus(out Publisher publisher)
         {
-            publisher = new(this);
+            eventBus = new();
+            publisher = new(eventBus);
         }
 
         /// <summary>
         /// 注册某一类型的事件监听器
         /// </summary>
-        public void AddListener<TEvent>(Listener<TEvent> listener)
-            where TEvent : struct
-        {
-            var listenerSet = GetOrCreateListenerSet<TEvent>();
-
-            if (invoking)
-                listenerSet.AddListenerDelayed(listener);
-            else
-                listenerSet.AddListener(listener);
-        }
+        public void AddListener<TEvent>(EventBusListener<TEvent> listener)
+            where TEvent : struct => eventBus.AddListener(listener);
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
-        public void RemoveListener<TEvent>(Listener<TEvent> listener)
-            where TEvent : struct
-        {
-            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
-                return;
-
-            var typeHandler = (EventBusListenerSet<TEvent, ValueType>)handler;
-
-            if (invoking)
-                typeHandler.RemoveListenerDelayed(listener);
-            else
-                typeHandler.RemoveListener(listener);
-        }
+        public void RemoveListener<TEvent>(EventBusListener<TEvent> listener)
+            where TEvent : struct => eventBus.RemoveListener(listener);
 
         /// <summary>
         /// 仅监听一次某个事件，之后自动移除监听器
         /// 该监听器不能使用RemoveListener移除
         /// </summary>
-        public void ListenOnce<TEvent>(Listener<TEvent> listener)
-            where TEvent : struct
-        {
-            var listenerSet = GetOrCreateListenerSet<TEvent>();
+        public void ListenOnce<TEvent>(EventBusListener<TEvent> listener)
+            where TEvent : struct => eventBus.ListenOnce(listener);
 
-            void wrappedListener(TEvent e)
-            {
-                listenerSet.RemoveListenerDelayed(wrappedListener);
-                listener(e);
-            }
-
-            if (invoking)
-                listenerSet.AddListenerDelayed(wrappedListener);
-            else
-                listenerSet.AddListener(wrappedListener);
-        }
-
+        /// <summary>
+        /// 事件发布器
+        /// </summary>
         public readonly struct Publisher
         {
-            internal Publisher(ValueEventBus eventBus)
+            internal Publisher(EventBus<ValueType> eventBus)
             {
                 this.eventBus = eventBus;
             }
@@ -96,7 +67,7 @@ namespace JiksLib.Control
                     eventBus.invoking = true;
 
                     if (eventBus.listenerSets.TryGetValue(typeof(T), out var h))
-                        ((EventBusListenerSet<T, ValueType>)h).Invoke(
+                        ((EventBus<ValueType>.EventBusListenerSet<T>)h).Invoke(
                             @event,
                             exceptionsOutput);
                 }
@@ -106,22 +77,9 @@ namespace JiksLib.Control
                 }
             }
 
-            readonly ValueEventBus eventBus;
+            readonly EventBus<ValueType> eventBus;
         }
 
-        EventBusListenerSet<TEvent, ValueType> GetOrCreateListenerSet<TEvent>()
-            where TEvent : struct
-        {
-            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
-            {
-                handler = new EventBusListenerSet<TEvent, ValueType>();
-                listenerSets.Add(typeof(TEvent), handler);
-            }
-
-            return (EventBusListenerSet<TEvent, ValueType>)handler;
-        }
-
-        bool invoking = false;
-        readonly Dictionary<Type, IEventBusListenerSet<ValueType>> listenerSets = new();
+        readonly EventBus<ValueType> eventBus;
     }
 }

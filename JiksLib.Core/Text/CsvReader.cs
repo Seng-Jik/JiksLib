@@ -37,13 +37,11 @@ namespace JiksLib.Text
             this(new StringReader(csv.ThrowIfNull()), false, separator)
         {
         }
-
         public void Dispose()
         {
             if (!leaveOpen)
                 csv.Dispose();
         }
-
 
         /// <summary>
         /// 从当前行弹出一个字段
@@ -137,6 +135,5 @@ namespace JiksLib.Text
         readonly bool leaveOpen;
         readonly char separator;
         bool noMoreFields = false;
-
     }
 }

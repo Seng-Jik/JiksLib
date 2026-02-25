@@ -87,16 +87,54 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 返回枚举器
+        /// </summary>
+        public readonly Enumerator GetEnumerator() => new(this);
+
+        IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public bool Equals(IntRange other) =>
+            Min == other.Min
+            && IncludeMin == other.IncludeMin
+            && Max == other.Max
+            && IncludeMax == other.IncludeMax;
+
+        public override string ToString()
+        {
+            char left = IncludeMin ? '[' : '(';
+            char right = IncludeMax ? ']' : ')';
+            return $"{left}{Min}, {Max}{right}";
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is IntRange i)
+                return Equals(i);
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + Min.GetHashCode();
+                hash = hash * 23 + IncludeMin.GetHashCode();
+                hash = hash * 23 + Max.GetHashCode();
+                hash = hash * 23 + IncludeMax.GetHashCode();
+                return hash;
+            }
+        }
+
+        public static bool operator ==(IntRange left, IntRange right) => left.Equals(right);
+        public static bool operator !=(IntRange left, IntRange right) => !left.Equals(right);
+
+        /// <summary>
         /// 枚举器
         /// </summary>
         public struct Enumerator : IEnumerator<int>
         {
-            private readonly IntRange range;
-            private int current;
-            private int nextValue;
-            private bool started;
-            private bool valid;
-
             internal Enumerator(IntRange range)
             {
                 this.range = range;
@@ -199,57 +237,12 @@ namespace JiksLib.Collections
             }
 
             public void Dispose() { }
+
+            readonly IntRange range;
+            int current;
+            int nextValue;
+            bool started;
+            bool valid;
         }
-
-        /// <summary>
-        /// 返回枚举器
-        /// </summary>
-        public readonly Enumerator GetEnumerator() => new(this);
-
-        IEnumerator<int> IEnumerable<int>.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        public bool Equals(IntRange other) =>
-            Min == other.Min
-            && IncludeMin == other.IncludeMin
-            && Max == other.Max
-            && IncludeMax == other.IncludeMax;
-
-        public override string ToString()
-        {
-            char left = IncludeMin ? '[' : '(';
-            char right = IncludeMax ? ']' : ')';
-            return $"{left}{Min}, {Max}{right}";
-        }
-
-        public override bool Equals(object? obj)
-        {
-            if (obj is IntRange i)
-                return Equals(i);
-            return false;
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + Min.GetHashCode();
-                hash = hash * 23 + IncludeMin.GetHashCode();
-                hash = hash * 23 + Max.GetHashCode();
-                hash = hash * 23 + IncludeMax.GetHashCode();
-                return hash;
-            }
-        }
-
-        public static bool operator ==(IntRange left, IntRange right) => left.Equals(right);
-        public static bool operator !=(IntRange left, IntRange right) => !left.Equals(right);
     }
 }

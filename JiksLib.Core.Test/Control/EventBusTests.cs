@@ -492,12 +492,12 @@ namespace JiksLib.Test.Control
             // Arrange
             var superEvent = new EventBus<TestEventBase>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new Listener<TestEventA>[listenerCount];
+            var listeners = new EventBusListener<TestEventA>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                Listener<TestEventA> listener = e => callCount++;
+                EventBusListener<TestEventA> listener = e => callCount++;
                 listeners[i] = listener;
                 superEvent.AddListener(listener);
             }

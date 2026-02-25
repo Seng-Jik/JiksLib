@@ -270,14 +270,6 @@ namespace JiksLib.Collections
         /// </summary>
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
         {
-            private Dictionary<TKey, MultiHashSet<TValue>>.Enumerator dictEnumerator;
-            private KeyValuePair<TKey, MultiHashSet<TValue>> currentDictEntry;
-            private MultiHashSet<TValue>.Enumerator valueEnumerator;
-            private TKey currentKey;
-            private TValue currentValue;
-            private bool started;
-            private bool valueEnumeratorActive;
-
             internal Enumerator(Dictionary<TKey, MultiHashSet<TValue>> dict)
             {
                 dictEnumerator = dict.GetEnumerator();
@@ -355,6 +347,14 @@ namespace JiksLib.Collections
                 }
                 dictEnumerator.Dispose();
             }
+
+            Dictionary<TKey, MultiHashSet<TValue>>.Enumerator dictEnumerator;
+            KeyValuePair<TKey, MultiHashSet<TValue>> currentDictEntry;
+            MultiHashSet<TValue>.Enumerator valueEnumerator;
+            TKey currentKey;
+            TValue currentValue;
+            bool started;
+            bool valueEnumeratorActive;
         }
 
         /// <summary>
