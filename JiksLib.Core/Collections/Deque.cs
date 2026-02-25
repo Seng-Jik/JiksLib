@@ -297,6 +297,8 @@ namespace JiksLib.Collections
 
             if (buffer.Length >= capacity) return;
 
+            capacity = (capacity / 4 + 1) * 4;
+
             T[] newBuffer = new T[capacity];
             CopyTo(new(newBuffer));
 
@@ -421,4 +423,5 @@ namespace JiksLib.Collections
         int front = 0;
         int rear = 0;
     }
+
 }
