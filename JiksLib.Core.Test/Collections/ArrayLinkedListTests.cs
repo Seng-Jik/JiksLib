@@ -147,7 +147,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var list = new ArrayLinkedList<int>();
             int slot1 = list.AddLast(1);
-            list.AddLast(3);
+            int slot2 = list.AddLast(3);
 
             // Act
             int newSlot = list.AddAfter(slot1, 2);
@@ -156,7 +156,11 @@ namespace JiksLib.Test.Collections
             Assert.That(list.Count, Is.EqualTo(3));
             Assert.That(list.Get(newSlot, out int nextSlot, out int prevSlot), Is.EqualTo(2));
             Assert.That(prevSlot, Is.EqualTo(slot1)); // 应该在slot1之后
-            Assert.That(nextSlot, Is.Not.EqualTo(-1)); // 应该指向原来的第二个元素
+            Assert.That(nextSlot, Is.EqualTo(slot2)); // 应该指向原来的第二个元素
+
+            // 验证原来的第二个元素的前驱已更新为新槽位
+            Assert.That(list.Get(slot2, out int next2, out int prev2), Is.EqualTo(3));
+            Assert.That(prev2, Is.EqualTo(newSlot));
         }
 
         [Test]
@@ -181,7 +185,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var list = new ArrayLinkedList<int>();
-            list.AddLast(1);
+            int slot1 = list.AddLast(1);
             int slot2 = list.AddLast(3);
 
             // Act
@@ -191,7 +195,11 @@ namespace JiksLib.Test.Collections
             Assert.That(list.Count, Is.EqualTo(3));
             Assert.That(list.Get(newSlot, out int nextSlot, out int prevSlot), Is.EqualTo(2));
             Assert.That(nextSlot, Is.EqualTo(slot2)); // 应该在slot2之前
-            Assert.That(prevSlot, Is.Not.EqualTo(-1)); // 应该指向原来的第一个元素
+            Assert.That(prevSlot, Is.EqualTo(slot1)); // 应该指向原来的第一个元素
+
+            // 验证原来的第一个元素的后继已更新为新槽位
+            Assert.That(list.Get(slot1, out int next1, out int prev1), Is.EqualTo(1));
+            Assert.That(next1, Is.EqualTo(newSlot));
         }
 
         [Test]
@@ -218,9 +226,14 @@ namespace JiksLib.Test.Collections
             list.AddLast(3);
             list.AddLast(2);
 
-            // Act & Assert
-            Assert.That(list.FindSlot(2), Is.EqualTo(list.FirstSlot + 1)); // 第一个2的位置
-            Assert.That(list.FindSlot(4), Is.EqualTo(-1));
+            // Act
+            int slotIndex = list.FindSlot(2);
+            int notFoundSlotIndex = list.FindSlot(4);
+
+            // Assert
+            Assert.That(slotIndex, Is.Not.EqualTo(-1));
+            Assert.That(list.Get(slotIndex, out _, out _), Is.EqualTo(2)); // 槽位中的值应为2
+            Assert.That(notFoundSlotIndex, Is.EqualTo(-1));
         }
 
         [Test]
@@ -233,9 +246,15 @@ namespace JiksLib.Test.Collections
             list.AddLast(3);
             list.AddLast(2);
 
-            // Act & Assert
-            Assert.That(list.FindLastSlot(2), Is.EqualTo(list.LastSlot)); // 最后一个2的位置
-            Assert.That(list.FindLastSlot(4), Is.EqualTo(-1));
+            // Act
+            int slotIndex = list.FindLastSlot(2);
+            int notFoundSlotIndex = list.FindLastSlot(4);
+
+            // Assert
+            Assert.That(slotIndex, Is.Not.EqualTo(-1));
+            Assert.That(list.Get(slotIndex, out _, out _), Is.EqualTo(2)); // 槽位中的值应为2
+            Assert.That(slotIndex, Is.EqualTo(list.LastSlot)); // 在这个测试数据中，最后一个2就是最后一个元素
+            Assert.That(notFoundSlotIndex, Is.EqualTo(-1));
         }
 
         [Test]

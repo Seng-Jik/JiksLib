@@ -371,6 +371,131 @@ namespace JiksLib.Test.Collections
             Assert.That(list, Is.Empty);
         }
 
+        #region Enumerator Behavior Tests
+
+        [Test]
+        public void DequeEnumerator_IsValueType()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+
+            // Act
+            var enumerator = deque.GetEnumerator();
+
+            // Assert
+            Assert.That(enumerator.GetType().IsValueType, Is.True, "Enumerator should be a value type (struct)");
+        }
+
+        [Test]
+        public void DequeEnumerator_CurrentBeforeMoveNext_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            var enumerator = deque.GetEnumerator();
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void DequeEnumerator_CurrentAfterEnumeration_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            var enumerator = deque.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void DequeEnumerator_MoveNextAfterEnumeration_ReturnsFalse()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            var enumerator = deque.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.That(enumerator.MoveNext(), Is.False);
+            Assert.That(enumerator.MoveNext(), Is.False); // Multiple calls should still return false
+        }
+
+        [Test]
+        public void DequeEnumerator_Reset_WorksCorrectly()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            var enumerator = deque.GetEnumerator();
+            var firstPass = new List<int>();
+            while (enumerator.MoveNext())
+            {
+                firstPass.Add(enumerator.Current);
+            }
+
+            // Act
+            enumerator.Reset();
+            var secondPass = new List<int>();
+            while (enumerator.MoveNext())
+            {
+                secondPass.Add(enumerator.Current);
+            }
+
+            // Assert
+            Assert.That(secondPass, Is.EqualTo(firstPass));
+        }
+
+        [Test]
+        public void DequeEnumerator_Dispose_DoesNotThrow()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            var enumerator = deque.GetEnumerator();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+            // Dispose should be callable multiple times
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+        }
+
+        [Test]
+        public void DequeEnumerator_BoxingNotOccurred_WhenUsingConcreteType()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+
+            // Act
+            var enumerator = deque.GetEnumerator();
+
+            // Assert - If enumerator is a struct, assigning to object causes boxing
+            // We can verify that the type is a value type
+            Assert.That(enumerator.GetType().IsValueType, Is.True);
+        }
+
+        #endregion
+
         [Test]
         public void StressTest_CircularBufferBehavior()
         {

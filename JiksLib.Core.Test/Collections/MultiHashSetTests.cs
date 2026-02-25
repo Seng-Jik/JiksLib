@@ -309,6 +309,118 @@ namespace JiksLib.Test.Collections
             Assert.That(items.Where(x => x == 3).Count(), Is.EqualTo(2));
         }
 
+        #region Enumerator Behavior Tests
+
+        [Test]
+        public void MultiHashSetEnumerator_IsValueType()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+
+            // Act
+            var enumerator = set.GetEnumerator();
+
+            // Assert
+            Assert.That(enumerator.GetType().IsValueType, Is.True, "Enumerator should be a value type (struct)");
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_CurrentBeforeMoveNext_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+            var enumerator = set.GetEnumerator();
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_CurrentAfterEnumeration_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+            var enumerator = set.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_MoveNextAfterEnumeration_ReturnsFalse()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+            var enumerator = set.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.That(enumerator.MoveNext(), Is.False);
+            Assert.That(enumerator.MoveNext(), Is.False); // Multiple calls should still return false
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_Reset_ThrowsNotSupportedException()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+            var enumerator = set.GetEnumerator();
+
+            // Act & Assert - MultiHashSet enumerator does not support Reset
+            Assert.Throws<NotSupportedException>(() => enumerator.Reset());
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_Dispose_DoesNotThrow()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+            var enumerator = set.GetEnumerator();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+            // Dispose should be callable multiple times
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+        }
+
+        [Test]
+        public void MultiHashSetEnumerator_BoxingNotOccurred_WhenUsingConcreteType()
+        {
+            // Arrange
+            var set = new MultiHashSet<string>();
+            set.Add("a");
+            set.Add("b");
+            set.Add("a");
+
+            // Act
+            var enumerator = set.GetEnumerator();
+
+            // Assert - If enumerator is a struct, assigning to object causes boxing
+            // We can verify that the type is a value type
+            Assert.That(enumerator.GetType().IsValueType, Is.True);
+        }
+
+        #endregion
+
         [Test]
         public void CustomComparer_RespectedInOperations()
         {

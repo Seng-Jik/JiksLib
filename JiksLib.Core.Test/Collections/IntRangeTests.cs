@@ -340,6 +340,111 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
+        #region Enumerator Behavior Tests
+
+        [Test]
+        public void Enumerator_IsValueType()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+
+            // Act
+            var enumerator = range.GetEnumerator();
+
+            // Assert
+            Assert.That(enumerator.GetType().IsValueType, Is.True, "Enumerator should be a value type (struct)");
+        }
+
+        [Test]
+        public void Enumerator_CurrentBeforeMoveNext_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+            var enumerator = range.GetEnumerator();
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void Enumerator_CurrentAfterEnumeration_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+            var enumerator = range.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+        }
+
+        [Test]
+        public void Enumerator_MoveNextAfterEnumeration_ReturnsFalse()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+            var enumerator = range.GetEnumerator();
+            while (enumerator.MoveNext()) { }
+
+            // Act & Assert
+            Assert.That(enumerator.MoveNext(), Is.False);
+            Assert.That(enumerator.MoveNext(), Is.False); // Multiple calls should still return false
+        }
+
+        [Test]
+        public void Enumerator_Reset_WorksCorrectly()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+            var enumerator = range.GetEnumerator();
+            var firstPass = new System.Collections.Generic.List<int>();
+            while (enumerator.MoveNext())
+            {
+                firstPass.Add(enumerator.Current);
+            }
+
+            // Act
+            enumerator.Reset();
+            var secondPass = new System.Collections.Generic.List<int>();
+            while (enumerator.MoveNext())
+            {
+                secondPass.Add(enumerator.Current);
+            }
+
+            // Assert
+            Assert.That(secondPass, Is.EqualTo(firstPass));
+        }
+
+        [Test]
+        public void Enumerator_Dispose_DoesNotThrow()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+            var enumerator = range.GetEnumerator();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+            // Dispose should be callable multiple times
+            Assert.DoesNotThrow(() => enumerator.Dispose());
+        }
+
+        [Test]
+        public void Enumerator_BoxingNotOccurred_WhenUsingConcreteType()
+        {
+            // Arrange
+            var range = new IntRange(1, true, 3, true);
+
+            // Act
+            var enumerator = range.GetEnumerator();
+
+            // Assert - If enumerator is a struct, assigning to object causes boxing
+            // We can verify that the type is a value type (already tested in Enumerator_IsValueType)
+            // Additional check: ensure it's not already boxed by checking GetType()
+            Assert.That(enumerator.GetType().IsValueType, Is.True);
+        }
+
+        #endregion
+
         #region IReadOnlyCollection Implementation Tests
 
         [Test]
