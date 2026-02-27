@@ -1,4 +1,5 @@
 using System;
+using JiksLib.Control;
 
 namespace JiksLib.PerformanceTest.Control
 {
@@ -18,10 +19,12 @@ namespace JiksLib.PerformanceTest.Control
         public string Message { get; set; } = string.Empty;
     }
 
+    public interface IValueEvent { }
+
     /// <summary>
     /// 测试值类型事件
     /// </summary>
-    public struct TestValueEvent
+    public struct TestValueEvent : IValueEvent
     {
         public int Value { get; set; }
     }

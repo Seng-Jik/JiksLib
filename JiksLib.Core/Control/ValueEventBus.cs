@@ -8,7 +8,9 @@ namespace JiksLib.Control
     /// 可以发布值类型的事件
     /// 仅支持在主线程上使用
     /// </summary>
-    public sealed class ValueEventBus
+    /// <typeparam name="TConstraint">约定事件类型必须实现某一接口</typeparam>
+    public sealed class ValueEventBus<TConstraint>
+        where TConstraint : class
     {
         /// <summary>
         /// 构造值类型事件总线，同时构造其事件发布器
@@ -24,27 +26,27 @@ namespace JiksLib.Control
         /// 注册某一类型的事件监听器
         /// </summary>
         public void AddListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct => eventBus.AddListener(listener);
+            where TEvent : struct, TConstraint => eventBus.AddListener(listener);
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
         public void RemoveListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct => eventBus.RemoveListener(listener);
+            where TEvent : struct, TConstraint => eventBus.RemoveListener(listener);
 
         /// <summary>
         /// 仅监听一次某个事件，之后自动移除监听器
         /// 该监听器不能使用RemoveListener移除
         /// </summary>
         public void ListenOnce<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct => eventBus.ListenOnce(listener);
+            where TEvent : struct, TConstraint => eventBus.ListenOnce(listener);
 
         /// <summary>
         /// 事件发布器
         /// </summary>
         public readonly struct Publisher
         {
-            internal Publisher(EventBus<ValueType> eventBus)
+            internal Publisher(EventBus<TConstraint> eventBus)
             {
                 this.eventBus = eventBus;
             }
@@ -54,9 +56,10 @@ namespace JiksLib.Control
             /// </summary>
             /// <param name="@event">事件对象</param>
             /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
-            public void Publish<T>(
-                T @event,
-                IList<Exception>? exceptionsOutput) where T : struct
+            public void Publish<TEvent>(
+                TEvent @event,
+                IList<Exception>? exceptionsOutput)
+                where TEvent : struct, TConstraint
             {
                 if (eventBus.invoking)
                     throw new InvalidOperationException(
@@ -66,8 +69,8 @@ namespace JiksLib.Control
                 {
                     eventBus.invoking = true;
 
-                    if (eventBus.listenerSets.TryGetValue(typeof(T), out var h))
-                        ((EventBus<ValueType>.EventBusListenerSet<T>)h).Invoke(
+                    if (eventBus.listenerSets.TryGetValue(typeof(TEvent), out var h))
+                        ((EventBus<TConstraint>.EventBusListenerSet<TEvent>)h).Invoke(
                             @event,
                             exceptionsOutput);
                 }
@@ -77,9 +80,9 @@ namespace JiksLib.Control
                 }
             }
 
-            readonly EventBus<ValueType> eventBus;
+            readonly EventBus<TConstraint> eventBus;
         }
 
-        readonly EventBus<ValueType> eventBus;
+        readonly EventBus<TConstraint> eventBus;
     }
 }

@@ -7,7 +7,11 @@ using System.Linq;
 namespace JiksLib.Test.Control
 {
     // 测试用的值类型事件
-    public struct TestValueEventA
+    public interface IValueEvent
+    {
+    }
+
+    public struct TestValueEventA : IValueEvent
     {
         public string Message { get; }
         public int Value { get; }
@@ -19,7 +23,7 @@ namespace JiksLib.Test.Control
         }
     }
 
-    public struct TestValueEventB
+    public struct TestValueEventB : IValueEvent
     {
         public float X { get; }
         public float Y { get; }
@@ -32,7 +36,7 @@ namespace JiksLib.Test.Control
     }
 
     // 大型值类型用于测试拷贝行为
-    public struct LargeValueEvent
+    public struct LargeValueEvent : IValueEvent
     {
         public long Data1 { get; }
         public long Data2 { get; }
@@ -65,7 +69,7 @@ namespace JiksLib.Test.Control
         public void Constructor_CreatesPublisher()
         {
             // Arrange & Act
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
 
             // Assert
             Assert.That(eventBus, Is.Not.Null);
@@ -75,7 +79,7 @@ namespace JiksLib.Test.Control
         public void AddListener_ThenPublish_CallsListener()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var eventReceived = false;
             TestValueEventA receivedEvent = default;
 
@@ -102,7 +106,7 @@ namespace JiksLib.Test.Control
         public void AddMultipleListeners_AllAreCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
 
@@ -125,7 +129,7 @@ namespace JiksLib.Test.Control
         public void RemoveListener_ListenerNotCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void Listener(TestValueEventA e) => callCount++;
@@ -148,7 +152,7 @@ namespace JiksLib.Test.Control
         public void RemoveListener_OtherListenersStillCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
 
@@ -179,7 +183,7 @@ namespace JiksLib.Test.Control
         public void ListenerThrowsException_ExceptionCollected()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var exceptionMessage = "Test exception";
 
             eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException(exceptionMessage));
@@ -200,7 +204,7 @@ namespace JiksLib.Test.Control
         public void MultipleListenersThrowExceptions_AllExceptionsCollected()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
 
             eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException("Exception 1"));
             eventBus.AddListener<TestValueEventA>(e => throw new ArgumentException("Exception 2"));
@@ -221,7 +225,7 @@ namespace JiksLib.Test.Control
         public void SomeListenersThrowExceptions_OthersStillCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var successfulCallCount = 0;
 
             eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException("Error"));
@@ -242,7 +246,7 @@ namespace JiksLib.Test.Control
         public void ExceptionsOutputNull_ExceptionsSilentlyIgnored()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException("Error"));
@@ -265,7 +269,7 @@ namespace JiksLib.Test.Control
         public void PublishEventWithNoListeners_DoesNothing()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var testEvent = new TestValueEventA("Test", 555);
 
             // Act
@@ -281,7 +285,7 @@ namespace JiksLib.Test.Control
         public void AddSameListenerMultipleTimes_CalledMultipleTimes()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void Listener(TestValueEventA e) => callCount++;
@@ -305,7 +309,7 @@ namespace JiksLib.Test.Control
         public void RemoveListenerNotAdded_NoEffect()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void Listener(TestValueEventA e) => callCount++;
@@ -329,7 +333,7 @@ namespace JiksLib.Test.Control
         public void PublishDefaultValueEvent_WorksCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var receivedValue = 0;
 
             eventBus.AddListener<TestValueEventA>(e => receivedValue = e.Value);
@@ -353,7 +357,7 @@ namespace JiksLib.Test.Control
         public void MultipleEventTypes_ListenersOnlyRespondToTheirType()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var eventACount = 0;
             var eventBCount = 0;
 
@@ -378,7 +382,7 @@ namespace JiksLib.Test.Control
         public void LargeValueEvent_CopiesCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             long receivedData1 = 0;
             long receivedData8 = 0;
 
@@ -408,7 +412,7 @@ namespace JiksLib.Test.Control
         public void AddManyListeners_AllCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             const int listenerCount = 100;
             var callCounts = new int[listenerCount];
 
@@ -437,7 +441,7 @@ namespace JiksLib.Test.Control
         public void RemoveManyListeners_NoneCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             const int listenerCount = 50;
             var listeners = new EventBusListener<TestValueEventA>[listenerCount];
 
@@ -475,7 +479,7 @@ namespace JiksLib.Test.Control
         public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var originalCallCount = 0;
             var addedDuringPublishCallCount = 0;
 
@@ -514,7 +518,7 @@ namespace JiksLib.Test.Control
         public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void ListenerToRemove(TestValueEventA e) => callCount++;
@@ -552,7 +556,7 @@ namespace JiksLib.Test.Control
         public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCountA = 0;
             var callCountB = 0;
             var callCountC = 0;
@@ -597,7 +601,7 @@ namespace JiksLib.Test.Control
         public void PublishDuringPublish_ThrowsInvalidOperationException()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var innerPublishAttempted = false;
 
             eventBus.AddListener<TestValueEventA>(e =>
@@ -627,7 +631,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_CalledOnlyOnce()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             eventBus.ListenOnce<TestValueEventA>(e => callCount++);
@@ -655,7 +659,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_MultipleOnceListeners_EachCalledOnlyOnce()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount1 = 0;
             var callCount2 = 0;
             var callCount3 = 0;
@@ -691,7 +695,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_WithRegularListener_BothWorkCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var onceCallCount = 0;
             var regularCallCount = 0;
 
@@ -723,7 +727,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_ThrowsException_StillRemoved()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var exceptionMessage = "一次性监听器异常";
             var exceptionsCollected = new List<Exception>();
 
@@ -751,7 +755,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_CannotRemoveBeforePublish_StillCalled()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void OnceListener(TestValueEventA e) => callCount++;
@@ -774,7 +778,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_SameListenerAddedMultipleTimes_EachCalledOnce()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void OnceListener(TestValueEventA e) => callCount++;
@@ -807,7 +811,7 @@ namespace JiksLib.Test.Control
         public void ListenOnceDuringPublish_ListenerNotCalledUntilNextPublishButCalledOnlyOnce()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var originalCallCount = 0;
             var onceListenerCallCount = 0;
             var onceListenerAdded = false;
@@ -860,7 +864,7 @@ namespace JiksLib.Test.Control
         public void ListenOnce_WhenInvoking_RemovedSafely()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
             var onceListenerCallCount = 0;
 
@@ -906,7 +910,7 @@ namespace JiksLib.Test.Control
         public void ValueType_MutationDoesNotAffectOriginal()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var mutableEvent = new MutableValueEvent { Value = 100 };
             var receivedValue = 0;
 
@@ -930,7 +934,7 @@ namespace JiksLib.Test.Control
         public void ValueType_DefaultValueWorks()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var receivedEvent = default(TestValueEventA);
             var receivedCount = 0;
 
@@ -952,7 +956,7 @@ namespace JiksLib.Test.Control
         }
 
         // 用于突变测试的可变值类型
-        private struct MutableValueEvent
+        private struct MutableValueEvent : IValueEvent
         {
             public int Value;
         }
@@ -965,7 +969,7 @@ namespace JiksLib.Test.Control
         public void RemoveThenAddListener_WorksCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void Listener(TestValueEventA e) => callCount++;
@@ -1008,7 +1012,7 @@ namespace JiksLib.Test.Control
         public void MultiplePublish_CallsListenerEachTime()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             eventBus.AddListener<TestValueEventA>(e => callCount++);
@@ -1031,7 +1035,7 @@ namespace JiksLib.Test.Control
         public void ComplexConcurrentModification_WorksCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var results = new List<string>();
             var bAdded = false;
 
@@ -1089,7 +1093,7 @@ namespace JiksLib.Test.Control
         public void ListenerOrder_PreservedAfterRemovals()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callOrder = new List<int>();
 
             void Listener1(TestValueEventA e) => callOrder.Add(1);
@@ -1122,7 +1126,7 @@ namespace JiksLib.Test.Control
         public void NoListenersAfterRemoval_NoExceptions()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             void Listener(TestValueEventA e) => callCount++;
@@ -1149,7 +1153,7 @@ namespace JiksLib.Test.Control
         public void NonStructType_CannotBeUsedAsEvent()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
 
             // Act & Assert - 尝试为非值类型添加监听器应该编译失败
             // 此测试验证泛型约束 where T : struct 有效
@@ -1161,7 +1165,7 @@ namespace JiksLib.Test.Control
         public void NullableValueType_CannotBeUsed()
         {
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
 
             // Act & Assert - 可空值类型不是值类型，应编译失败
             // 同样，这是编译时检查
@@ -1179,7 +1183,7 @@ namespace JiksLib.Test.Control
             // 通过多次发布验证性能
 
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
             LargeValueEvent lastEvent = default;
 
@@ -1210,7 +1214,7 @@ namespace JiksLib.Test.Control
             // 测试ListenOnce监听器抛出异常时仍然被移除
 
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCount = 0;
 
             eventBus.ListenOnce<TestValueEventA>(e =>
@@ -1241,7 +1245,7 @@ namespace JiksLib.Test.Control
             // 测试在监听器内部尝试发布事件会抛出异常
 
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var innerCallCount = 0;
             var exceptionThrown = false;
 
@@ -1279,7 +1283,7 @@ namespace JiksLib.Test.Control
             // 测试同一事件类型的多个监听器都被调用
 
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var callCounts = new int[10];
 
             for (int i = 0; i < 10; i++)
@@ -1311,7 +1315,7 @@ namespace JiksLib.Test.Control
             // 测试默认值类型事件可以被正确发布
 
             // Arrange
-            var eventBus = new ValueEventBus(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var receivedEvent = default(TestValueEventA);
             var callCount = 0;
 

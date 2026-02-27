@@ -11,8 +11,8 @@ namespace JiksLib.PerformanceTest.Control
     [MemoryDiagnoser]
     public class ValueEventBusBenchmarks
     {
-        private ValueEventBus valueEventBus = null!;
-        private ValueEventBus.Publisher publisher;
+        private ValueEventBus<IValueEvent> valueEventBus = null!;
+        private ValueEventBus<IValueEvent>.Publisher publisher;
         private List<EventBusListener<TestValueEvent>> listeners = null!;
 
         [Params(1)]
@@ -34,7 +34,7 @@ namespace JiksLib.PerformanceTest.Control
         [IterationSetup]
         public void IterationSetup()
         {
-            valueEventBus = new ValueEventBus(out var pub);
+            valueEventBus = new ValueEventBus<IValueEvent>(out var pub);
             publisher = pub;
         }
 
@@ -42,13 +42,13 @@ namespace JiksLib.PerformanceTest.Control
         public void IterationSetup_WithListeners()
         {
             // 初始化 valueEventBus
-            valueEventBus = new ValueEventBus(out var pub);
+            valueEventBus = new ValueEventBus<IValueEvent>(out var pub);
             publisher = pub;
 
             // 添加监听器
             foreach (var listener in listeners)
             {
-                valueEventBus.AddListener(listener);
+                valueEventBus.AddListener<TestValueEvent>(listener);
             }
         }
 
@@ -76,7 +76,7 @@ namespace JiksLib.PerformanceTest.Control
         {
             foreach (var listener in listeners)
             {
-                valueEventBus.AddListener(listener);
+                valueEventBus.AddListener<TestValueEvent>(listener);
             }
 
             // 立即移除监听器以避免内存累积

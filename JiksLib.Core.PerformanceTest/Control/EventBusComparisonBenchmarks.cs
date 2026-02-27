@@ -13,8 +13,8 @@ namespace JiksLib.PerformanceTest.Control
     {
         private EventBus<TestEvent> refEventBus = null!;
         private EventBus<TestEvent>.Publisher refPublisher;
-        private ValueEventBus valueEventBus = null!;
-        private ValueEventBus.Publisher valuePublisher;
+        private ValueEventBus<IValueEvent> valueEventBus = null!;
+        private ValueEventBus<IValueEvent>.Publisher valuePublisher;
         private List<EventBusListener<TestEvent>> refListeners = null!;
         private List<EventBusListener<TestValueEvent>> valueListeners = null!;
 
@@ -26,7 +26,7 @@ namespace JiksLib.PerformanceTest.Control
         {
             refEventBus = new EventBus<TestEvent>(out var refPub);
             refPublisher = refPub;
-            valueEventBus = new ValueEventBus(out var valuePub);
+            valueEventBus = new ValueEventBus<IValueEvent>(out var valuePub);
             valuePublisher = valuePub;
 
             refListeners = new List<EventBusListener<TestEvent>>(ListenerCount);
