@@ -125,5 +125,84 @@ namespace JiksLib.UI
             readonly Dictionary<TRedPointKey, (TUserData, RedPointChecker?, TRedPointKey[])>
                 redPointLayout = new();
         }
+
+        private abstract class RedPoint
+        {
+            internal readonly TUserData UserData;
+            internal readonly TRedPointKey Key;
+            internal readonly List<RedPoint> Parents;
+
+            internal RedPoint(TRedPointKey key, TUserData userData)
+            {
+                Key = key;
+                UserData = userData;
+                Parents = new();
+            }
+
+            internal abstract bool Check(out int number);
+            internal abstract bool Check();
+        }
+
+        private sealed class RedPointLeaf : RedPoint
+        {
+            readonly RedPointChecker checker;
+
+            internal RedPointLeaf(
+                TRedPointKey key,
+                TUserData userData,
+                RedPointChecker checker)
+                : base(key, userData)
+            {
+                this.checker = checker;
+            }
+
+            internal override bool Check(out int number)
+            {
+                if (checker(Key, UserData, out number))
+                    return true;
+
+                number = 0;
+                return false;
+            }
+
+            internal override bool Check() =>
+                checker(Key, UserData, out _);
+        }
+
+        private sealed class RedPointComposite : RedPoint
+        {
+            internal readonly List<RedPoint> Children = new();
+
+            internal RedPointComposite(
+                TRedPointKey key,
+                TUserData userData) : base(key, userData)
+            { }
+
+            internal override bool Check(out int number)
+            {
+                number = 0;
+                bool result = false;
+
+                foreach (var child in Children)
+                {
+                    if (child.Check(out var childNumber))
+                    {
+                        number += childNumber;
+                        result = true;
+                    }
+                }
+
+                return result;
+            }
+
+            internal override bool Check()
+            {
+                foreach (var child in Children)
+                    if (child.Check())
+                        return true;
+
+                return false;
+            }
+        }
     }
 }
