@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using JiksLib.Control;
+using JiksLib.Extensions;
 
 namespace JiksLib.UI
 {
@@ -35,7 +39,7 @@ namespace JiksLib.UI
         /// <summary>
         /// 红点检查器
         /// </summary>
-        public interface IRedPointChecker<TKeyB> : IRedPointChecker
+        public interface IRedPointChecker<in TKeyB> : IRedPointChecker
             where TKeyB : notnull
         {
             /// <summary>
@@ -179,7 +183,7 @@ namespace JiksLib.UI
                 IRedPointChecker<TKeyB> checker)
                 where TKeyB : notnull
             {
-                throw new NotImplementedException();
+                layout.Add(keyA, (null, checker));
             }
 
             /// <summary>
@@ -187,11 +191,16 @@ namespace JiksLib.UI
             /// KeyB 会被设置为 UnitType
             /// </summary>
             public void AddSimple(
-                TKeyA key,
+                TKeyA keyA,
                 SimpleRedPointChecker checker,
                 TUserData userData)
             {
-                throw new NotImplementedException();
+                AddFamily(
+                    keyA,
+                    new SimpleRedPointCheckerWrapper(
+                        keyA,
+                        userData,
+                        checker));
             }
 
             /// <summary>
@@ -199,11 +208,11 @@ namespace JiksLib.UI
             /// 当一个子红点有值时，该红点有值
             /// </summary>
             public void AddComposite(
-                TKeyA key,
+                TKeyA keyA,
                 TUserData userData,
                 params TKeyA[] children)
             {
-                throw new NotImplementedException();
+                layout.Add(keyA, ((userData, children), null!));
             }
 
             /// <summary>
@@ -211,7 +220,183 @@ namespace JiksLib.UI
             /// </summary>
             public RedPointSolver<TKeyA, TUserData> Build()
             {
-                throw new NotImplementedException();
+                if (built)
+                    throw new InvalidOperationException(
+                        "Build() is already called or broken, create a new builder and retry.");
+
+                built = true;
+                Dictionary<TKeyA, RedPointFamily> result = new();
+                Dictionary<TKeyA, RedPointFamily> currentRoundCreated = new();
+
+                while (layout.Count > 0)
+                {
+                    var firstKey = layout.Keys.First();
+                    BuildRedPointFamily(result, currentRoundCreated, firstKey);
+
+                    foreach (var i in currentRoundCreated)
+                        result.Add(i.Key, i.Value);
+
+                    currentRoundCreated.Clear();
+                }
+
+                return new(result);
+            }
+
+            RedPointFamily BuildRedPointFamily(
+                IReadOnlyDictionary<TKeyA, RedPointFamily> alreadyBuilt,
+                Dictionary<TKeyA, RedPointFamily> currentRoundCreated,
+                TKeyA keyA)
+            {
+                if (alreadyBuilt.TryGetValue(keyA, out var redPoint))
+                    return redPoint;
+
+                if (layout.TryGetValue(keyA, out var value))
+                {
+                    layout.Remove(keyA);
+
+                    if (value.Item1 != null)
+                    {
+                        var childrenKeys = value.Item1.Value.Item2;
+
+                        RedPointFamily[] children =
+                            new RedPointFamily[childrenKeys.Length];
+
+                        for (int i = 0; i < childrenKeys.Length; ++i)
+                            children[i] =
+                                BuildRedPointFamily(
+                                    alreadyBuilt,
+                                    currentRoundCreated,
+                                    childrenKeys[i]);
+
+                        RedPointFamily c = new(new Composite(
+                            value.Item1.Value.Item1, children));
+
+                        currentRoundCreated.Add(keyA, c);
+                        return c;
+                    }
+                    else
+                    {
+                        RedPointFamily f = new(value.Item2);
+                        currentRoundCreated.Add(keyA, f);
+                        return f;
+                    }
+                }
+
+                if (currentRoundCreated.ContainsKey(keyA))
+                {
+                    throw new InvalidOperationException(
+                        $"KeyA {keyA} is in a cycle, or has circle in red point dependency.");
+                }
+
+                throw new InvalidOperationException(
+                    $"KeyA {keyA} not found in layout.");
+            }
+
+            readonly Dictionary<TKeyA, ((TUserData userData, TKeyA[])?, IRedPointChecker)>
+                layout = new();
+
+            bool built = false;
+
+            private sealed class SimpleRedPointCheckerWrapper :
+                IRedPointChecker<UnitType>
+            {
+                readonly TKeyA keyA;
+                readonly TUserData userData;
+                readonly SimpleRedPointChecker checker;
+
+                internal SimpleRedPointCheckerWrapper(
+                    TKeyA keyA,
+                    TUserData userData,
+                    SimpleRedPointChecker checker)
+                {
+                    this.keyA = keyA;
+                    this.userData = userData;
+                    this.checker = checker.ThrowIfNull();
+                }
+
+                public bool Check(
+                    UnitType _,
+                    out int redPointNumber,
+                    out TUserData userData)
+                {
+                    userData = this.userData;
+
+                    if (!checker(keyA, out redPointNumber))
+                    {
+                        redPointNumber = 0;
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                public bool CheckFamily(out int redPointNumberSum) =>
+                    checker(keyA, out redPointNumberSum);
+
+                public bool CheckFamily() => checker(keyA, out _);
+            }
+
+            private sealed class Composite : IRedPointChecker<UnitType>
+            {
+                readonly TUserData userData;
+                readonly RedPointFamily[] children;
+
+                public Composite(
+                    TUserData userData,
+                    RedPointFamily[] children)
+                {
+                    this.userData = userData;
+                    this.children = children;
+                }
+
+                public bool Check(
+                    UnitType _,
+                    out int redPointNumber,
+                    out TUserData userData)
+                {
+                    userData = this.userData;
+                    return CheckFamily(out redPointNumber);
+                }
+
+                public bool CheckFamily(out int redPointNumberSum)
+                {
+                    bool result = false;
+                    redPointNumberSum = 0;
+
+                    foreach (var i in children)
+                    {
+                        if (i.Checker.CheckFamily(out var number))
+                        {
+                            result = true;
+                            redPointNumberSum += number;
+                        }
+                    }
+
+                    return result;
+                }
+
+                public bool CheckFamily()
+                {
+                    foreach (var i in children)
+                        if (i.Checker.CheckFamily())
+                            return true;
+
+                    return false;
+                }
+            }
+        }
+
+        RedPointSolver(IReadOnlyDictionary<TKeyA, RedPointFamily> families)
+        {
+        }
+
+        private sealed class RedPointFamily
+        {
+            internal readonly IRedPointChecker Checker;
+
+            internal RedPointFamily(IRedPointChecker redPointChecker)
+            {
+                Checker = redPointChecker;
             }
         }
     }
