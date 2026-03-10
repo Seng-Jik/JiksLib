@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace JiksLib.UI
 {
+    // todo: 暴露出RedPoint类
     /// <summary>
     /// 红点解算器
     /// 红点构成一个有向无环图
@@ -206,3 +207,4 @@ namespace JiksLib.UI
         }
     }
 }
+
