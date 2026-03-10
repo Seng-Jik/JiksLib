@@ -1,7 +1,7 @@
 using System;
 using JiksLib.Extensions;
 
-namespace JiksLib
+namespace JiksLib.UI
 {
     /// <summary>
     /// 进度报告器

@@ -1,9 +1,9 @@
 using NUnit.Framework;
-using JiksLib;
+using JiksLib.UI;
 using System;
 using System.Collections.Generic;
 
-namespace JiksLib.Test
+namespace JiksLib.Test.UI
 {
     [TestFixture]
     public class ProgressTests
