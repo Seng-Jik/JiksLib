@@ -225,8 +225,8 @@ namespace JiksLib.UI
                         "Build() is already called or broken, create a new builder and retry.");
 
                 built = true;
-                Dictionary<TKeyA, RedPointFamily> result = new();
-                Dictionary<TKeyA, RedPointFamily> currentRoundCreated = new();
+                Dictionary<TKeyA, RedPointNode> result = new();
+                Dictionary<TKeyA, RedPointNode> currentRoundCreated = new();
 
                 while (layout.Count > 0)
                 {
@@ -239,12 +239,19 @@ namespace JiksLib.UI
                     currentRoundCreated.Clear();
                 }
 
+                foreach (var i in result.Values)
+                    foreach (var child in i.Children)
+                        child.Parents.Add(i);
+
+                foreach (var i in result.Values)
+                    i.Parents.TrimExcess();
+
                 return new(result);
             }
 
-            RedPointFamily BuildRedPointFamily(
-                IReadOnlyDictionary<TKeyA, RedPointFamily> alreadyBuilt,
-                Dictionary<TKeyA, RedPointFamily> currentRoundCreated,
+            RedPointNode BuildRedPointFamily(
+                IReadOnlyDictionary<TKeyA, RedPointNode> alreadyBuilt,
+                Dictionary<TKeyA, RedPointNode> currentRoundCreated,
                 TKeyA keyA)
             {
                 if (alreadyBuilt.TryGetValue(keyA, out var redPoint))
@@ -258,8 +265,8 @@ namespace JiksLib.UI
                     {
                         var childrenKeys = value.Item1.Value.Item2;
 
-                        RedPointFamily[] children =
-                            new RedPointFamily[childrenKeys.Length];
+                        RedPointNode[] children =
+                            new RedPointNode[childrenKeys.Length];
 
                         for (int i = 0; i < childrenKeys.Length; ++i)
                             children[i] =
@@ -268,15 +275,17 @@ namespace JiksLib.UI
                                     currentRoundCreated,
                                     childrenKeys[i]);
 
-                        RedPointFamily c = new(new Composite(
-                            value.Item1.Value.Item1, children));
+                        RedPointComposite c = new(
+                            keyA,
+                            value.Item1.Value.userData,
+                            children);
 
                         currentRoundCreated.Add(keyA, c);
                         return c;
                     }
                     else
                     {
-                        RedPointFamily f = new(value.Item2);
+                        RedPointLeaf f = new(keyA, value.Item2);
                         currentRoundCreated.Add(keyA, f);
                         return f;
                     }
@@ -335,70 +344,52 @@ namespace JiksLib.UI
 
                 public bool CheckFamily() => checker(keyA, out _);
             }
+        }
 
-            private sealed class Composite : IRedPointChecker<UnitType>
+        RedPointSolver(IReadOnlyDictionary<TKeyA, RedPointNode> redNodeGraph)
+        {
+            graph = redNodeGraph;
+        }
+
+        readonly IReadOnlyDictionary<TKeyA, RedPointNode> graph;
+
+        private abstract class RedPointNode
+        {
+            internal readonly TKeyA KeyA;
+            internal readonly List<RedPointNode> Parents = new();
+            internal readonly RedPointNode[] Children;
+
+            internal RedPointNode(
+                TKeyA keyA,
+                RedPointNode[] children)
             {
-                readonly TUserData userData;
-                readonly RedPointFamily[] children;
-
-                public Composite(
-                    TUserData userData,
-                    RedPointFamily[] children)
-                {
-                    this.userData = userData;
-                    this.children = children;
-                }
-
-                public bool Check(
-                    UnitType _,
-                    out int redPointNumber,
-                    out TUserData userData)
-                {
-                    userData = this.userData;
-                    return CheckFamily(out redPointNumber);
-                }
-
-                public bool CheckFamily(out int redPointNumberSum)
-                {
-                    bool result = false;
-                    redPointNumberSum = 0;
-
-                    foreach (var i in children)
-                    {
-                        if (i.Checker.CheckFamily(out var number))
-                        {
-                            result = true;
-                            redPointNumberSum += number;
-                        }
-                    }
-
-                    return result;
-                }
-
-                public bool CheckFamily()
-                {
-                    foreach (var i in children)
-                        if (i.Checker.CheckFamily())
-                            return true;
-
-                    return false;
-                }
+                KeyA = keyA;
+                Children = children;
             }
         }
 
-        RedPointSolver(IReadOnlyDictionary<TKeyA, RedPointFamily> families)
-        {
-        }
-
-        private sealed class RedPointFamily
+        private sealed class RedPointLeaf : RedPointNode
         {
             internal readonly IRedPointChecker Checker;
 
-            internal RedPointFamily(IRedPointChecker redPointChecker)
+            internal RedPointLeaf(TKeyA keyA, IRedPointChecker redPointChecker) :
+                base(keyA, Array.Empty<RedPointNode>())
             {
                 Checker = redPointChecker;
             }
         }
+
+        private sealed class RedPointComposite : RedPointNode
+        {
+            readonly TUserData userData;
+
+            internal RedPointComposite(
+                TKeyA keyA,
+                TUserData userData,
+                RedPointNode[] children) : base(keyA, children)
+            {
+                this.userData = userData;
+            }
+        }
     }
 }
-
