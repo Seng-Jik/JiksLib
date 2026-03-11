@@ -27,12 +27,12 @@ namespace JiksLib.UI
             /// </summary>
             /// <param name="redPointNumberSum">所有红点的值之和</param>
             /// <returns>是否有红点</returns>
-            bool Check(out int redPointNumberSum);
+            bool CheckFamily(out int redPointNumberSum);
 
             /// <summary>
             /// 是否存在任一红点
             /// </summary>
-            bool Check();
+            bool CheckFamily();
         }
 
         /// <summary>
@@ -101,28 +101,6 @@ namespace JiksLib.UI
                 throw new NotImplementedException();
             }
 
-            /// <summary>
-            /// 为该红点家族下所有的红点添加监听器
-            /// 只能用 RemoveListenerForFamily 删除
-            /// </summary>
-            public void AddListenerForFamily<TKeyB>(
-                RedPointListener<TKeyB> listener)
-                where TKeyB : notnull
-            {
-                throw new NotImplementedException();
-            }
-
-            /// <summary>
-            /// 为该红点家族下的所有红点删除监听器
-            /// 只能用 AddListenerForFamily 添加的监听器
-            /// </summary>
-            public void RemoveListenerForFamily<TKeyB>(
-                RedPointListener<TKeyB> listener)
-                where TKeyB : notnull
-            {
-                throw new NotImplementedException();
-            }
-
             internal readonly TKeyA KeyA;
             internal readonly List<RedPointFamily> Parents = new();
             internal readonly RedPointFamily[] Children;
@@ -183,6 +161,27 @@ namespace JiksLib.UI
             /// </summary>
             public void RemoveListener(
                 TKeyB keyB,
+                RedPointListener<TKeyB> listener)
+            {
+                throw new NotImplementedException();
+            }
+
+
+            /// <summary>
+            /// 为该红点家族下所有的红点添加监听器
+            /// 只能用 RemoveListenerForFamily 删除
+            /// </summary>
+            public void AddListenerForFamily(
+                RedPointListener<TKeyB> listener)
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 为该红点家族下的所有红点删除监听器
+            /// 只能用 AddListenerForFamily 添加的监听器
+            /// </summary>
+            public void RemoveListenerForFamily(
                 RedPointListener<TKeyB> listener)
             {
                 throw new NotImplementedException();
