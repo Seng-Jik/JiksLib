@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JiksLib.Control;
-using JiksLib.Extensions;
 
 namespace JiksLib.UI
 {
@@ -39,9 +38,17 @@ namespace JiksLib.UI
         /// <summary>
         /// 红点检查器
         /// </summary>
-        public interface IRedPointChecker<in TKeyB> : IRedPointChecker
+        public interface IRedPointChecker<TKeyB> : IRedPointChecker
             where TKeyB : notnull
         {
+            public delegate void OnRedPointChangedHandler(
+                IEnumerable<TKeyB> keyB);
+
+            /// <summary>
+            /// 当有一个或多个红点状态发生改变时触发该事件
+            /// </summary>
+            event OnRedPointChangedHandler? OnRedPointChanged;
+
             /// <summary>
             /// 检查单个红点
             /// </summary>
@@ -66,48 +73,6 @@ namespace JiksLib.UI
             out int number);
 
         /// <summary>
-        /// 检查红点是否存在及红点值
-        /// </summary>
-        public bool Check<TKeyB>(
-            TKeyA keyA,
-            TKeyB keyB,
-            out int number,
-            out TUserData userData)
-            where TKeyB : notnull
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 检查红点是否存在，不计算红点值
-        /// 不需要红点值时使用该函数，性能更好
-        /// </summary>
-        public bool Check<TKeyB>(
-            TKeyA keyA,
-            TKeyB keyB,
-            out TUserData userData)
-            where TKeyB : notnull
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 检查所有一级红点键为 keyA 的红点是否存在，并返回它们的和
-        /// </summary>
-        public bool Check(TKeyA keyA, out int number)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 检查是否存在一级红点键为 keyA 的红点
-        /// </summary>
-        public bool Check(TKeyA keyA)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
         /// 红点监听器
         /// </summary>
         /// <typeparam name="TKeyB">二级红点键</typeparam>
@@ -118,54 +83,129 @@ namespace JiksLib.UI
             int? redPointNumber)
             where TKeyB : notnull;
 
-        /// <summary>
-        /// 为键为 (keyA, keyB) 的红点添加监听器
-        /// 只能用 RemoveListener 删除
-        /// </summary>
-        public void AddListener<TKeyB>(
-            TKeyA keyA,
-            TKeyB keyB,
-            RedPointListener<TKeyB> listener)
-            where TKeyB : notnull
+        public abstract class RedPointFamily
         {
-            throw new NotImplementedException();
+            /// <summary>
+            /// 检查该 RedFamily 中是否存在任一红点，且返回所有红点值的和
+            /// </summary>
+            public bool CheckFamily(out int number)
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 检查 RedFamily 中是否存在任一红点
+            /// </summary>
+            public bool CheckFamily()
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 为该红点家族下所有的红点添加监听器
+            /// 只能用 RemoveListenerForFamily 删除
+            /// </summary>
+            public void AddListenerForFamily<TKeyB>(
+                RedPointListener<TKeyB> listener)
+                where TKeyB : notnull
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 为该红点家族下的所有红点删除监听器
+            /// 只能用 AddListenerForFamily 添加的监听器
+            /// </summary>
+            public void RemoveListenerForFamily<TKeyB>(
+                RedPointListener<TKeyB> listener)
+                where TKeyB : notnull
+            {
+                throw new NotImplementedException();
+            }
+
+            internal readonly TKeyA KeyA;
+            internal readonly List<RedPointFamily> Parents = new();
+            internal readonly RedPointFamily[] Children;
+
+            internal RedPointFamily(
+                TKeyA keyA,
+                RedPointFamily[] children)
+            {
+                KeyA = keyA;
+                Children = children;
+            }
+
+            internal abstract bool RawCheckFamily(out int number);
+            internal abstract bool RawCheckFamily();
         }
 
-        /// <summary>
-        /// 为键为 (keyA, keyB) 的红点删除监听器
-        /// 只能删除用 AddListener 添加的监听器
-        /// </summary>
-        public void RemoveListener<TKeyB>(
-            TKeyA keyA,
-            TKeyB keyB,
-            RedPointListener<TKeyB> listener)
+
+        public abstract class RedPointFamily<TKeyB> : RedPointFamily
             where TKeyB : notnull
         {
-            throw new NotImplementedException();
+            /// <summary>
+            /// 检查红点是否存在及红点值
+            /// </summary>
+            public bool Check(
+                TKeyB keyB,
+                out int number,
+                out TUserData userData)
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 检查红点是否存在，不计算红点值
+            /// 不需要红点值时使用该函数，性能更好
+            /// </summary>
+            public bool Check(
+                TKeyA keyA,
+                TKeyB keyB,
+                out TUserData userData)
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 为键为 (keyA, keyB) 的红点添加监听器
+            /// 只能用 RemoveListener 删除
+            /// </summary>
+            public void AddListener(
+                TKeyB keyB,
+                RedPointListener<TKeyB> listener)
+            {
+                throw new NotImplementedException();
+            }
+
+            /// <summary>
+            /// 为键为 (keyA, keyB) 的红点删除监听器
+            /// 只能删除用 AddListener 添加的监听器
+            /// </summary>
+            public void RemoveListener(
+                TKeyB keyB,
+                RedPointListener<TKeyB> listener)
+            {
+                throw new NotImplementedException();
+            }
+
+            internal RedPointFamily(
+                TKeyA keyA,
+                RedPointFamily[] children) :
+                base(keyA, children)
+            { }
+
+            internal abstract bool RawCheck(
+                TKeyB keyB,
+                out int number,
+                out TUserData userData);
         }
 
-        /// <summary>
-        /// 所有一级红点键为 keyA 的红点添加监听器
-        /// 只能用 RemoveListenerForFamily 删除
-        /// </summary>
-        public void AddListenerForFamily<TKeyB>(
-            TKeyA keyA,
-            RedPointListener<TKeyB> listener)
-            where TKeyB : notnull
+        public abstract class RedPoint : RedPointFamily<UnitType>
         {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 为所有一级红点键为 keyA 的红点删除监听器
-        /// 只能用 AddListenerForFamily 添加的监听器
-        /// </summary>
-        public void RemoveListenerForFamily<TKeyB>(
-            TKeyA keyA,
-            RedPointListener<TKeyB> listener)
-            where TKeyB : notnull
-        {
-            throw new NotImplementedException();
+            internal RedPoint(
+                TKeyA keyA,
+                RedPointFamily[] children) : base(keyA, children)
+            { }
         }
 
         /// <summary>
@@ -183,7 +223,9 @@ namespace JiksLib.UI
                 IRedPointChecker<TKeyB> checker)
                 where TKeyB : notnull
             {
-                layout.Add(keyA, (null, checker));
+                layout.Add(
+                    keyA,
+                    (null, new RedPointCheckerWrapper<TKeyB>(keyA, checker)));
             }
 
             /// <summary>
@@ -195,12 +237,8 @@ namespace JiksLib.UI
                 SimpleRedPointChecker checker,
                 TUserData userData)
             {
-                AddFamily(
-                    keyA,
-                    new SimpleRedPointCheckerWrapper(
-                        keyA,
-                        userData,
-                        checker));
+                SimpleRedPointCheckerWrapper w = new(keyA, userData, checker);
+                layout.Add(keyA, (null, w));
             }
 
             /// <summary>
@@ -225,8 +263,8 @@ namespace JiksLib.UI
                         "Build() is already called or broken, create a new builder and retry.");
 
                 built = true;
-                Dictionary<TKeyA, RedPointNode> result = new();
-                Dictionary<TKeyA, RedPointNode> currentRoundCreated = new();
+                Dictionary<TKeyA, RedPointFamily> result = new();
+                Dictionary<TKeyA, RedPointFamily> currentRoundCreated = new();
 
                 while (layout.Count > 0)
                 {
@@ -249,9 +287,9 @@ namespace JiksLib.UI
                 return new(result);
             }
 
-            RedPointNode BuildRedPointFamily(
-                IReadOnlyDictionary<TKeyA, RedPointNode> alreadyBuilt,
-                Dictionary<TKeyA, RedPointNode> currentRoundCreated,
+            RedPointFamily BuildRedPointFamily(
+                IReadOnlyDictionary<TKeyA, RedPointFamily> alreadyBuilt,
+                Dictionary<TKeyA, RedPointFamily> currentRoundCreated,
                 TKeyA keyA)
             {
                 if (alreadyBuilt.TryGetValue(keyA, out var redPoint))
@@ -265,8 +303,8 @@ namespace JiksLib.UI
                     {
                         var childrenKeys = value.Item1.Value.Item2;
 
-                        RedPointNode[] children =
-                            new RedPointNode[childrenKeys.Length];
+                        RedPointFamily[] children =
+                            new RedPointFamily[childrenKeys.Length];
 
                         for (int i = 0; i < childrenKeys.Length; ++i)
                             children[i] =
@@ -285,9 +323,8 @@ namespace JiksLib.UI
                     }
                     else
                     {
-                        RedPointLeaf f = new(keyA, value.Item2);
-                        currentRoundCreated.Add(keyA, f);
-                        return f;
+                        currentRoundCreated.Add(keyA, value.Item2);
+                        return value.Item2;
                     }
                 }
 
@@ -301,94 +338,146 @@ namespace JiksLib.UI
                     $"KeyA {keyA} not found in layout.");
             }
 
-            readonly Dictionary<TKeyA, ((TUserData userData, TKeyA[])?, IRedPointChecker)>
+            readonly Dictionary<TKeyA, ((TUserData userData, TKeyA[])?, RedPointFamily)>
                 layout = new();
 
             bool built = false;
-
-            private sealed class SimpleRedPointCheckerWrapper :
-                IRedPointChecker<UnitType>
-            {
-                readonly TKeyA keyA;
-                readonly TUserData userData;
-                readonly SimpleRedPointChecker checker;
-
-                internal SimpleRedPointCheckerWrapper(
-                    TKeyA keyA,
-                    TUserData userData,
-                    SimpleRedPointChecker checker)
-                {
-                    this.keyA = keyA;
-                    this.userData = userData;
-                    this.checker = checker.ThrowIfNull();
-                }
-
-                public bool Check(
-                    UnitType _,
-                    out int redPointNumber,
-                    out TUserData userData)
-                {
-                    userData = this.userData;
-
-                    if (!checker(keyA, out redPointNumber))
-                    {
-                        redPointNumber = 0;
-                        return false;
-                    }
-
-                    return true;
-                }
-
-                public bool Check(out int redPointNumberSum) =>
-                    checker(keyA, out redPointNumberSum);
-
-                public bool Check() => checker(keyA, out _);
-            }
         }
 
-        RedPointSolver(IReadOnlyDictionary<TKeyA, RedPointNode> redNodeGraph)
+        RedPointSolver(IReadOnlyDictionary<TKeyA, RedPointFamily> redNodeGraph)
         {
             graph = redNodeGraph;
         }
 
-        readonly IReadOnlyDictionary<TKeyA, RedPointNode> graph;
+        readonly IReadOnlyDictionary<TKeyA, RedPointFamily> graph;
 
-        private abstract class RedPointNode
+
+        private sealed class RedPointCheckerWrapper<TKeyB> : RedPointFamily<TKeyB>
+            where TKeyB : notnull
         {
-            internal readonly TKeyA KeyA;
-            internal readonly List<RedPointNode> Parents = new();
-            internal readonly RedPointNode[] Children;
+            readonly IRedPointChecker<TKeyB> checker;
 
-            internal RedPointNode(
+            internal RedPointCheckerWrapper(
                 TKeyA keyA,
-                RedPointNode[] children)
+                IRedPointChecker<TKeyB> redPointChecker) :
+                base(keyA, Array.Empty<RedPointFamily>())
             {
-                KeyA = keyA;
-                Children = children;
+                checker = redPointChecker;
+            }
+
+            internal override bool RawCheck(
+                TKeyB keyB,
+                out int number,
+                out TUserData userData)
+            {
+                if (!checker.Check(keyB, out number, out userData))
+                {
+                    number = 0;
+                    return false;
+                }
+
+                return true;
+            }
+
+            internal override bool RawCheckFamily() =>
+                checker.CheckFamily();
+
+            internal override bool RawCheckFamily(out int number)
+            {
+                if (!checker.CheckFamily(out number))
+                {
+                    number = 0;
+                    return false;
+                }
+
+                return true;
             }
         }
 
-        private sealed class RedPointLeaf : RedPointNode
+        private sealed class SimpleRedPointCheckerWrapper : RedPoint
         {
-            internal readonly IRedPointChecker Checker;
+            internal readonly SimpleRedPointChecker Checker;
+            internal readonly TUserData userData;
 
-            internal RedPointLeaf(TKeyA keyA, IRedPointChecker redPointChecker) :
-                base(keyA, Array.Empty<RedPointNode>())
+            internal SimpleRedPointCheckerWrapper(
+                TKeyA keyA,
+                TUserData userData,
+                SimpleRedPointChecker checker) :
+                base(keyA, Array.Empty<RedPointFamily>())
             {
-                Checker = redPointChecker;
+                Checker = checker;
+                this.userData = userData;
             }
+
+            internal override bool RawCheck(
+                UnitType keyB,
+                out int number,
+                out TUserData userData)
+            {
+                userData = this.userData;
+                return RawCheckFamily(out number);
+            }
+
+            internal override bool RawCheckFamily(out int number)
+            {
+                if (!Checker(KeyA, out number))
+                {
+                    number = 0;
+                    return false;
+                }
+
+                return true;
+            }
+
+            internal override bool RawCheckFamily() =>
+                RawCheckFamily(out _);
         }
 
-        private sealed class RedPointComposite : RedPointNode
+        private sealed class RedPointComposite : RedPoint
         {
             readonly TUserData userData;
 
             internal RedPointComposite(
                 TKeyA keyA,
                 TUserData userData,
-                RedPointNode[] children) : base(keyA, children)
+                RedPointFamily[] children) : base(keyA, children)
             {
                 this.userData = userData;
+            }
+
+            internal override bool RawCheck(
+                UnitType keyB,
+                out int number,
+                out TUserData userData)
+            {
+                userData = this.userData;
+                return RawCheckFamily(out number);
+            }
+
+            internal override bool RawCheckFamily(out int number)
+            {
+                bool r = false;
+                number = 0;
+
+                foreach (var i in Children)
+                {
+                    if (i.RawCheckFamily(out var n))
+                    {
+                        r = true;
+                        number += n;
+                    }
+                }
+
+                return r;
+            }
+
+            internal override bool RawCheckFamily()
+            {
+                foreach (var i in Children)
+                    if (i.RawCheckFamily())
+                        return true;
+
+                return false;
             }
         }
     }
