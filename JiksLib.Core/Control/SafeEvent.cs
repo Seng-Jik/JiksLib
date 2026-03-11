@@ -98,7 +98,7 @@ namespace JiksLib.Control
             /// </summary>
             /// <param name="event">事件对象</param>
             /// <param name="exceptionsOutput">异常输出列表，监听器产生的异常将被收集到此列表中，为null则静默忽略异常</param>
-            public readonly void SafeInvoke(
+            public readonly void Publish(
                 TEvent @event,
                 IList<Exception>? exceptionsOutput)
             {
@@ -146,6 +146,7 @@ namespace JiksLib.Control
                 }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal Publisher(SafeEvent<TEvent> @event)
             {
                 this.@event = @event;
