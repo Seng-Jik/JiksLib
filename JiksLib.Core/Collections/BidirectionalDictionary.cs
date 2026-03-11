@@ -93,12 +93,12 @@ namespace JiksLib.Collections
         /// <summary>
         /// 所有的键
         /// </summary>
-        public IReadOnlyCollection<TKey> Keys => sequential.Keys;
+        public Dictionary<TKey, TValue>.KeyCollection Keys => sequential.Keys;
 
         /// <summary>
         /// 所有的值
         /// </summary>
-        public IReadOnlyCollection<TValue> Values => reversed.Keys;
+        public Dictionary<TKey, TValue>.ValueCollection Values => sequential.Values;
 
         /// <summary>
         /// 根据键获得值或设置值
