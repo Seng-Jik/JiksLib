@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using JiksLib.Extensions;
 
 namespace JiksLib.Control
@@ -52,13 +53,12 @@ namespace JiksLib.Control
                 TBaseEvent @event,
                 IList<Exception>? exceptionsOutput)
             {
-
                 var typeChain = GetTypeChain(@event.ThrowIfNull().GetType())
                     .Types;
 
-                foreach (var i in typeChain)
+                for (int i = 0; i < typeChains.Count; ++i)
                 {
-                    if (eventBus.innerEvents.TryGetValue(i, out var h))
+                    if (eventBus.innerEvents.TryGetValue(typeChain[i], out var h))
                         h.Item2(@event, exceptionsOutput);
                 }
             }
@@ -135,18 +135,17 @@ namespace JiksLib.Control
             TBaseEvent baseEvent,
             IList<Exception>? exceptionsOutput);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         (SafeEvent<TEvent>, InnerPublisher) GetInnerEvent<TEvent>()
             where TEvent : TBaseEvent
         {
             if (innerEvents.TryGetValue(typeof(TEvent), out var handler))
                 return ((SafeEvent<TEvent>)handler.Item1, handler.Item2);
 
-            SafeEvent<TEvent> safeEvent = new(out _);
+            SafeEvent<TEvent> safeEvent = new(out var publisher);
 
             void innerPublish(TBaseEvent baseEvent, IList<Exception>? exn) =>
-                new SafeEvent<TEvent>
-                    .Publisher(safeEvent)
-                    .Publish((TEvent)baseEvent, exn);
+                publisher.Publish((TEvent)baseEvent, exn);
 
             innerEvents.Add(typeof(TEvent), (safeEvent, innerPublish));
             return (safeEvent, innerPublish);
