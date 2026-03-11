@@ -56,9 +56,9 @@ namespace JiksLib.Control
                 var typeChain = GetTypeChain(@event.ThrowIfNull().GetType())
                     .Types;
 
-                for (int i = 0; i < typeChains.Count; ++i)
+                foreach (var i in typeChain)
                 {
-                    if (eventBus.innerEvents.TryGetValue(typeChain[i], out var h))
+                    if (eventBus.innerEvents.TryGetValue(i, out var h))
                         h.Item2(@event, exceptionsOutput);
                 }
             }
@@ -73,7 +73,7 @@ namespace JiksLib.Control
 
             private sealed class TypeChain
             {
-                internal readonly IReadOnlyList<Type> Types;
+                internal readonly List<Type> Types;
 
                 internal TypeChain(Type type)
                 {
