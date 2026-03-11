@@ -17,11 +17,43 @@ namespace JiksLib.UI
         where TKeyA : notnull
     {
         /// <summary>
+        /// 获取指定一级键对应的红点（二级键为UnitType）
+        /// </summary>
+        /// <param name="keyA">一级红点键</param>
+        /// <returns>对应的红点实例</returns>
+        public RedPoint GetRedPoint(TKeyA keyA) =>
+            (RedPoint)GetRedPointFamily(keyA);
+
+
+        /// <summary>
+        /// 获取指定一级键对应的红点家族（泛型二级键）
+        /// </summary>
+        /// <typeparam name="TKeyB">二级红点键类型</typeparam>
+        /// <param name="keyA">一级红点键</param>
+        /// <returns>对应的红点家族实例</returns>
+        public RedPointFamily<TKeyB> GetRedPointFamily<TKeyB>(TKeyA keyA)
+            where TKeyB : notnull =>
+            (RedPointFamily<TKeyB>)GetRedPointFamily(keyA);
+
+        /// <summary>
+        /// 获取指定一级键对应的红点家族（基类类型）
+        /// </summary>
+        /// <param name="keyA">一级红点键</param>
+        /// <returns>对应的红点家族实例</returns>
+        public RedPointFamily GetRedPointFamily(TKeyA keyA)
+        {
+            if (!graph.TryGetValue(keyA, out var family))
+                throw new InvalidOperationException(
+                    $"KeyA {keyA} not found in red point graph.");
+
+            return family;
+        }
+
+        /// <summary>
         /// 红点检查器
         /// 不要直接使用该类型，要使用 IRedPointChecker<TKeyB>
         /// </summary>
-        // TODO 改成IRedPointFamilyChecker
-        public interface IRedPointChecker
+        public interface IRedPointFamilyChecker
         {
             /// <summary>
             /// 检查所有红点
@@ -39,8 +71,7 @@ namespace JiksLib.UI
         /// <summary>
         /// 红点检查器
         /// </summary>
-        // TODO 改为IRedPointFamilyChecker
-        public interface IRedPointChecker<TKeyB> : IRedPointChecker
+        public interface IRedPointFamilyChecker<TKeyB> : IRedPointFamilyChecker
             where TKeyB : notnull
         {
             public delegate void OnRedPointChangedHandler(
@@ -104,7 +135,7 @@ namespace JiksLib.UI
             }
 
             internal readonly TKeyA KeyA;
-            internal readonly List<RedPointFamily> Parents = new();
+            internal readonly List<RedPointComposite> Parents = new();
             internal readonly RedPointFamily[] Children;
 
             internal RedPointFamily(
@@ -219,27 +250,28 @@ namespace JiksLib.UI
             /// 通过 KeyA 来索引到该检查器
             /// 通过 KeyB 来索引到该检查器中的红点
             /// </summary>
-            public void AddFamily<TKeyB>(
+            public RedPointFamily<TKeyB> AddFamily<TKeyB>(
                 TKeyA keyA,
-                IRedPointChecker<TKeyB> checker)
+                IRedPointFamilyChecker<TKeyB> checker)
                 where TKeyB : notnull
             {
-                layout.Add(
-                    keyA,
-                    (null, new RedPointCheckerWrapper<TKeyB>(keyA, checker)));
+                RedPointCheckerWrapper<TKeyB> w = new(keyA, checker);
+                layout.Add(keyA, (null, w));
+                return w;
             }
 
             /// <summary>
             /// 添加一个简单红点检查器
             /// KeyB 为 UnitType
             /// </summary>
-            public void AddSimple(
+            public RedPoint AddSimple(
                 TKeyA keyA,
                 SimpleRedPointChecker checker,
                 TUserData userData)
             {
                 SimpleRedPointCheckerWrapper w = new(keyA, userData, checker);
                 layout.Add(keyA, (null, w));
+                return w;
             }
 
             /// <summary>
@@ -280,7 +312,7 @@ namespace JiksLib.UI
 
                 foreach (var i in result.Values)
                     foreach (var child in i.Children)
-                        child.Parents.Add(i);
+                        child.Parents.Add((RedPointComposite)i);
 
                 foreach (var i in result.Values)
                     i.Parents.TrimExcess();
@@ -356,11 +388,11 @@ namespace JiksLib.UI
         private sealed class RedPointCheckerWrapper<TKeyB> : RedPointFamily<TKeyB>
             where TKeyB : notnull
         {
-            readonly IRedPointChecker<TKeyB> checker;
+            readonly IRedPointFamilyChecker<TKeyB> checker;
 
             internal RedPointCheckerWrapper(
                 TKeyA keyA,
-                IRedPointChecker<TKeyB> redPointChecker) :
+                IRedPointFamilyChecker<TKeyB> redPointChecker) :
                 base(keyA, Array.Empty<RedPointFamily>())
             {
                 checker = redPointChecker;
@@ -434,7 +466,7 @@ namespace JiksLib.UI
                 RawCheckFamily(out _);
         }
 
-        private sealed class RedPointComposite : RedPoint
+        internal sealed class RedPointComposite : RedPoint
         {
             readonly TUserData userData;
 
@@ -483,5 +515,3 @@ namespace JiksLib.UI
         }
     }
 }
-
-
