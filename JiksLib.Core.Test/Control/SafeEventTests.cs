@@ -989,7 +989,6 @@ namespace JiksLib.Test.Control
             Assert.That(nestedCallCount, Is.EqualTo(0));
         }
 
-        [Ignore("测试逻辑需要进一步分析")]
         [Test]
         public void ListenersDelayedOperation_ClearAfterProcessing()
         {

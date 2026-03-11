@@ -1066,7 +1066,6 @@ namespace JiksLib.Test.Control
             // 因为 where TEvent : struct, object 无效（结构体不能继承类）
         }
 
-        [Ignore("反射测试可能不稳定")]
         [Test]
         public void GetSafeEvent_LazyInitialization()
         {
