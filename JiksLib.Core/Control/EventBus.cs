@@ -5,11 +5,6 @@ using JiksLib.Extensions;
 namespace JiksLib.Control
 {
     /// <summary>
-    /// 事件总线监听器
-    /// </summary>
-    public delegate void EventBusListener<TEvent>(TEvent @event);
-
-    /// <summary>
     /// 事件总线
     /// 可以发布以某一类型为基础的不同类型的事件
     /// TBaseEvent可以是类或接口类型
@@ -31,56 +26,17 @@ namespace JiksLib.Control
         /// 注册某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void AddListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : TBaseEvent
-        {
-            var listenerSet = GetOrCreateListenerSet<TEvent>();
-
-            if (invoking)
-                listenerSet.AddListenerDelayed(listener);
-            else
-                listenerSet.AddListener(listener);
-        }
-
-        /// <summary>
-        /// 仅监听一次某个事件，之后自动移除监听器
-        /// 该监听器不能使用RemoveListener移除
-        /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
-        /// </summary>
-        public void ListenOnce<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : TBaseEvent
-        {
-            var listenerSet = GetOrCreateListenerSet<TEvent>();
-
-            void wrappedListener(TEvent e)
-            {
-                listenerSet.RemoveListenerDelayed(wrappedListener);
-                listener(e);
-            }
-
-            if (invoking)
-                listenerSet.AddListenerDelayed(wrappedListener);
-            else
-                listenerSet.AddListener(wrappedListener);
-        }
+        public void AddListener<TEvent>(EventHandler<TEvent> listener)
+            where TEvent : TBaseEvent =>
+            GetInnerEvent<TEvent>().Item1.AddListener(listener);
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类，或者是被事件实现的interface
         /// </summary>
-        public void RemoveListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : TBaseEvent
-        {
-            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
-                return;
-
-            var listenerSet = (EventBusListenerSet<TEvent>)handler;
-
-            if (invoking)
-                listenerSet.RemoveListenerDelayed(listener);
-            else
-                listenerSet.RemoveListener(listener);
-        }
+        public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
+            where TEvent : TBaseEvent =>
+            GetInnerEvent<TEvent>().Item1.RemoveListener(listener);
 
         /// <summary>
         /// 事件发布器
@@ -96,26 +52,14 @@ namespace JiksLib.Control
                 TBaseEvent @event,
                 IList<Exception>? exceptionsOutput)
             {
-                if (eventBus.invoking)
-                    throw new InvalidOperationException(
-                        "Cannot publish event while another event is being published.");
 
-                try
+                var typeChain = GetTypeChain(@event.ThrowIfNull().GetType())
+                    .Types;
+
+                foreach (var i in typeChain)
                 {
-                    eventBus.invoking = true;
-
-                    var typeChain = GetTypeChain(@event.ThrowIfNull().GetType())
-                        .Types;
-
-                    foreach (var i in typeChain)
-                    {
-                        if (eventBus.listenerSets.TryGetValue(i, out var h))
-                            h.Invoke(@event, exceptionsOutput);
-                    }
-                }
-                finally
-                {
-                    eventBus.invoking = false;
+                    if (eventBus.innerEvents.TryGetValue(i, out var h))
+                        h.Item2(@event, exceptionsOutput);
                 }
             }
 
@@ -187,134 +131,27 @@ namespace JiksLib.Control
             readonly Dictionary<Type, TypeChain> typeChains;
         }
 
-        EventBusListenerSet<TEvent> GetOrCreateListenerSet<TEvent>()
+        internal delegate void InnerPublisher(
+            TBaseEvent baseEvent,
+            IList<Exception>? exceptionsOutput);
+
+        (SafeEvent<TEvent>, InnerPublisher) GetInnerEvent<TEvent>()
             where TEvent : TBaseEvent
         {
-            if (!listenerSets.TryGetValue(typeof(TEvent), out var handler))
-            {
-                handler = new EventBusListenerSet<TEvent>();
-                listenerSets.Add(typeof(TEvent), handler);
-            }
+            if (innerEvents.TryGetValue(typeof(TEvent), out var handler))
+                return ((SafeEvent<TEvent>)handler.Item1, handler.Item2);
 
-            return (EventBusListenerSet<TEvent>)handler;
+            SafeEvent<TEvent> safeEvent = new(out _);
+
+            void innerPublish(TBaseEvent baseEvent, IList<Exception>? exn) =>
+                new SafeEvent<TEvent>
+                    .Publisher(safeEvent)
+                    .Publish((TEvent)baseEvent, exn);
+
+            innerEvents.Add(typeof(TEvent), (safeEvent, innerPublish));
+            return (safeEvent, innerPublish);
         }
 
-        internal EventBus() { }
-        internal bool invoking = false;
-        internal readonly Dictionary<Type, IEventBusListenerSet> listenerSets = new();
-
-        internal interface IEventBusListenerSet
-        {
-            internal abstract void Invoke(
-                TBaseEvent baseEvent,
-                IList<Exception>? exceptionsOutput);
-        }
-
-        internal sealed class EventBusListenerSet<T> :
-            IEventBusListenerSet
-            where T : notnull, TBaseEvent
-        {
-            readonly List<EventBusListener<T>?> listeners = new();
-            int removeIndex = 0;
-
-            readonly Queue<(bool isAddOrRemove, EventBusListener<T>)>
-                listenersDelayedOperation = new();
-
-            internal void AddListener(EventBusListener<T> listener)
-            {
-                listeners.Add(listener);
-                removeIndex = listeners.Count - 1;
-            }
-
-            internal void AddListenerDelayed(EventBusListener<T> listener)
-            {
-                listenersDelayedOperation.Enqueue((true, listener));
-            }
-
-            internal void RemoveListener(EventBusListener<T> listener)
-            {
-                if (removeIndex >= listeners.Count || removeIndex < 0)
-                    removeIndex = listeners.Count - 1;
-
-                for (int i = removeIndex; i >= 0; --i)
-                {
-                    if (listeners[i] == listener)
-                    {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        return;
-                    }
-                }
-
-                for (int i = removeIndex + 1; i < listeners.Count; ++i)
-                {
-                    if (listeners[i] == listener)
-                    {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        return;
-                    }
-                }
-            }
-
-            internal void RemoveListenerDelayed(EventBusListener<T> listener)
-            {
-                listenersDelayedOperation.Enqueue((false, listener));
-            }
-
-            void ApplyDelayedListenerAddOrRemove()
-            {
-                while (listenersDelayedOperation.Count > 0)
-                {
-                    var op = listenersDelayedOperation.Dequeue();
-
-                    if (op.isAddOrRemove) AddListener(op.Item2);
-                    else RemoveListener(op.Item2);
-                }
-            }
-
-            internal void Invoke(
-                T @event,
-                IList<Exception>? exceptionsOutput)
-            {
-                int rewriteIndex = 0;
-
-                ApplyDelayedListenerAddOrRemove();
-
-                for (int i = 0; i < listeners.Count; ++i)
-                {
-                    var listener = listeners[i];
-
-                    if (listener == null)
-                        continue;
-
-                    listeners[i] = null;
-                    listeners[rewriteIndex++] = listener;
-
-                    try
-                    {
-                        listener(@event);
-                    }
-                    catch (Exception ex)
-                    {
-                        exceptionsOutput?.Add(ex);
-                    }
-                }
-
-                if (rewriteIndex < listeners.Count)
-                {
-                    listeners.RemoveRange(
-                        rewriteIndex,
-                        listeners.Count - rewriteIndex);
-                }
-            }
-
-            void IEventBusListenerSet.Invoke(
-                TBaseEvent baseEvent,
-                IList<Exception>? exceptionsOutput)
-            {
-                Invoke((T)baseEvent, exceptionsOutput);
-            }
-        }
+        internal readonly Dictionary<Type, (object, InnerPublisher)> innerEvents = new();
     }
 }
