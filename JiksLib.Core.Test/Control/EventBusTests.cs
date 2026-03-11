@@ -844,5 +844,180 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region 补充测试 - EventBus 增强覆盖
+
+        [Test]
+        public void TypeChain_CacheBehavior()
+        {
+            // 测试 TypeChain 缓存机制
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestEventA>(e => callCount++);
+
+            var eventA = new TestEventA("Test");
+            var exceptions = new List<Exception>();
+
+            // Act: 多次发布相同类型事件
+            for (int i = 0; i < 5; i++)
+            {
+                publisher.Publish(eventA, exceptions);
+            }
+
+            // Assert: 监听器被调用5次
+            Assert.That(callCount, Is.EqualTo(5));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 注意：我们无法直接验证缓存命中，但可以通过性能测试间接验证
+            // 这里主要验证功能正确性
+        }
+
+        [Test]
+        public void InterfaceInheritance_ComplexScenario()
+        {
+            // 测试类实现多个不相关接口的情况
+            var eventBus = new EventBus<IEventInterface>(out var publisher);
+            var interfaceCallCount = 0;
+            var derivedInterfaceCallCount = 0;
+
+            eventBus.AddListener<IEventInterface>(e => interfaceCallCount++);
+            eventBus.AddListener<IDerivedEventInterface>(e => derivedInterfaceCallCount++);
+
+            // 创建实现派生接口的事件
+            var event1 = new EventImplementingDerivedInterface();
+            var exceptions = new List<Exception>();
+
+            // Act: 发布派生接口事件
+            publisher.Publish(event1, exceptions);
+
+            // Assert: 两个监听器都应该被调用
+            // 因为 EventImplementingDerivedInterface 实现了 IDerivedEventInterface，
+            // 而 IDerivedEventInterface 继承自 IEventInterface
+            Assert.That(interfaceCallCount, Is.EqualTo(1));
+            Assert.That(derivedInterfaceCallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 测试实现多个不相关接口的类
+            var eventBus2 = new EventBus<ITestEventInterface>(out var publisher2);
+            var testInterfaceCallCount = 0;
+
+            eventBus2.AddListener<ITestEventInterface>(e => testInterfaceCallCount++);
+
+            var event2 = new EventImplementingMultipleInterfaces();
+            publisher2.Publish(event2, new List<Exception>());
+
+            Assert.That(testInterfaceCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetTypeChain_InterfaceAndClassMixedInheritance()
+        {
+            // 测试 GetTypeChain 在接口和类混合继承时的行为
+            // 通过反射测试 TypeChain 的内部逻辑
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            // 添加各种监听器
+            eventBus.AddListener<TestEventBase>(e => callCount++);
+            eventBus.AddListener<TestEventA>(e => callCount++);
+            eventBus.AddListener<TestEventDerived>(e => callCount++);
+
+            var derivedEvent = new TestEventDerived("Derived");
+            var exceptions = new List<Exception>();
+
+            // Act: 发布派生事件
+            publisher.Publish(derivedEvent, exceptions);
+
+            // Assert: 所有三个监听器都应该被调用
+            // 因为 TestEventDerived 继承自 TestEventA，TestEventA 继承自 TestEventBase
+            Assert.That(callCount, Is.EqualTo(3));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void InnerEvents_CleanupOnNoListeners()
+        {
+            // 测试当某个事件类型没有监听器时，innerEvents 字典是否清理
+            // 注意：当前实现不会自动清理，此测试验证此行为
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+
+            // 添加然后移除监听器
+            void Listener(TestEventA e) { }
+
+            eventBus.AddListener<TestEventA>(Listener);
+            eventBus.RemoveListener<TestEventA>(Listener);
+
+            var eventA = new TestEventA("Test");
+            var exceptions = new List<Exception>();
+
+            // Act: 发布事件
+            publisher.Publish(eventA, exceptions);
+
+            // Assert: 没有监听器被调用
+            // innerEvents 字典中仍然有 TestEventA 条目，但 SafeEvent 没有监听器
+            // 这是当前设计的预期行为
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+            // 无法直接验证 innerEvents 字典内容，除非使用反射
+        }
+
+        [Test]
+        public void TypeConversion_SafetyValidation()
+        {
+            // 测试类型转换的安全性
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestEventA>(e => callCount++);
+
+            // 发布 TestEventA 事件 - 应该正常工作
+            var eventA = new TestEventA("Valid");
+            var exceptions = new List<Exception>();
+            publisher.Publish(eventA, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 注意：无法测试无效类型转换，因为泛型约束 where TEvent : TBaseEvent
+            // 在编译时阻止了无效的 AddListener 调用
+            // Publish 方法接受 TBaseEvent 参数，内部转换由 GetInnerEvent 保证安全
+        }
+
+        [Test]
+        public void ConcurrentModification_AddNewEventTypeDuringPublish()
+        {
+            // 测试在事件处理过程中添加新事件类型的监听器
+            var eventBus = new EventBus<TestEventBase>(out var publisher);
+            var callCountA = 0;
+            var callCountB = 0;
+
+            void ListenerA(TestEventA e)
+            {
+                callCountA++;
+                // 在事件处理过程中添加 TestEventB 的监听器
+                eventBus.AddListener<TestEventB>(e2 => callCountB++);
+            }
+
+            eventBus.AddListener<TestEventA>(ListenerA);
+
+            var eventA = new TestEventA("Trigger");
+            var exceptions = new List<Exception>();
+
+            // Act: 第一次发布，添加 TestEventB 监听器的操作被延迟
+            publisher.Publish(eventA, exceptions);
+
+            // Assert: 只有 ListenerA 被调用
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(0));
+
+            // Act: 发布 TestEventB 事件
+            var eventB = new TestEventB(42);
+            publisher.Publish(eventB, exceptions);
+
+            // Assert: TestEventB 监听器现在生效
+            Assert.That(callCountB, Is.EqualTo(1));
+        }
+
+        #endregion
     }
 }

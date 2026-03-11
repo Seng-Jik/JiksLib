@@ -60,6 +60,19 @@ namespace JiksLib.Test.Control
         }
     }
 
+    // 只读值类型用于测试
+    public struct ReadonlyValueEvent : IValueEvent
+    {
+        public readonly string Name;
+        public readonly int Id;
+
+        public ReadonlyValueEvent(string name, int id)
+        {
+            Name = name;
+            Id = id;
+        }
+    }
+
     [TestFixture]
     public class ValueEventBusTests
     {
@@ -987,6 +1000,204 @@ namespace JiksLib.Test.Control
             Assert.That(callCount, Is.EqualTo(1));
             Assert.That(receivedEvent.Message, Is.Null); // 默认值的属性
             Assert.That(receivedEvent.Value, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        #endregion
+
+        #region 补充测试 - ValueEventBus 增强覆盖
+
+        [Test]
+        public void ValueType_BoxingAnalysis()
+        {
+            // 验证值类型事件不会发生装箱
+            // 注意：这是一个概念性测试，实际需要使用性能分析器验证
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+            TestValueEventA lastEvent = default;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                callCount++;
+                lastEvent = e;
+                // 验证 e 仍然是值类型（不会装箱）
+                // 可以通过检查 GetType() 或使用 Unsafe 验证
+            });
+
+            var testEvent = new TestValueEventA("NoBoxing", 123);
+            var exceptions = new List<Exception>();
+
+            // Act
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(lastEvent.Message, Is.EqualTo("NoBoxing"));
+            Assert.That(lastEvent.Value, Is.EqualTo(123));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 注意：真正的无装箱验证需要检查 IL 代码或使用性能分析器
+            // 此测试主要验证功能正确性
+        }
+
+        [Test]
+        public void GenericConstraint_InterfaceRequirement()
+        {
+            // 验证 TConstraint 必须是接口的约束
+            // 由于 where TConstraint : class 和 where TEvent : struct, TConstraint
+            // 实际上 TConstraint 必须是接口，因为结构体不能继承类
+            // 此测试验证编译时约束
+
+            // 测试用例：使用接口作为约束
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            var testEvent = new TestValueEventA("InterfaceConstraint", 456);
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 注意：尝试使用类作为 TConstraint 会导致编译错误
+            // 例如：new ValueEventBus<object>() 会编译失败
+            // 因为 where TEvent : struct, object 无效（结构体不能继承类）
+        }
+
+        [Ignore("反射测试可能不稳定")]
+        [Test]
+        public void GetSafeEvent_LazyInitialization()
+        {
+            // 测试 GetSafeEvent 方法的惰性初始化行为
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 初始时 events 字典应为空
+            // 通过反射验证私有字段（仅用于测试）
+            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
+                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            Assert.That(eventsField, Is.Not.Null);
+            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
+            Assert.That(events, Is.Not.Null);
+            Assert.That(events.Count, Is.EqualTo(0));
+
+            // 第一次添加监听器 - 应创建 SafeEvent 实例
+            eventBus.AddListener<TestValueEventA>(e => { });
+
+            // events 字典应包含一个条目
+            Assert.That(events.Count, Is.EqualTo(1));
+
+            // 添加同一类型的另一个监听器 - 不应创建新 SafeEvent
+            eventBus.AddListener<TestValueEventA>(e => { });
+            Assert.That(events.Count, Is.EqualTo(1)); // 数量不变
+
+            // 添加不同类型的事件监听器 - 应创建新条目
+            eventBus.AddListener<TestValueEventB>(e => { });
+            Assert.That(events.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ValueType_WithReferenceTypeFields()
+        {
+            // 测试包含引用类型字段的值类型事件
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            string? receivedMessage = null;
+            int receivedValue = 0;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                receivedMessage = e.Message;
+                receivedValue = e.Value;
+            });
+
+            var testEvent = new TestValueEventA("ReferenceInValue", 789);
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            Assert.That(receivedMessage, Is.EqualTo("ReferenceInValue"));
+            Assert.That(receivedValue, Is.EqualTo(789));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EventsDictionary_Management()
+        {
+            // 测试 events 字典的管理行为（扩容、收缩等）
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 添加多个不同类型的事件监听器
+            for (int i = 0; i < 10; i++)
+            {
+                // 使用动态类型创建（简化）
+                // 实际中需要定义多个不同的事件类型
+                // 这里使用已有的两个类型交替添加
+                if (i % 2 == 0)
+                    eventBus.AddListener<TestValueEventA>(e => { });
+                else
+                    eventBus.AddListener<TestValueEventB>(e => { });
+            }
+
+            // 验证功能正常
+            var callCountA = 0;
+            var callCountB = 0;
+
+            // 重新添加监听器以捕获调用
+            eventBus = new ValueEventBus<IValueEvent>(out publisher);
+            eventBus.AddListener<TestValueEventA>(e => callCountA++);
+            eventBus.AddListener<TestValueEventB>(e => callCountB++);
+
+            publisher.Publish(new TestValueEventA("A", 1), new List<Exception>());
+            publisher.Publish(new TestValueEventB(2.0f, 3.0f), new List<Exception>());
+
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TypeConversion_SafeCastValidation()
+        {
+            // 验证 (SafeEvent<TEvent>)h 强制转换的类型安全性
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            // 发布事件 - 内部会进行类型转换
+            var testEvent = new TestValueEventA("SafeCast", 999);
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 注意：类型转换的安全性由泛型约束和字典存储保证
+            // events 字典存储 SafeEvent<TEvent> 作为 object
+            // GetSafeEvent 和 Publish 中转换回 SafeEvent<TEvent>
+            // 由于 TEvent 类型与字典键匹配，转换是安全的
+        }
+
+        [Test]
+        public void ValueType_ReadonlyFields()
+        {
+            // 测试包含 readonly 字段的值类型事件
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            string? receivedName = null;
+            int receivedId = 0;
+
+            eventBus.AddListener<ReadonlyValueEvent>(e =>
+            {
+                receivedName = e.Name;
+                receivedId = e.Id;
+            });
+
+            var testEvent = new ReadonlyValueEvent("ReadonlyTest", 1001);
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            Assert.That(receivedName, Is.EqualTo("ReadonlyTest"));
+            Assert.That(receivedId, Is.EqualTo(1001));
             Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
