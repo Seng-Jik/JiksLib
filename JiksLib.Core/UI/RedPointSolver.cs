@@ -20,6 +20,7 @@ namespace JiksLib.UI
         /// 红点检查器
         /// 不要直接使用该类型，要使用 IRedPointChecker<TKeyB>
         /// </summary>
+        // TODO 改成IRedPointFamilyChecker
         public interface IRedPointChecker
         {
             /// <summary>
@@ -38,6 +39,7 @@ namespace JiksLib.UI
         /// <summary>
         /// 红点检查器
         /// </summary>
+        // TODO 改为IRedPointFamilyChecker
         public interface IRedPointChecker<TKeyB> : IRedPointChecker
             where TKeyB : notnull
         {
@@ -481,4 +483,5 @@ namespace JiksLib.UI
         }
     }
 }
+
 
