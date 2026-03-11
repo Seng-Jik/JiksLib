@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace JiksLib.Control
 {
@@ -18,39 +19,29 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         public ValueEventBus(out Publisher publisher)
         {
-            eventBus = new();
-            publisher = new(eventBus);
+            events = new();
+            publisher = new(this);
         }
 
         /// <summary>
         /// 注册某一类型的事件监听器
         /// </summary>
-        public void AddListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct, TConstraint => eventBus.AddListener(listener);
+        public void AddListener<TEvent>(EventHandler<TEvent> listener)
+            where TEvent : struct, TConstraint =>
+            GetSafeEvent<TEvent>().AddListener(listener);
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
-        public void RemoveListener<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct, TConstraint => eventBus.RemoveListener(listener);
-
-        /// <summary>
-        /// 仅监听一次某个事件，之后自动移除监听器
-        /// 该监听器不能使用RemoveListener移除
-        /// </summary>
-        public void ListenOnce<TEvent>(EventBusListener<TEvent> listener)
-            where TEvent : struct, TConstraint => eventBus.ListenOnce(listener);
+        public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
+            where TEvent : struct, TConstraint =>
+            GetSafeEvent<TEvent>().RemoveListener(listener);
 
         /// <summary>
         /// 事件发布器
         /// </summary>
         public readonly struct Publisher
         {
-            internal Publisher(EventBus<TConstraint> eventBus)
-            {
-                this.eventBus = eventBus;
-            }
-
             /// <summary>
             /// 发布事件
             /// </summary>
@@ -61,28 +52,34 @@ namespace JiksLib.Control
                 IList<Exception>? exceptionsOutput)
                 where TEvent : struct, TConstraint
             {
-                if (eventBus.invoking)
-                    throw new InvalidOperationException(
-                        "Cannot publish event while another event is being published.");
-
-                try
+                if (eventHandlers.TryGetValue(typeof(TEvent), out var h))
                 {
-                    eventBus.invoking = true;
-
-                    if (eventBus.listenerSets.TryGetValue(typeof(TEvent), out var h))
-                        ((EventBus<TConstraint>.EventBusListenerSet<TEvent>)h).Invoke(
-                            @event,
-                            exceptionsOutput);
-                }
-                finally
-                {
-                    eventBus.invoking = false;
+                    var handlers = (SafeEvent<TEvent>)h;
+                    SafeEvent<TEvent>.Publisher publisher = new(handlers);
+                    publisher.Publish(@event, exceptionsOutput);
                 }
             }
 
-            readonly EventBus<TConstraint> eventBus;
+            internal Publisher(ValueEventBus<TConstraint> valueEvent)
+            {
+                eventHandlers = valueEvent.events;
+            }
+
+            readonly Dictionary<Type, object> eventHandlers;
         }
 
-        readonly EventBus<TConstraint> eventBus;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        SafeEvent<TEvent> GetSafeEvent<TEvent>()
+            where TEvent : struct, TConstraint
+        {
+            if (events.TryGetValue(typeof(TEvent), out var h))
+                return (SafeEvent<TEvent>)h;
+
+            SafeEvent<TEvent> e = new(out _);
+            events.Add(typeof(TEvent), e);
+            return e;
+        }
+
+        readonly Dictionary<Type, object> events;
     }
 }
