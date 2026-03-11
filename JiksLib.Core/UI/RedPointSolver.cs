@@ -170,7 +170,6 @@ namespace JiksLib.UI
             /// 不需要红点值时使用该函数，性能更好
             /// </summary>
             public bool Check(
-                TKeyA keyA,
                 TKeyB keyB,
                 out TUserData userData)
             {
