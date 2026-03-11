@@ -13,15 +13,15 @@ namespace JiksLib.PerformanceTest.Control
     {
         private ValueEventBus<IValueEvent> valueEventBus = null!;
         private ValueEventBus<IValueEvent>.Publisher publisher;
-        private List<EventBusListener<TestValueEvent>> listeners = null!;
+        private List<JiksLib.Control.EventHandler<TestValueEvent>> listeners = null!;
 
-        [Params(1)]
+        [Params(1, 10, 100, 1000)]
         public int ListenerCount { get; set; }
 
         [GlobalSetup]
         public void GlobalSetup()
         {
-            listeners = new List<EventBusListener<TestValueEvent>>(ListenerCount);
+            listeners = new List<JiksLib.Control.EventHandler<TestValueEvent>>(ListenerCount);
 
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)

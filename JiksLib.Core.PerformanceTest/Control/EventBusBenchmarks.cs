@@ -13,17 +13,17 @@ namespace JiksLib.PerformanceTest.Control
     {
         private EventBus<TestEvent> eventBus = null!;
         private EventBus<TestEvent>.Publisher publisher;
-        private List<EventBusListener<TestEvent>> listeners = null!;
-        private List<EventBusListener<DerivedTestEvent>> derivedListeners = null!;
+        private List<JiksLib.Control.EventHandler<TestEvent>> listeners = null!;
+        private List<JiksLib.Control.EventHandler<DerivedTestEvent>> derivedListeners = null!;
 
-        [Params(1)]
+        [Params(1, 10, 100, 1000)]
         public int ListenerCount { get; set; }
 
         [GlobalSetup]
         public void GlobalSetup()
         {
-            listeners = new List<EventBusListener<TestEvent>>(ListenerCount);
-            derivedListeners = new List<EventBusListener<DerivedTestEvent>>(ListenerCount);
+            listeners = new List<JiksLib.Control.EventHandler<TestEvent>>(ListenerCount);
+            derivedListeners = new List<JiksLib.Control.EventHandler<DerivedTestEvent>>(ListenerCount);
 
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)
