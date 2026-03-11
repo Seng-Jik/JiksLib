@@ -24,16 +24,16 @@ namespace JiksLib.UI
         public interface IRedPointChecker
         {
             /// <summary>
-            /// 检查所有动态红点
+            /// 检查所有红点
             /// </summary>
-            /// <param name="redPointNumberSum">所有动态红点的值之和</param>
-            /// <returns>是否有动态红点</returns>
-            bool CheckFamily(out int redPointNumberSum);
+            /// <param name="redPointNumberSum">所有红点的值之和</param>
+            /// <returns>是否有红点</returns>
+            bool Check(out int redPointNumberSum);
 
             /// <summary>
             /// 是否存在任一红点
             /// </summary>
-            bool CheckFamily();
+            bool Check();
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace JiksLib.UI
             where TKeyB : notnull
         {
             /// <summary>
-            /// 检查单个动态红点
+            /// 检查单个红点
             /// </summary>
             /// <param name="keyB">二级红点键</param>
             /// <param name="redPointNumber">红点值</param>
@@ -56,8 +56,8 @@ namespace JiksLib.UI
         }
 
         /// <summary>
-        /// 简单的红点检查器，只绑定一个红点
-        /// 该检查器的二级红点键始终为 new UnitType()
+        /// 简单的红点检查器，只有零个或一个红点
+        /// 该红点器的红点键始终为 (keyA, new UnitType())
         /// </summary>
         /// <param name="keyA">一级红点键</param>
         /// <param name="number">输出的红点的值</param>
@@ -92,17 +92,17 @@ namespace JiksLib.UI
         }
 
         /// <summary>
-        /// 检查 KeyA 为某一值的所有红点
+        /// 检查所有一级红点键为 keyA 的红点是否存在，并返回它们的和
         /// </summary>
-        public bool CheckFamily(TKeyA keyA, out int number)
+        public bool Check(TKeyA keyA, out int number)
         {
             throw new NotImplementedException();
         }
 
         /// <summary>
-        /// 检查是否存在 KeyA 为某一值的红点
+        /// 检查是否存在一级红点键为 keyA 的红点
         /// </summary>
-        public bool CheckFamily(TKeyA keyA)
+        public bool Check(TKeyA keyA)
         {
             throw new NotImplementedException();
         }
@@ -188,7 +188,7 @@ namespace JiksLib.UI
 
             /// <summary>
             /// 添加一个简单红点检查器
-            /// KeyB 会被设置为 UnitType
+            /// KeyB 为 UnitType
             /// </summary>
             public void AddSimple(
                 TKeyA keyA,
@@ -339,10 +339,10 @@ namespace JiksLib.UI
                     return true;
                 }
 
-                public bool CheckFamily(out int redPointNumberSum) =>
+                public bool Check(out int redPointNumberSum) =>
                     checker(keyA, out redPointNumberSum);
 
-                public bool CheckFamily() => checker(keyA, out _);
+                public bool Check() => checker(keyA, out _);
             }
         }
 
@@ -393,3 +393,4 @@ namespace JiksLib.UI
         }
     }
 }
+
