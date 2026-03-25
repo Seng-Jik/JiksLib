@@ -14,7 +14,7 @@ namespace JiksLib.PerformanceTest.Control
     {
         private ValueEventBus<IValueEvent> valueEventBus = null!;
         private ValueEventBus<IValueEvent>.Publisher publisher;
-        private ISafeEventPublisher<IValueEvent> interfacePublisher;
+        private ISafeEventPublisher<IValueEvent>? interfacePublisher;
         private List<JiksLib.Control.EventHandler<TestValueEvent>> listeners = null!;
 
         [Params(1, 10, 100)]

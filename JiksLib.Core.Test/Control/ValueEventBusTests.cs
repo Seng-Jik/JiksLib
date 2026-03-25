@@ -274,6 +274,43 @@ namespace JiksLib.Test.Control
             // 注意：无法直接验证，但测试通过说明没有因异常而中断
         }
 
+        [Test]
+        public void AddListener_NullListener_DoesNotThrowImmediately()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() =>
+                eventBus.AddListener<TestValueEventA>(null!));
+        }
+
+        [Test]
+        public void RemoveListener_NullListener_DoesNotThrowImmediately()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() =>
+                eventBus.RemoveListener<TestValueEventA>(null!));
+        }
+
+        [Test]
+        public void AddNullListener_IsSafelyIgnored()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            eventBus.AddListener<TestValueEventA>(null!);
+            var testEvent = new TestValueEventA("Test", 123);
+            bool otherListenerCalled = false;
+            eventBus.AddListener<TestValueEventA>(e => otherListenerCalled = true);
+
+            // Act & Assert - 不应抛出异常，且其他监听器应被调用
+            Assert.DoesNotThrow(() => publisher.Publish(testEvent, null));
+            Assert.That(otherListenerCalled, Is.True);
+        }
+
         #endregion
 
         #region 边界条件测试
@@ -482,6 +519,31 @@ namespace JiksLib.Test.Control
             // 所有监听器已移除，不应被调用
             Assert.That(exceptions.Count, Is.EqualTo(0));
             // 注意：无法直接验证监听器未被调用，但如果没有异常则通过
+        }
+
+        [Test]
+        public void ExtremeLargeNumberOfListeners_10000Listeners_WorksCorrectly()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            int callCount = 0;
+            const int listenerCount = 10000;
+
+            // 添加大量监听器
+            for (int i = 0; i < listenerCount; i++)
+            {
+                eventBus.AddListener<TestValueEventA>(e => callCount++);
+            }
+
+            var testEvent = new TestValueEventA("Test", 42);
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(listenerCount));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
         #endregion
