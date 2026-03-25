@@ -1348,10 +1348,10 @@ namespace JiksLib.Test.Control
             Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
 
             // 获取第二个元素（WeakPublisher 委托）
-            var item2Property = tupleType.GetProperty("Item2");
-            Assert.That(item2Property, Is.Not.Null);
+            var item2Field = tupleType.GetField("Item2");
+            Assert.That(item2Field, Is.Not.Null);
 
-            var weakPublisher = item2Property.GetValue(testValueEventAEntry) as Delegate;
+            var weakPublisher = item2Field.GetValue(testValueEventAEntry) as Delegate;
             Assert.That(weakPublisher, Is.Not.Null);
 
             // 调用 WeakPublisher 委托
@@ -1396,13 +1396,13 @@ namespace JiksLib.Test.Control
 
             // 第一个元素应该是 object（SafeEvent<TEvent>）
             // 第二个元素应该是 WeakPublisher 委托
-            var item1Property = tupleType.GetProperty("Item1");
-            var item2Property = tupleType.GetProperty("Item2");
-            Assert.That(item1Property, Is.Not.Null);
-            Assert.That(item2Property, Is.Not.Null);
+            var item1Field = tupleType.GetField("Item1");
+            var item2Field = tupleType.GetField("Item2");
+            Assert.That(item1Field, Is.Not.Null);
+            Assert.That(item2Field, Is.Not.Null);
 
-            var item1 = item1Property.GetValue(entry);
-            var item2 = item2Property.GetValue(entry);
+            var item1 = item1Field.GetValue(entry);
+            var item2 = item2Field.GetValue(entry);
 
             Assert.That(item1, Is.Not.Null);
             Assert.That(item2, Is.Not.Null);
@@ -1488,8 +1488,8 @@ namespace JiksLib.Test.Control
             Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
 
             // 获取 WeakPublisher 委托
-            var item2Property = tupleType.GetProperty("Item2");
-            var weakPublisher = item2Property!.GetValue(entry) as Delegate;
+            var item2Field = tupleType.GetField("Item2");
+            var weakPublisher = item2Field!.GetValue(entry) as Delegate;
             Assert.That(weakPublisher, Is.Not.Null);
 
             // 验证委托可以调用
