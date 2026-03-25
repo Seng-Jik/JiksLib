@@ -58,6 +58,11 @@ namespace JiksLib.PerformanceTest.Control
             {
                 StaticValueEventBus<IStaticPerfEvent>.RemoveListener(listener);
             }
+
+            // 发布一次空事件，触发SafeEvent的清理机制
+            // 这能确保从列表中移除null条目，避免静态状态累积
+            var evt = new StaticPerfTestEvent { Value = 0 };
+            StaticValueEventBus<IStaticPerfEvent>.Publisher.Publish(evt, null);
         }
 
         [IterationCleanup(Target = nameof(AddListeners))]

@@ -85,6 +85,11 @@ namespace JiksLib.PerformanceTest.Control
                 StaticValueEventBus<IStaticComparisonEvent>.RemoveListener(listener);
             }
 
+            // 发布一次空事件，触发SafeEvent的清理机制
+            // 这能确保从列表中移除null条目，避免静态状态累积
+            var staticEvent = new StaticComparisonEvent { Value = 0 };
+            StaticValueEventBus<IStaticComparisonEvent>.Publisher.Publish(staticEvent, null);
+
             // 清理ValueEventBus监听器
             foreach (var listener in valueListeners)
             {
