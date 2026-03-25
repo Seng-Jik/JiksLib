@@ -42,7 +42,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 事件发布器
         /// </summary>
-        public readonly struct Publisher
+        public readonly struct Publisher : ISafeEventPublisher<TBaseEvent>
         {
             /// <summary>
             /// 发布事件

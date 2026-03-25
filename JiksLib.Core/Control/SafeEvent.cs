@@ -12,6 +12,21 @@ namespace JiksLib.Control
     public delegate void EventHandler<TEvent>(TEvent @event);
 
     /// <summary>
+    /// 安全事件发布器
+    /// </summary>
+    public interface ISafeEventPublisher<in TEvent>
+    {
+        /// <summary>
+        /// 安全地发布事件
+        /// </summary>
+        /// <param name="event">事件对象</param>
+        /// <param name="exceptionsOutput">输出的事件处理过程中发生的异常，若为null则忽略异常</param>
+        void Publish(
+            TEvent @event,
+            IList<Exception>? exceptionsOutput);
+    }
+
+    /// <summary>
     /// 安全事件包装器
     /// 提供线程安全的事件发布/订阅机制，支持重入保护和异常安全
     /// 仅支持在主线程上使用
@@ -90,7 +105,7 @@ namespace JiksLib.Control
         /// 事件发布器
         /// 用于安全地触发事件
         /// </summary>
-        public readonly struct Publisher
+        public readonly struct Publisher : ISafeEventPublisher<TEvent>
         {
             /// <summary>
             /// 安全触发事件

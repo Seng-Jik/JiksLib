@@ -40,7 +40,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 事件发布器
         /// </summary>
-        public readonly struct Publisher
+        public readonly struct Publisher : ISafeEventPublisher<TConstraint>
         {
             /// <summary>
             /// 发布事件
@@ -54,10 +54,18 @@ namespace JiksLib.Control
             {
                 if (eventHandlers.TryGetValue(typeof(TEvent), out var h))
                 {
-                    var handlers = (SafeEvent<TEvent>)h;
+                    var handlers = (SafeEvent<TEvent>)h.Item1;
                     SafeEvent<TEvent>.Publisher publisher = new(handlers);
                     publisher.Publish(@event, exceptionsOutput);
                 }
+            }
+
+            void ISafeEventPublisher<TConstraint>.Publish(
+                TConstraint @event,
+                IList<Exception>? exceptionsOutput)
+            {
+                if (eventHandlers.TryGetValue(@event.GetType(), out var h))
+                    h.Item2(@event, exceptionsOutput);
             }
 
             internal Publisher(ValueEventBus<TConstraint> valueEvent)
@@ -65,7 +73,7 @@ namespace JiksLib.Control
                 eventHandlers = valueEvent.events;
             }
 
-            readonly Dictionary<Type, object> eventHandlers;
+            readonly Dictionary<Type, (object, WeakPublisher)> eventHandlers;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,13 +81,21 @@ namespace JiksLib.Control
             where TEvent : struct, TConstraint
         {
             if (events.TryGetValue(typeof(TEvent), out var h))
-                return (SafeEvent<TEvent>)h;
+                return (SafeEvent<TEvent>)h.Item1;
 
-            SafeEvent<TEvent> e = new(out _);
-            events.Add(typeof(TEvent), e);
+            SafeEvent<TEvent> e = new(out var publisher);
+
+            events.Add(
+                typeof(TEvent),
+                (e, (e, o) => publisher.Publish((TEvent)e, o)));
+
             return e;
         }
 
-        readonly Dictionary<Type, object> events;
+        delegate void WeakPublisher(
+            TConstraint @event,
+            IList<Exception>? exceptionsOutput);
+
+        readonly Dictionary<Type, (object, WeakPublisher)> events;
     }
 }
