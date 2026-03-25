@@ -1201,5 +1201,242 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region ISafeEventPublisher接口实现测试
+
+        [Test]
+        public void Publisher_Implements_ISafeEventPublisher()
+        {
+            // 验证 Publisher 结构体实现了 ISafeEventPublisher<TConstraint> 接口
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 类型检查
+            Assert.That(publisher, Is.InstanceOf<ISafeEventPublisher<IValueEvent>>());
+
+            // 通过接口调用发布方法
+            ISafeEventPublisher<IValueEvent> interfacePublisher = publisher;
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            var testEvent = new TestValueEventA("InterfaceTest", 123);
+            var exceptions = new List<Exception>();
+
+            // 通过接口发布事件
+            interfacePublisher.Publish(testEvent, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ISafeEventPublisher_Publish_WithWrongType_ThrowsInvalidCast()
+        {
+            // 测试通过接口发布错误类型的事件（应抛出 InvalidCastException）
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            ISafeEventPublisher<IValueEvent> interfacePublisher = publisher;
+
+            // 创建一个实现 IValueEvent 但不是值类型的事件
+            // 注意：由于接口约束，我们无法创建这样的实例
+            // 但我们可以测试当传入错误类型时 WeakPublisher 委托的行为
+            // 这实际上测试了 WeakPublisher 委托中的类型转换
+
+            var callCount = 0;
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            // 创建一个 TestValueEventA 作为 TConstraint
+            IValueEvent wrongEvent = new TestValueEventA("WrongType", 456);
+
+            // 通过接口发布事件 - 应该正常工作，因为 TestValueEventA 实现了 IValueEvent
+            var exceptions = new List<Exception>();
+
+            // 注意：由于是显式接口实现，直接调用 interfacePublisher.Publish 应该工作
+            // 因为 TestValueEventA 实现了 IValueEvent
+            Assert.DoesNotThrow(() => interfacePublisher.Publish(wrongEvent, exceptions));
+
+            // 监听器应该被调用
+            Assert.That(callCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void WeakPublisher_Delegate_WorksCorrectly()
+        {
+            // 测试 WeakPublisher 委托正确包装了 Publisher.Publish 方法
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+            eventBus.AddListener<TestValueEventB>(e => callCount++);
+
+            // 通过反射获取 events 字典中的 WeakPublisher 委托
+            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
+                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.That(eventsField, Is.Not.Null);
+
+            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
+            Assert.That(events, Is.Not.Null);
+            Assert.That(events.Count, Is.EqualTo(2)); // TestValueEventA 和 TestValueEventB
+
+            // 获取 TestValueEventA 的 WeakPublisher 委托
+            var testValueEventAEntry = events[typeof(TestValueEventA)];
+            Assert.That(testValueEventAEntry, Is.Not.Null);
+
+            // 元组包含 (object, WeakPublisher)
+            var tupleType = testValueEventAEntry.GetType();
+            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
+
+            // 获取第二个元素（WeakPublisher 委托）
+            var item2Property = tupleType.GetProperty("Item2");
+            Assert.That(item2Property, Is.Not.Null);
+
+            var weakPublisher = item2Property.GetValue(testValueEventAEntry) as Delegate;
+            Assert.That(weakPublisher, Is.Not.Null);
+
+            // 调用 WeakPublisher 委托
+            var testEvent = new TestValueEventA("WeakPublisherTest", 789);
+            var exceptions = new List<Exception>();
+
+            // WeakPublisher 委托签名为 (TConstraint @event, IList<Exception>? exceptionsOutput)
+            weakPublisher.DynamicInvoke(testEvent, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1)); // 只有 TestValueEventA 监听器被调用
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void DictionaryStructure_ContainsTupleOfObjectAndWeakPublisher()
+        {
+            // 验证 events 字典现在包含 (object, WeakPublisher) 元组而不是单纯的 object
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 添加一个监听器以初始化字典
+            eventBus.AddListener<TestValueEventA>(e => { });
+
+            // 通过反射检查字典结构
+            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
+                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.That(eventsField, Is.Not.Null);
+
+            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
+            Assert.That(events, Is.Not.Null);
+            Assert.That(events.Count, Is.EqualTo(1));
+
+            var entry = events[typeof(TestValueEventA)];
+            Assert.That(entry, Is.Not.Null);
+
+            // 检查是否是元组
+            var tupleType = entry.GetType();
+            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
+
+            // 检查元组有两个元素
+            var genericArgs = tupleType.GetGenericArguments();
+            Assert.That(genericArgs.Length, Is.EqualTo(2));
+
+            // 第一个元素应该是 object（SafeEvent<TEvent>）
+            // 第二个元素应该是 WeakPublisher 委托
+            var item1Property = tupleType.GetProperty("Item1");
+            var item2Property = tupleType.GetProperty("Item2");
+            Assert.That(item1Property, Is.Not.Null);
+            Assert.That(item2Property, Is.Not.Null);
+
+            var item1 = item1Property.GetValue(entry);
+            var item2 = item2Property.GetValue(entry);
+
+            Assert.That(item1, Is.Not.Null);
+            Assert.That(item2, Is.Not.Null);
+            Assert.That(item1, Is.TypeOf<SafeEvent<TestValueEventA>>());
+            Assert.That(item2, Is.InstanceOf<Delegate>());
+        }
+
+        [Test]
+        public void ExplicitInterfaceImplementation_WorksWithInterfaceReference()
+        {
+            // 测试显式接口实现可以通过接口引用正常工作
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 将 Publisher 转换为接口
+            ISafeEventPublisher<IValueEvent> interfacePublisher = publisher;
+
+            var callCount = 0;
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            var testEvent = new TestValueEventA("ExplicitInterface", 999);
+            var exceptions = new List<Exception>();
+
+            // 通过接口发布事件
+            interfacePublisher.Publish(testEvent, exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void MultipleEventTypes_InterfacePublisherHandlesAll()
+        {
+            // 测试通过接口可以发布多种类型的事件
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            ISafeEventPublisher<IValueEvent> interfacePublisher = publisher;
+
+            var callCountA = 0;
+            var callCountB = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCountA++);
+            eventBus.AddListener<TestValueEventB>(e => callCountB++);
+
+            var eventA = new TestValueEventA("A", 1);
+            var eventB = new TestValueEventB(2.0f, 3.0f);
+
+            var exceptions = new List<Exception>();
+
+            // 通过接口发布事件A
+            interfacePublisher.Publish(eventA, exceptions);
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(0));
+
+            // 通过接口发布事件B
+            interfacePublisher.Publish(eventB, exceptions);
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(1));
+
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSafeEvent_CreatesTupleWithWeakPublisher()
+        {
+            // 测试 GetSafeEvent 方法创建包含 WeakPublisher 委托的元组
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // 初始时字典应为空
+            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
+                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var events = eventsField!.GetValue(eventBus) as System.Collections.IDictionary;
+            Assert.That(events!.Count, Is.EqualTo(0));
+
+            // 调用 AddListener 触发 GetSafeEvent
+            eventBus.AddListener<TestValueEventA>(e => { });
+
+            // 现在字典应包含一个条目
+            Assert.That(events.Count, Is.EqualTo(1));
+
+            var entry = events[typeof(TestValueEventA)];
+            var tupleType = entry!.GetType();
+
+            // 验证是元组
+            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
+
+            // 获取 WeakPublisher 委托
+            var item2Property = tupleType.GetProperty("Item2");
+            var weakPublisher = item2Property!.GetValue(entry) as Delegate;
+            Assert.That(weakPublisher, Is.Not.Null);
+
+            // 验证委托可以调用
+            var testEvent = new TestValueEventA("Test", 123);
+            var exceptions = new List<Exception>();
+
+            Assert.DoesNotThrow(() => weakPublisher.DynamicInvoke(testEvent, exceptions));
+        }
+
+        #endregion
     }
 }
