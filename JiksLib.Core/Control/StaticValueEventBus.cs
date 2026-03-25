@@ -50,7 +50,7 @@ namespace JiksLib.Control
         {
             /// <summary>
             /// 事件发布器实例
-            /// 仅用于转换为 ISafeEventPublisher<TDomain>
+            /// 仅用于转换为 ISafeEventPublisher<TDomain>，但转换后会产生装箱操作和查表操作
             /// </summary>
             public static readonly Publisher Singleton = new();
 
