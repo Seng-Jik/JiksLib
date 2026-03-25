@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using JiksLib.Control;
 
 namespace JiksLib.PerformanceTest.Control
@@ -9,6 +10,7 @@ namespace JiksLib.PerformanceTest.Control
     /// StaticValueEventBus 性能基准测试
     /// 注意：由于StaticValueEventBus是静态类，每个测试使用独立的事件接口以避免状态污染
     /// </summary>
+    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
     [MemoryDiagnoser]
     public class StaticValueEventBusBenchmarks
     {

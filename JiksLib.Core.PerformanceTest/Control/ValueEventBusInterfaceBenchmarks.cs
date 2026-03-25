@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using JiksLib.Control;
 
 namespace JiksLib.PerformanceTest.Control
@@ -9,6 +10,7 @@ namespace JiksLib.PerformanceTest.Control
     /// ValueEventBus 接口实现性能基准测试
     /// 评估 ISafeEventPublisher 接口实现和数据结构变化对性能的影响
     /// </summary>
+    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
     [MemoryDiagnoser]
     public class ValueEventBusInterfaceBenchmarks
     {

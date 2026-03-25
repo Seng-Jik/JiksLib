@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using JiksLib.Control;
 
 namespace JiksLib.PerformanceTest.Control
@@ -8,6 +9,7 @@ namespace JiksLib.PerformanceTest.Control
     /// <summary>
     /// ValueEventBus 性能基准测试
     /// </summary>
+    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
     [MemoryDiagnoser]
     public class ValueEventBusBenchmarks
     {
