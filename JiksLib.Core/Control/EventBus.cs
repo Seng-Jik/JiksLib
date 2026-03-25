@@ -10,6 +10,7 @@ namespace JiksLib.Control
     /// 可以发布以某一类型为基础的不同类型的事件
     /// TBaseEvent可以是类或接口类型
     /// 仅支持在主线程上使用
+    /// 提供最强大的功能，但性能比ValueEventBus差
     /// </summary>
     public sealed class EventBus<TBaseEvent>
         where TBaseEvent : class
@@ -135,7 +136,6 @@ namespace JiksLib.Control
             TBaseEvent baseEvent,
             IList<Exception>? exceptionsOutput);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         (SafeEvent<TEvent>, InnerPublisher) GetInnerEvent<TEvent>()
             where TEvent : TBaseEvent
         {

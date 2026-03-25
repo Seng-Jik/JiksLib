@@ -8,6 +8,7 @@ namespace JiksLib.Control
     /// 值类型事件总线
     /// 可以发布值类型的事件
     /// 仅支持在主线程上使用
+    /// 提供较好的性能，只支持值类型的事件，可避免事件发布过程中的装箱操作
     /// </summary>
     /// <typeparam name="TConstraint">约定事件类型必须实现某一接口</typeparam>
     public sealed class ValueEventBus<TConstraint>
@@ -28,17 +29,18 @@ namespace JiksLib.Control
         /// </summary>
         public void AddListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : struct, TConstraint =>
-            GetSafeEvent<TEvent>().AddListener(listener);
+            GetInnerEvent<TEvent>().AddListener(listener);
 
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
         public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : struct, TConstraint =>
-            GetSafeEvent<TEvent>().RemoveListener(listener);
+            GetInnerEvent<TEvent>().RemoveListener(listener);
 
         /// <summary>
         /// 事件发布器
+        /// 转换为 ISafeEventPublisher<TConstraint> 后若发布事件会导致事件对象装箱
         /// </summary>
         public readonly struct Publisher : ISafeEventPublisher<TConstraint>
         {
@@ -76,8 +78,7 @@ namespace JiksLib.Control
             readonly Dictionary<Type, (object, WeakPublisher)> eventHandlers;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        SafeEvent<TEvent> GetSafeEvent<TEvent>()
+        SafeEvent<TEvent> GetInnerEvent<TEvent>()
             where TEvent : struct, TConstraint
         {
             if (events.TryGetValue(typeof(TEvent), out var h))
@@ -92,7 +93,7 @@ namespace JiksLib.Control
             return e;
         }
 
-        delegate void WeakPublisher(
+        internal delegate void WeakPublisher(
             TConstraint @event,
             IList<Exception>? exceptionsOutput);
 
