@@ -27,7 +27,7 @@ namespace JiksLib.Control
             {
                 Publisher.Singleton.weakPublishers.Add(
                     typeof(TEvent),
-                    (e, o) => Handler<TEvent>.Publisher.Publish((TEvent)e, o));
+                    static (e, o) => Handler<TEvent>.Publisher.Publish((TEvent)e, o));
             }
 
             Handler<TEvent>.Event.AddListener(handler);
