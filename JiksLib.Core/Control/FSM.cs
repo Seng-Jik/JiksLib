@@ -37,11 +37,11 @@ namespace JiksLib.Control
             {
                 if (!states.ContainsKey(nextState))
                     throw new ArgumentException(
-                        "Invalid state.", nameof(nextState));
+                        "State not found, call AddState first.", nameof(nextState));
 
                 if (!states.ContainsKey(prevState))
                     throw new ArgumentException
-                        ("Invalid state.", nameof(prevState));
+                        ("State not found, call AddState first.", nameof(prevState));
 
                 (states[prevState] ??= new()).Add(transition, nextState);
             }
@@ -59,7 +59,7 @@ namespace JiksLib.Control
             {
                 if (!states.ContainsKey(nextState))
                     throw new ArgumentException(
-                        "Invalid state.", nameof(nextState));
+                        "State not found, call AddState first.", nameof(nextState));
 
                 (anyTimeTransitions ??= new()).Add(transition, nextState);
             }
@@ -68,13 +68,17 @@ namespace JiksLib.Control
             /// 添加默认转移
             /// 当无法找到要转移到的目标状态时，转移到此状态
             /// </summary>
-            public void AddDefaultTransition(TState state)
+            public void AddDefaultTransition(TState defaultState)
             {
-                if (defaultState != null)
+                if (this.defaultState != null)
                     throw new InvalidOperationException(
-                        "Default state already added.");
+                        "Default transition already added.");
+    
+                if (!states.ContainsKey(defaultState))
+                    throw new ArgumentException(
+                        "State not found, call AddState first.", nameof(nextState));
 
-                defaultState = state;
+                this.defaultState = defaultState;
             }
 
             /// <summary>
