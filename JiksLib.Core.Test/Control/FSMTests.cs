@@ -381,7 +381,7 @@ namespace JiksLib.Test.Control
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
-            fsm.OnStateSwitch += (prev, next) =>
+            fsm.OnStateSwitch += (prev, transition, next) =>
             {
                 capturedPrevState = prev;
                 capturedNextState = next;
@@ -468,7 +468,7 @@ namespace JiksLib.Test.Control
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
-            fsm.OnStateSwitch += (prev, next) =>
+            fsm.OnStateSwitch += (prev, transition, next) =>
             {
                 capturedPrevState = prev;
                 capturedNextState = next;
@@ -495,7 +495,7 @@ namespace JiksLib.Test.Control
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
-            fsm.OnStateSwitch += (prev, next) =>
+            fsm.OnStateSwitch += (prev, transition, next) =>
             {
                 capturedPrevState = prev;
                 capturedNextState = next;
@@ -659,7 +659,7 @@ namespace JiksLib.Test.Control
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
             var fsm = builder.Build();
 
-            fsm.OnStateSwitch += (prev, next) =>
+            fsm.OnStateSwitch += (prev, transition, next) =>
             {
                 throw new InvalidOperationException("Test exception");
             };

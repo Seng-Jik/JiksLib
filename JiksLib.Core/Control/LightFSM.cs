@@ -1,12 +1,10 @@
-using System;
-
 namespace JiksLib.Control
 {
     /// <summary>
     /// 轻量级有限状态机
     /// </summary>
     /// <typeparam name="TState">状态类型</typeparam>
-    public sealed class LightFSM<TState> : IFSM<TState, TState>
+    public sealed class LightFSM<TState>
         where TState : LightFSM<TState>.IState
     {
         /// <summary>
@@ -25,7 +23,7 @@ namespace JiksLib.Control
         /// <param name="nextState">新状态</param>
         public void Switch(TState nextState)
         {
-            CurrentState.OnExit();
+            CurrentState.OnExit(this);
             OnStateSwitch?.Invoke(CurrentState, nextState);
             CurrentState = nextState;
             CurrentState.OnEnter(this);
@@ -36,10 +34,14 @@ namespace JiksLib.Control
         /// </summary>
         public TState CurrentState { get; private set; }
 
+        public delegate void OnStateSwitchHandler(
+            TState oldState,
+            TState newState);
+
         /// <summary>
         /// 当状态切换时触发该事件
         /// </summary>
-        public event IFSM<TState, TState>.OnStateSwitchHandler? OnStateSwitch;
+        public event OnStateSwitchHandler? OnStateSwitch;
 
         /// <summary>
         /// 轻量级状态机的状态需要实现该接口
@@ -54,21 +56,7 @@ namespace JiksLib.Control
             /// <summary>
             /// 当退出该状态时
             /// </summary>
-            void OnExit();
+            void OnExit(LightFSM<TState> fsm);
         }
-
-        bool IFSM<TState, TState>.Switch(TState nextState)
-        {
-            Switch(nextState);
-            return true;
-        }
-
-        void IFSM<TState, TState>.Reset()
-        {
-            throw new NotSupportedException(
-                "LightFSM does not support Reset.");
-        }
-
-        event Action? IFSM<TState, TState>.OnReset { add {} remove {} }
     }
 }

@@ -25,7 +25,7 @@ namespace JiksLib.Test.Control
                 LastEnterFSM = fsm;
             }
 
-            public void OnExit()
+            public void OnExit(LightFSM<TestState> fsm)
             {
                 OnExitCallCount++;
             }
@@ -154,7 +154,7 @@ namespace JiksLib.Test.Control
             var state2 = new TestState("State2");
             var fsm = new LightFSM<TestState>(state1);
             int eventCallCount = 0;
-            IFSM<TestState, TestState>.OnStateSwitchHandler handler = (prev, next) => eventCallCount++;
+            LightFSM<TestState>.OnStateSwitchHandler handler = (prev, next) => eventCallCount++;
             fsm.OnStateSwitch += handler;
             fsm.OnStateSwitch -= handler; // Unsubscribe
 

@@ -6,42 +6,7 @@ namespace JiksLib.Control
     /// <summary>
     /// 有限状态机
     /// </summary>
-    public interface IFSM<TState, TTransition>
-    {
-        public delegate void OnStateSwitchHandler(
-            TState oldState,
-            TState newState);
-
-        /// <summary>
-        /// 当状态切换时触发
-        /// </summary>
-        event OnStateSwitchHandler? OnStateSwitch;
-
-        /// <summary>
-        /// 切换状态
-        /// </summary>
-        bool Switch(TTransition transition);
-
-        /// <summary>
-        /// 当前状态
-        /// </summary>
-        TState CurrentState { get; }
-
-        /// <summary>
-        /// 重置状态机
-        /// </summary>
-        void Reset();
-
-        /// <summary>
-        /// 当状态机被重置时触发
-        /// </summary>
-        event Action? OnReset;
-    }
-
-    /// <summary>
-    /// 有限状态机
-    /// </summary>
-    public sealed class FSM<TState, TTransition> : IFSM<TState, TTransition>
+    public sealed class FSM<TState, TTransition>
         where TState : class, FSM<TState, TTransition>.IState
         where TTransition : notnull
     {
@@ -114,6 +79,7 @@ namespace JiksLib.Control
                 (anyTimeTransitions ??= new()).Add(transition, nextState);
             }
 
+            /// <summary>
             /// 构建有限状态机
             /// </summary>
             public FSM<TState, TTransition> Build() =>
@@ -163,7 +129,7 @@ namespace JiksLib.Control
 
             if (defaultState != null)
             {
-                Switch(defaultState);
+                Switch(transition, defaultState);
                 return true;
             }
 
@@ -175,10 +141,16 @@ namespace JiksLib.Control
         /// </summary>
         public TState CurrentState { get; private set; }
 
+        public delegate void OnStateSwitchHandler(
+            TState oldState,
+            TTransition transition,
+            TState newState);
+
+
         /// <summary>
         /// 当状态转移时触发该事件
         /// </summary>
-        public event IFSM<TState, TTransition>.OnStateSwitchHandler? OnStateSwitch;
+        public event OnStateSwitchHandler? OnStateSwitch;
 
         /// <summary>
         /// 当状态机被重置时触发该事件
@@ -226,17 +198,17 @@ namespace JiksLib.Control
             if (transitions != null
                 && transitions.TryGetValue(transition, out var nextState))
             {
-                Switch(nextState);
+                Switch(transition, nextState);
                 return true;
             }
 
             return false;
         }
 
-        void Switch(TState nextState)
+        void Switch(TTransition transition, TState nextState)
         {
             CurrentState.OnExit();
-            OnStateSwitch?.Invoke(CurrentState, nextState);
+            OnStateSwitch?.Invoke(CurrentState, transition, nextState);
             CurrentState = nextState;
             CurrentState.OnEnter();
         }
