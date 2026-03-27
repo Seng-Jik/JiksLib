@@ -106,22 +106,22 @@ namespace JiksLib.Control
             /// <summary>
             /// 当有限状态机被构建时调用
             /// </summary>
-            void OnBuild(FSM<TState, TTransition> fsm) {}
+            void OnBuild(FSM<TState, TTransition> fsm);
 
             /// <summary>
             /// 当进入该状态时调用
             /// </summary>
-            void OnEnter() {}
+            void OnEnter();
 
             /// <summary>
             /// 当退出该状态时调用
             /// </summary>
-            void OnExit() {}
+            void OnExit();
 
             /// <summary>
             /// 当有限状态机被重置时调用
             /// </summary>
-            void OnReset() {}
+            void OnReset();
         }
 
         /// <summary>
