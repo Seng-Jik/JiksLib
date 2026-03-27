@@ -154,7 +154,7 @@ namespace JiksLib.Test.Control
             var state2 = new TestState("State2");
             var fsm = new LightFSM<TestState>(state1);
             int eventCallCount = 0;
-            LightFSM<TestState>.OnStateSwitchHandler handler = (prev, next) => eventCallCount++;
+            IFSM<TestState, TestState>.OnStateSwitchHandler handler = (prev, next) => eventCallCount++;
             fsm.OnStateSwitch += handler;
             fsm.OnStateSwitch -= handler; // Unsubscribe
 
