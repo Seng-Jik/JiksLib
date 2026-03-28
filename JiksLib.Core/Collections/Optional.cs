@@ -3,7 +3,9 @@ using System.Runtime.CompilerServices;
 
 namespace JiksLib.Collections
 {
-    public struct Optional<T>
+    public readonly struct Optional<T>
+        // todo: 实现 IReadOnlyCollection<T> 接口
+        // todo: 实现 Equal 约束
         where T : notnull
     {
         public Optional(T value)
@@ -20,14 +22,7 @@ namespace JiksLib.Collections
             }
         }
 
-        public bool HasValue
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private set;
-        }
+        public readonly bool HasValue;
 
         public T Value
         {
@@ -38,12 +33,6 @@ namespace JiksLib.Collections
                     throw new InvalidOperationException("Value is null.");
 
                 return value!;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set
-            {
-                this = new(value);
             }
         }
 
@@ -91,6 +80,7 @@ namespace JiksLib.Collections
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Optional<(T, U)> Join<U>(Optional<U> optional)
+            where U : notnull
         {
             if (HasValue && optional.HasValue)
                 return new((value!, optional.value!));
@@ -104,6 +94,6 @@ namespace JiksLib.Collections
             else return value!.ToString();
         }
 
-        T? value;
+        readonly T? value;
     }
 }
