@@ -9,21 +9,21 @@ namespace JiksLib.Test.Control
     public class FSMTests
     {
         // 测试用状态类型
-        private class TestState : FSM<TestState, TestTransition>.IState
+        private class TestState : FSM<TestState, UnitType, TestTransition>.IState
         {
             public string Name { get; }
             public int OnBuildCallCount { get; private set; }
             public int OnEnterCallCount { get; private set; }
             public int OnExitCallCount { get; private set; }
             public int OnResetCallCount { get; private set; }
-            public FSM<TestState, TestTransition>? LastBuildFSM { get; private set; }
+            public FSM<TestState, UnitType, TestTransition>? LastBuildFSM { get; private set; }
 
             public TestState(string name)
             {
                 Name = name;
             }
 
-            public virtual void OnBuild(FSM<TestState, TestTransition> fsm)
+            public virtual void OnBuild(FSM<TestState, UnitType, TestTransition> fsm, UnitType arg)
             {
                 OnBuildCallCount++;
                 LastBuildFSM = fsm;
@@ -71,7 +71,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             var stateB = new TestState("B");
 
             // Act
@@ -87,7 +87,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
 
             // Act
@@ -103,7 +103,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateB); // 只添加了stateB作为startState，没有stateA
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateB); // 只添加了stateB作为startState，没有stateA
 
             // Act & Assert
             var ex = Assert.Throws<ArgumentException>(() =>
@@ -117,7 +117,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA); // 只添加了stateA作为startState，没有stateB
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA); // 只添加了stateA作为startState，没有stateB
 
             // Act & Assert
             var ex = Assert.Throws<ArgumentException>(() =>
@@ -130,7 +130,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
 
             // Act
             builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateA);
@@ -145,7 +145,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA); // stateA已添加，stateB未添加
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA); // stateA已添加，stateB未添加
 
             // Act & Assert
             var ex = Assert.Throws<ArgumentException>(() =>
@@ -159,10 +159,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
 
             // Act & Assert - 构建应该成功
-            Assert.DoesNotThrow(() => builder.Build());
+            Assert.DoesNotThrow(() => builder.Build(default(UnitType)));
         }
 
         [Test]
@@ -171,10 +171,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
 
             // Act
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // Assert: 默认状态应该工作
             var result = fsm.Switch(TestTransition.AnotherTransition); // 未定义的转移
@@ -189,7 +189,7 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             stateA.ResetCounters();
@@ -197,7 +197,7 @@ namespace JiksLib.Test.Control
             stateC.ResetCounters();
 
             // Act
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // Assert
             Assert.That(stateA.OnBuildCallCount, Is.EqualTo(1));
@@ -213,11 +213,11 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             stateA.ResetCounters();
 
             // Act
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // Assert
             Assert.That(fsm.CurrentState, Is.SameAs(stateA));
@@ -231,10 +231,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
 
@@ -254,10 +254,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
 
@@ -277,8 +277,8 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
 
@@ -297,8 +297,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
 
             // Act
@@ -318,14 +318,14 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             // 添加特定转移：A -> B
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
             // 添加任意时间转移：任何状态 -> C
             builder.AddAnyTimeTransition(TestTransition.GoToB, stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
             stateC.ResetCounters();
@@ -348,11 +348,11 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateC); // startState: A, defaultState: C
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateC); // startState: A, defaultState: C
             builder.AddState(stateB);
             // 添加任意时间转移：任何状态 -> B
             builder.AddAnyTimeTransition(TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
             stateC.ResetCounters();
@@ -374,10 +374,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
@@ -402,12 +402,12 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
             builder.AddTransition(stateB, TestTransition.GoToC, stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
             stateC.ResetCounters();
@@ -429,9 +429,9 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddTransition(stateA, TestTransition.GoToB, stateA); // 转移到自身
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
 
             // Act
@@ -450,7 +450,7 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             // 创建builder时使用stateA作为startState，stateB未添加
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             // 尝试构建，应该成功，因为startState已添加
             // 现在无法测试无效的startState，因为startState在构造函数中已添加
             // 此测试已过时，保留为无操作
@@ -463,8 +463,8 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
+            var fsm = builder.Build(default(UnitType));
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
@@ -488,10 +488,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             TestState? capturedPrevState = null;
             TestState? capturedNextState = null;
@@ -516,12 +516,12 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             builder.AddAnyTimeTransition(TestTransition.GoToB, stateB);
             builder.AddAnyTimeTransition(TestTransition.GoToC, stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
             stateC.ResetCounters();
@@ -541,8 +541,8 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB); // startState: A, defaultState: B
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
 
@@ -561,8 +561,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
 
             // Act
@@ -582,14 +582,14 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             // 只有从A到B的特定转移
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
             // 任意时间转移到C
             builder.AddAnyTimeTransition(TestTransition.GoToC, stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // 切换到B
             fsm.Switch(TestTransition.GoToB);
@@ -610,7 +610,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA); // 已经添加了stateA
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA); // 已经添加了stateA
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => builder.AddState(stateA));
@@ -623,7 +623,7 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
@@ -639,7 +639,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateA);
 
@@ -654,10 +654,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             fsm.OnStateSwitch += (prev, transition, next) =>
             {
@@ -675,10 +675,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // 切换到B
             fsm.Switch(TestTransition.GoToB);
@@ -701,10 +701,10 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
             stateB.ResetCounters();
             stateC.ResetCounters();
@@ -723,8 +723,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
 
             bool eventFired = false;
             fsm.OnReset += () => eventFired = true;
@@ -741,8 +741,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
             stateA.ResetCounters();
 
             // Act
@@ -761,12 +761,12 @@ namespace JiksLib.Test.Control
             var stateA = new TestState("A");
             var stateB = new TestState("B");
             var stateC = new TestState("C");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddState(stateC);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
             builder.AddTransition(stateB, TestTransition.GoToC, stateC);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // 进行多次转移
             fsm.Switch(TestTransition.GoToB);
@@ -792,10 +792,10 @@ namespace JiksLib.Test.Control
             // Arrange
             var stateA = new TestState("A");
             var stateB = new TestState("B");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
             builder.AddState(stateB);
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
-            var fsm = builder.Build();
+            var fsm = builder.Build(default(UnitType));
 
             // 切换到B然后重置
             fsm.Switch(TestTransition.GoToB);
@@ -820,8 +820,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var stateA = new TestState("A");
-            var builder = new FSM<TestState, TestTransition>.Builder(stateA);
-            var fsm = builder.Build();
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
 
             fsm.OnReset += () => throw new InvalidOperationException("Reset failed");
 
@@ -834,23 +834,140 @@ namespace JiksLib.Test.Control
         {
             // 为这个测试创建一个特殊的状态类型
             var throwingState = new ThrowingResetState();
-            var builder = new FSM<ThrowingResetState, TestTransition>.Builder(throwingState);
-            var fsm = builder.Build();
+            var builder = new FSM<ThrowingResetState, UnitType, TestTransition>.Builder(throwingState);
+            var fsm = builder.Build(default(UnitType));
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => fsm.Reset());
         }
 
         // 会抛出异常的特殊状态类（仅用于此测试）
-        private class ThrowingResetState : FSM<ThrowingResetState, TestTransition>.IState
+        private class ThrowingResetState : FSM<ThrowingResetState, UnitType, TestTransition>.IState
         {
-            public void OnBuild(FSM<ThrowingResetState, TestTransition> fsm) { }
+            public void OnBuild(FSM<ThrowingResetState, UnitType, TestTransition> fsm, UnitType arg) { }
             public void OnEnter() { }
             public void OnExit() { }
             public void OnReset()
             {
                 throw new InvalidOperationException("State reset failed");
             }
+        }
+
+        [Test]
+        public void Switch_ToStateDirectly_ChangesState()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            var fsm = builder.Build(default(UnitType));
+            stateA.ResetCounters();
+            stateB.ResetCounters();
+
+            // Act
+            fsm.Switch(stateB);
+
+            // Assert
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Switch_ToStateDirectly_FiresOnStateSwitchEvent()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            var fsm = builder.Build(default(UnitType));
+
+            TestState? capturedPrevState = null;
+            TestState? capturedNextState = null;
+            fsm.OnStateSwitch += (prev, transition, next) =>
+            {
+                capturedPrevState = prev;
+                capturedNextState = next;
+            };
+
+            // Act
+            fsm.Switch(stateB);
+
+            // Assert
+            Assert.That(capturedPrevState, Is.SameAs(stateA));
+            Assert.That(capturedNextState, Is.SameAs(stateB));
+        }
+
+        [Test]
+        public void Switch_ToSameStateDirectly_CallsOnExitAndOnEnter()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            var fsm = builder.Build(default(UnitType));
+            stateA.ResetCounters();
+
+            // Act
+            fsm.Switch(stateA);
+
+            // Assert
+            Assert.That(fsm.CurrentState, Is.SameAs(stateA));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateA.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Switch_ToStateDirectly_WithTransitionDefined_IgnoresTransition()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            // 定义从A到B的转移
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            var fsm = builder.Build(default(UnitType));
+            stateA.ResetCounters();
+            stateB.ResetCounters();
+            stateC.ResetCounters();
+
+            // Act: 直接切换到C，忽略转移定义
+            fsm.Switch(stateC);
+
+            // Assert
+            Assert.That(fsm.CurrentState, Is.SameAs(stateC));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Switch_ToStateDirectly_AfterTransition_Works()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            var fsm = builder.Build(default(UnitType));
+            // 先通过转移切换到B
+            fsm.Switch(TestTransition.GoToB);
+            stateB.ResetCounters();
+            stateC.ResetCounters();
+
+            // Act: 直接从B切换到C
+            fsm.Switch(stateC);
+
+            // Assert
+            Assert.That(fsm.CurrentState, Is.SameAs(stateC));
+            Assert.That(stateB.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(1));
         }
 
     }

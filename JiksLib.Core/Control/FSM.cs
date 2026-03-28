@@ -128,9 +128,7 @@ namespace JiksLib.Control
         /// <returns>指示状态转移是否成功</returns>
         public bool Switch(TTransition transition)
         {
-            if (states.TryGetValue(CurrentState, out var transitions)
-                && Switch(transitions, transition)) return true;
-
+            if (Switch(states[CurrentState], transition)) return true;
             if (Switch(anyTimeTransitions, transition)) return true;
 
             if (defaultState != null)
@@ -147,8 +145,14 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="nextState">新状态</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Switch(TState nextState) =>
+        public void Switch(TState nextState)
+        {
+            if (!states.ContainsKey(nextState))
+                throw new ArgumentException(
+                    "State not found in FSM.", nameof(nextState));
+
             Switch(new(), nextState);
+        }
 
         /// <summary>
         /// 当前状态
