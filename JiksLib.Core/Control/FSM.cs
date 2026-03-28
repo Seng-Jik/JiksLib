@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using JiksLib.Collections;
 
 namespace JiksLib.Control
 {
@@ -126,22 +128,27 @@ namespace JiksLib.Control
         /// <returns>指示状态转移是否成功</returns>
         public bool Switch(TTransition transition)
         {
-            if (Switch(states[CurrentState], transition)) return true;
+            if (states.TryGetValue(CurrentState, out var transitions)
+                && Switch(transitions, transition)) return true;
+
             if (Switch(anyTimeTransitions, transition)) return true;
 
             if (defaultState != null)
             {
-                Switch(transition, defaultState);
+                Switch(new(transition), defaultState);
                 return true;
             }
 
             return false;
         }
 
-        public void Switch(TState nextState)
-        {
-            Switch(transition: null, nextState);
-        }
+        /// <summary>
+        /// 不使用 Transition 直接进行状态转移
+        /// </summary>
+        /// <param name="nextState">新状态</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Switch(TState nextState) =>
+            Switch(new(), nextState);
 
         /// <summary>
         /// 当前状态
@@ -150,7 +157,7 @@ namespace JiksLib.Control
 
         public delegate void OnStateSwitchHandler(
             TState oldState,
-            TTransition? transition,
+            Option<TTransition> transition,
             TState newState);
 
 
@@ -206,14 +213,14 @@ namespace JiksLib.Control
             if (transitions != null
                 && transitions.TryGetValue(transition, out var nextState))
             {
-                Switch(transition, nextState);
+                Switch(new(transition), nextState);
                 return true;
             }
 
             return false;
         }
 
-        void Switch(TTransition? transition, TState nextState)
+        void Switch(Option<TTransition> transition, TState nextState)
         {
             CurrentState.OnExit();
             OnStateSwitch?.Invoke(CurrentState, transition, nextState);
