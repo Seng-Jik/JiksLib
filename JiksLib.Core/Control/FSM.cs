@@ -108,17 +108,23 @@ namespace JiksLib.Control
             /// <summary>
             /// 当进入该状态时调用
             /// </summary>
-            void OnEnter();
+            /// <param name="prevState">前一个状态，如果是第一个状态则为null</param>
+            /// <param name="transition">转移</param>
+            void OnEnter(TState? prevState, Option<TTransition> transition);
 
             /// <summary>
             /// 当退出该状态时调用
             /// </summary>
-            void OnExit();
+            /// <param name="transition">转移</param>
+            /// <param name="nextState">下一个状态，如果是Reset前的最后一个状态则为null</param>
+            void OnExit(Option<TTransition> transition, TState? nextState);
 
             /// <summary>
             /// 当有限状态机被重置时调用
             /// </summary>
-            void OnReset();
+            /// <param name="lastState">上一个状态</param>
+            /// <param name="startState">初始状态</param>
+            void OnReset(TState? lastState, TState startState);
         }
 
         /// <summary>
@@ -180,15 +186,16 @@ namespace JiksLib.Control
         /// </summary>
         public void Reset()
         {
-            CurrentState.OnExit();
+            var lastState = CurrentState;
+            CurrentState.OnExit(new(), null);
             CurrentState = startState;
 
             foreach (var i in states.Keys)
-                i.OnReset();
+                i.OnReset(lastState, startState);
 
             OnReset?.Invoke();
 
-            CurrentState.OnEnter();
+            CurrentState.OnEnter(null, new());
         }
 
         private FSM(
@@ -207,7 +214,7 @@ namespace JiksLib.Control
                 s.OnBuild(this, arg);
 
             CurrentState = startState;
-            CurrentState.OnEnter();
+            CurrentState.OnEnter(null, new());
         }
 
         bool Switch(
@@ -226,10 +233,11 @@ namespace JiksLib.Control
 
         void Switch(Option<TTransition> transition, TState nextState)
         {
-            CurrentState.OnExit();
+            var oldState = CurrentState;
+            CurrentState.OnExit(transition, nextState);
             OnStateSwitch?.Invoke(CurrentState, transition, nextState);
             CurrentState = nextState;
-            CurrentState.OnEnter();
+            CurrentState.OnEnter(oldState, transition);
         }
 
         readonly Dictionary<TState, Dictionary<TTransition, TState>?> states = new();

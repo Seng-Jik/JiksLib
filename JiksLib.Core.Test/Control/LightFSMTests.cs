@@ -12,6 +12,8 @@ namespace JiksLib.Test.Control
             public int OnEnterCallCount { get; private set; }
             public int OnExitCallCount { get; private set; }
             public LightFSM<TestState>? LastEnterFSM { get; private set; }
+            public TestState? LastEnterPrevState { get; private set; }
+            public TestState? LastExitNextState { get; private set; }
             public string Name { get; }
 
             public TestState(string name)
@@ -19,15 +21,17 @@ namespace JiksLib.Test.Control
                 Name = name;
             }
 
-            public void OnEnter(LightFSM<TestState> fsm)
+            public void OnEnter(LightFSM<TestState> fsm, TestState? prevState)
             {
                 OnEnterCallCount++;
                 LastEnterFSM = fsm;
+                LastEnterPrevState = prevState;
             }
 
-            public void OnExit(LightFSM<TestState> fsm)
+            public void OnExit(LightFSM<TestState> fsm, TestState nextState)
             {
                 OnExitCallCount++;
+                LastExitNextState = nextState;
             }
 
             public void ResetCounters()
@@ -35,6 +39,8 @@ namespace JiksLib.Test.Control
                 OnEnterCallCount = 0;
                 OnExitCallCount = 0;
                 LastEnterFSM = null;
+                LastEnterPrevState = null;
+                LastExitNextState = null;
             }
         }
 

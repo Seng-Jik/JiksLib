@@ -5,7 +5,7 @@ namespace JiksLib.Control
     /// </summary>
     /// <typeparam name="TState">状态类型</typeparam>
     public sealed class LightFSM<TState>
-        where TState : LightFSM<TState>.IState
+        where TState : class, LightFSM<TState>.IState
     {
         /// <summary>
         /// 构造轻量级有限状态机
@@ -14,7 +14,7 @@ namespace JiksLib.Control
         public LightFSM(TState startState)
         {
             CurrentState = startState;
-            startState.OnEnter(this);
+            startState.OnEnter(this, null);
         }
 
         /// <summary>
@@ -23,10 +23,11 @@ namespace JiksLib.Control
         /// <param name="nextState">新状态</param>
         public void Switch(TState nextState)
         {
-            CurrentState.OnExit(this);
+            CurrentState.OnExit(this, nextState);
             OnStateSwitch?.Invoke(CurrentState, nextState);
+            var oldState = CurrentState;
             CurrentState = nextState;
-            CurrentState.OnEnter(this);
+            CurrentState.OnEnter(this, oldState);
         }
 
         /// <summary>
@@ -51,12 +52,12 @@ namespace JiksLib.Control
             /// <summary>
             /// 当进入该状态时
             /// </summary>
-            void OnEnter(LightFSM<TState> fsm);
+            void OnEnter(LightFSM<TState> fsm, TState? prevState);
 
             /// <summary>
             /// 当退出该状态时
             /// </summary>
-            void OnExit(LightFSM<TState> fsm);
+            void OnExit(LightFSM<TState> fsm, TState nextState);
         }
     }
 }

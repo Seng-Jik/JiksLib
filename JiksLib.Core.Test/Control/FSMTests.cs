@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using JiksLib.Control;
+using JiksLib.Collections;
 using System;
 using System.Collections.Generic;
 
@@ -17,6 +18,12 @@ namespace JiksLib.Test.Control
             public int OnExitCallCount { get; private set; }
             public int OnResetCallCount { get; private set; }
             public FSM<TestState, UnitType, TestTransition>? LastBuildFSM { get; private set; }
+            public TestState? LastEnterPrevState { get; private set; }
+            public Option<TestTransition> LastEnterTransition { get; private set; }
+            public Option<TestTransition> LastExitTransition { get; private set; }
+            public TestState? LastExitNextState { get; private set; }
+            public TestState? LastResetLastState { get; private set; }
+            public TestState? LastResetStartState { get; private set; }
 
             public TestState(string name)
             {
@@ -29,19 +36,25 @@ namespace JiksLib.Test.Control
                 LastBuildFSM = fsm;
             }
 
-            public virtual void OnEnter()
+            public virtual void OnEnter(TestState? prevState, Option<TestTransition> transition)
             {
                 OnEnterCallCount++;
+                LastEnterPrevState = prevState;
+                LastEnterTransition = transition;
             }
 
-            public virtual void OnExit()
+            public virtual void OnExit(Option<TestTransition> transition, TestState? nextState)
             {
                 OnExitCallCount++;
+                LastExitTransition = transition;
+                LastExitNextState = nextState;
             }
 
-            public virtual void OnReset()
+            public virtual void OnReset(TestState? lastState, TestState startState)
             {
                 OnResetCallCount++;
+                LastResetLastState = lastState;
+                LastResetStartState = startState;
             }
 
             public void ResetCounters()
@@ -51,6 +64,12 @@ namespace JiksLib.Test.Control
                 OnExitCallCount = 0;
                 OnResetCallCount = 0;
                 LastBuildFSM = null;
+                LastEnterPrevState = null;
+                LastEnterTransition = default;
+                LastExitTransition = default;
+                LastExitNextState = null;
+                LastResetLastState = null;
+                LastResetStartState = null;
             }
 
             public override string ToString() => Name;
@@ -845,9 +864,9 @@ namespace JiksLib.Test.Control
         private class ThrowingResetState : FSM<ThrowingResetState, UnitType, TestTransition>.IState
         {
             public void OnBuild(FSM<ThrowingResetState, UnitType, TestTransition> fsm, UnitType arg) { }
-            public void OnEnter() { }
-            public void OnExit() { }
-            public void OnReset()
+            public void OnEnter(ThrowingResetState? prevState, Option<TestTransition> transition) { }
+            public void OnExit(Option<TestTransition> transition, ThrowingResetState? nextState) { }
+            public void OnReset(ThrowingResetState? lastState, ThrowingResetState startState)
             {
                 throw new InvalidOperationException("State reset failed");
             }
