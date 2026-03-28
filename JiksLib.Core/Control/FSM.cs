@@ -6,9 +6,9 @@ namespace JiksLib.Control
     /// <summary>
     /// 有限状态机
     /// </summary>
-    public sealed class FSM<TState, TTransition>
-        where TState : class, FSM<TState, TTransition>.IState
-        where TTransition : notnull
+    public sealed class FSM<TState, TStateArg, TTransition>
+        where TState : class, FSM<TState, TStateArg, TTransition>.IState
+        where TTransition : struct
     {
         /// <summary>
         /// 构造器
@@ -82,8 +82,8 @@ namespace JiksLib.Control
             /// <summary>
             /// 构建有限状态机
             /// </summary>
-            public FSM<TState, TTransition> Build() =>
-                new(states, anyTimeTransitions, defaultState, startState);
+            public FSM<TState, TStateArg, TTransition> Build(TStateArg arg) =>
+                new(states, anyTimeTransitions, defaultState, startState, arg);
 
             readonly Dictionary<TState, Dictionary<TTransition, TState>?> states = new();
             Dictionary<TTransition, TState>? anyTimeTransitions = new();
@@ -99,7 +99,9 @@ namespace JiksLib.Control
             /// <summary>
             /// 当有限状态机被构建时调用
             /// </summary>
-            void OnBuild(FSM<TState, TTransition> fsm);
+            void OnBuild(
+                FSM<TState, TStateArg, TTransition> fsm,
+                TStateArg arg);
 
             /// <summary>
             /// 当进入该状态时调用
@@ -136,6 +138,11 @@ namespace JiksLib.Control
             return false;
         }
 
+        public void Switch(TState nextState)
+        {
+            Switch(transition: null, nextState);
+        }
+
         /// <summary>
         /// 当前状态
         /// </summary>
@@ -143,7 +150,7 @@ namespace JiksLib.Control
 
         public delegate void OnStateSwitchHandler(
             TState oldState,
-            TTransition transition,
+            TTransition? transition,
             TState newState);
 
 
@@ -177,7 +184,8 @@ namespace JiksLib.Control
             Dictionary<TState, Dictionary<TTransition, TState>?> states,
             Dictionary<TTransition, TState>? anyTimeTransitions,
             TState? defaultState,
-            TState startState)
+            TState startState,
+            TStateArg arg)
         {
             this.states = states;
             this.anyTimeTransitions = anyTimeTransitions;
@@ -185,7 +193,7 @@ namespace JiksLib.Control
             this.startState = startState;
 
             foreach (var s in this.states.Keys)
-                s.OnBuild(this);
+                s.OnBuild(this, arg);
 
             CurrentState = startState;
             CurrentState.OnEnter();
@@ -205,7 +213,7 @@ namespace JiksLib.Control
             return false;
         }
 
-        void Switch(TTransition transition, TState nextState)
+        void Switch(TTransition? transition, TState nextState)
         {
             CurrentState.OnExit();
             OnStateSwitch?.Invoke(CurrentState, transition, nextState);
