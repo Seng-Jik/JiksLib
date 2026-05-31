@@ -81,7 +81,7 @@ namespace JiksLib.PerformanceTest.Control
         public void PublishViaInterface_NoListeners()
         {
             var evt = new TestValueEvent { Value = 42 };
-            interfacePublisher.Publish(evt, null);
+            interfacePublisher!.Publish(evt, null);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace JiksLib.PerformanceTest.Control
         public void PublishViaInterface_WithListeners()
         {
             var evt = new TestValueEvent { Value = 42 };
-            interfacePublisher.Publish(evt, null);
+            interfacePublisher!.Publish(evt, null);
         }
 
         /// <summary>
@@ -129,9 +129,9 @@ namespace JiksLib.PerformanceTest.Control
             var evt2 = new TestValueEvent { Value = 2 };
             var evt3 = new TestValueEvent { Value = 3 };
 
-            interfacePublisher.Publish(evt1, null);
-            interfacePublisher.Publish(evt2, null);
-            interfacePublisher.Publish(evt3, null);
+            interfacePublisher!.Publish(evt1, null);
+            interfacePublisher!.Publish(evt2, null);
+            interfacePublisher!.Publish(evt3, null);
         }
 
         /// <summary>
@@ -147,7 +147,7 @@ namespace JiksLib.PerformanceTest.Control
             var evt = new TestValueEvent { Value = 42 };
 
             // 通过接口发布，内部会使用元组中的 WeakPublisher
-            interfacePublisher.Publish(evt, null);
+            interfacePublisher!.Publish(evt, null);
 
             // 再通过直接方法发布一次
             publisher.Publish(evt, null);
@@ -184,7 +184,7 @@ namespace JiksLib.PerformanceTest.Control
 
             for (int i = 0; i < 5; i++)
             {
-                interfacePublisher.Publish(evt, null);
+                interfacePublisher!.Publish(evt, null);
             }
         }
     }

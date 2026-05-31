@@ -14,8 +14,6 @@ namespace JiksLib.PerformanceTest
                 typeof(ValueEventBusBenchmarks),
                 typeof(EventBusComparisonBenchmarks),
                 typeof(ValueEventBusInterfaceBenchmarks),
-                typeof(StaticValueEventBusBenchmarks),
-                typeof(StaticValueEventBusComparisonBenchmarks)
             });
 
             switcher.Run(args);
