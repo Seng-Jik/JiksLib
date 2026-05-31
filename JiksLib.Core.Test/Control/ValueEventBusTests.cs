@@ -1500,5 +1500,331 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region GetSubPublisher / SubPublisher 测试
+
+        [Test]
+        public void GetSubPublisher_ReturnsWorkingPublisher()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+            TestValueEventA receivedEvent = default;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                callCount++;
+                receivedEvent = e;
+            });
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+            var testEvent = new TestValueEventA("SubPub", 42);
+
+            // Act
+            var exceptions = new List<Exception>();
+            subPublisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(receivedEvent.Message, Is.EqualTo("SubPub"));
+            Assert.That(receivedEvent.Value, Is.EqualTo(42));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_MultiplePublishes_AllDelivered()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+            var testEvent = new TestValueEventA("Multi", 1);
+
+            // Act
+            var exceptions = new List<Exception>();
+            for (int i = 0; i < 10; i++)
+                subPublisher.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(10));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_MultipleEventTypes_IsolatedCorrectly()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCountA = 0;
+            var callCountB = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCountA++);
+            eventBus.AddListener<TestValueEventB>(e => callCountB++);
+
+            var subA = publisher.GetSubPublisher<TestValueEventA>();
+            var subB = publisher.GetSubPublisher<TestValueEventB>();
+
+            // Act
+            var exceptions = new List<Exception>();
+            subA.Publish(new TestValueEventA("A", 1), exceptions);
+            subB.Publish(new TestValueEventB(2.0f, 3.0f), exceptions);
+
+            // Assert
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_WithoutListeners_DoesNothing()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Act
+            var exceptions = new List<Exception>();
+            subPublisher.Publish(new TestValueEventA("NoListener", 0), exceptions);
+
+            // Assert
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_ListenerThrowsException_ExceptionCollected()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException("SubPub error"));
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Act
+            var exceptions = new List<Exception>();
+            subPublisher.Publish(new TestValueEventA("Error", 1), exceptions);
+
+            // Assert
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(exceptions[0], Is.TypeOf<InvalidOperationException>());
+            Assert.That(exceptions[0].Message, Is.EqualTo("SubPub error"));
+        }
+
+        [Test]
+        public void GetSubPublisher_ExceptionsOutputNull_ExceptionsSilentlyIgnored()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            eventBus.AddListener<TestValueEventA>(e => throw new InvalidOperationException("Silent"));
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() =>
+                subPublisher.Publish(new TestValueEventA("Silent", 2), null));
+        }
+
+        [Test]
+        public void GetSubPublisher_ResultsMatchRegularPublish()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var regularResults = new List<string>();
+            var subResults = new List<string>();
+
+            eventBus.AddListener<TestValueEventA>(e => regularResults.Add($"{e.Message}-{e.Value}"));
+            eventBus.AddListener<TestValueEventA>(e => subResults.Add($"{e.Message}-{e.Value}"));
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+            var testEvent = new TestValueEventA("Same", 100);
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(testEvent, exceptions);
+            subPublisher.Publish(testEvent, exceptions);
+
+            // Assert - 两种发布方式都触发了相同的监听器
+            Assert.That(regularResults.Count, Is.EqualTo(2));
+            Assert.That(subResults.Count, Is.EqualTo(2));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_DefaultValueEvent_WorksCorrectly()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            TestValueEventA receivedEvent = default;
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e =>
+            {
+                callCount++;
+                receivedEvent = e;
+            });
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Act
+            var exceptions = new List<Exception>();
+            subPublisher.Publish(default(TestValueEventA), exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(receivedEvent.Message, Is.Null);
+            Assert.That(receivedEvent.Value, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_LargeValueEvent_CopiesCorrectly()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            long receivedData1 = 0;
+            long receivedData8 = 0;
+
+            eventBus.AddListener<LargeValueEvent>(e =>
+            {
+                receivedData1 = e.Data1;
+                receivedData8 = e.Data8;
+            });
+
+            var subPublisher = publisher.GetSubPublisher<LargeValueEvent>();
+            var largeEvent = new LargeValueEvent(999);
+
+            // Act
+            var exceptions = new List<Exception>();
+            subPublisher.Publish(largeEvent, exceptions);
+
+            // Assert
+            Assert.That(receivedData1, Is.EqualTo(999));
+            Assert.That(receivedData8, Is.EqualTo(999 + 7));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_AddRemoveListenerDuringPublish_DelayedCorrectly()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var results = new List<string>();
+
+            void ListenerB(TestValueEventA e) => results.Add("B");
+
+            void ListenerA(TestValueEventA e)
+            {
+                results.Add("A");
+                eventBus.AddListener<TestValueEventA>(ListenerB);
+            }
+
+            eventBus.AddListener<TestValueEventA>(ListenerA);
+
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+            var testEvent = new TestValueEventA("Dynamic", 1);
+
+            // Act - 第一次发布（通过子发布器）
+            var exceptions1 = new List<Exception>();
+            subPublisher.Publish(testEvent, exceptions1);
+
+            // Assert - 只有 A，B 延迟添加
+            Assert.That(results, Is.EqualTo(new[] { "A" }));
+            Assert.That(exceptions1.Count, Is.EqualTo(0));
+
+            // Act - 第二次发布
+            var exceptions2 = new List<Exception>();
+            subPublisher.Publish(testEvent, exceptions2);
+
+            // Assert - A 和 B 都被调用
+            Assert.That(results, Is.EqualTo(new[] { "A", "A", "B" }));
+            Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void SubPublisher_IsStruct()
+        {
+            // 验证 SubPublisher 是值类型（避免额外的堆分配）
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+
+            // Act
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Assert
+            Assert.That(typeof(ValueEventBus<IValueEvent>.SubPublisher<TestValueEventA>).IsValueType, Is.True);
+        }
+
+        [Test]
+        public void SubPublisher_ImplementsISafeEventPublisher()
+        {
+            // 验证 SubPublisher 实现了 ISafeEventPublisher<TEvent>
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var subPublisher = publisher.GetSubPublisher<TestValueEventA>();
+
+            // Assert
+            Assert.That(subPublisher, Is.InstanceOf<ISafeEventPublisher<TestValueEventA>>());
+        }
+
+        [Test]
+        public void GetSubPublisher_MultipleInstances_AllDeliverEvents()
+        {
+            // 多次调用 GetSubPublisher 应返回都可用的子发布器
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            var sub1 = publisher.GetSubPublisher<TestValueEventA>();
+            var sub2 = publisher.GetSubPublisher<TestValueEventA>();
+            var sub3 = publisher.GetSubPublisher<TestValueEventA>();
+
+            var testEvent = new TestValueEventA("MultiInstance", 1);
+
+            // Act
+            var exceptions = new List<Exception>();
+            sub1.Publish(testEvent, exceptions);
+            sub2.Publish(testEvent, exceptions);
+            sub3.Publish(testEvent, exceptions);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(3));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GetSubPublisher_LazyInitialization_CreatesEventOnDemand()
+        {
+            // 没有注册监听器时调用 GetSubPublisher 不会影响其他类型
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var callCount = 0;
+
+            // 先注册一种事件类型
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
+
+            // 为另一种尚未注册的类型获取子发布器
+            var subB = publisher.GetSubPublisher<TestValueEventB>();
+
+            // Act - 发布 TestValueEventA 应正常工作
+            var exceptions = new List<Exception>();
+            subB.Publish(new TestValueEventB(1.0f, 2.0f), exceptions);
+
+            // Assert - 只有 TestValueEventA 监听器存在，不应被调用
+            Assert.That(callCount, Is.EqualTo(0));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
+
+            // 但 TestValueEventA 仍可正常发布
+            eventBus.AddListener<TestValueEventB>(e => callCount++);
+            var subBPublish2 = publisher.GetSubPublisher<TestValueEventB>();
+            subBPublish2.Publish(new TestValueEventB(3.0f, 4.0f), exceptions);
+
+            Assert.That(callCount, Is.EqualTo(1));
+        }
+
+        #endregion
     }
 }

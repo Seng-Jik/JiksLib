@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace JiksLib.Control
 {
@@ -88,8 +87,14 @@ namespace JiksLib.Control
             readonly ValueEventBus<TConstraint> bus;
         }
 
+        /// <summary>
+        /// 子事件发布器
+        /// 可以针对某一类型发布事件，
+        /// 使用该发布器发布事件可以在发布事件时避免查找类型和事件装箱的开销
+        /// </summary>
         public readonly struct SubPublisher<TEvent> : ISafeEventPublisher<TEvent>
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(
                 TEvent @event,
                 IList<Exception>? exceptionsOutput) =>
