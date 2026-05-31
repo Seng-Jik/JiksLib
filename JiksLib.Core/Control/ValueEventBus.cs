@@ -93,6 +93,7 @@ namespace JiksLib.Control
         /// 使用该发布器发布事件可以在发布事件时避免查找类型和事件装箱的开销
         /// </summary>
         public readonly struct SubPublisher<TEvent> : ISafeEventPublisher<TEvent>
+            where TEvent : struct, TConstraint
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(
