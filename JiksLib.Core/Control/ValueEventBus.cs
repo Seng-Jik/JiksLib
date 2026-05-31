@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace JiksLib.Control
 {
@@ -54,7 +55,7 @@ namespace JiksLib.Control
                 IList<Exception>? exceptionsOutput)
                 where TEvent : struct, TConstraint
             {
-                if (eventHandlers.TryGetValue(typeof(TEvent), out var h))
+                if (bus.events.TryGetValue(typeof(TEvent), out var h))
                 {
                     var handlers = (SafeEvent<TEvent>)h.Item1;
                     SafeEvent<TEvent>.Publisher publisher = new(handlers);
@@ -62,20 +63,44 @@ namespace JiksLib.Control
                 }
             }
 
+            /// <summary>
+            /// 获取某一类型的事件发布器
+            /// 如果要高频发布事件，则应该使用该方法提前获得子事件发布器，
+            /// 提供最好的性能。
+            /// </summary>
+            public SubPublisher<TEvent> GetSubPublisher<TEvent>()
+                where TEvent : struct, TConstraint =>
+                new(bus.GetInnerEvent<TEvent>());
+
             void ISafeEventPublisher<TConstraint>.Publish(
                 TConstraint @event,
                 IList<Exception>? exceptionsOutput)
             {
-                if (eventHandlers.TryGetValue(@event.GetType(), out var h))
+                if (bus.events.TryGetValue(@event.GetType(), out var h))
                     h.Item2(@event, exceptionsOutput);
             }
 
-            internal Publisher(ValueEventBus<TConstraint> valueEvent)
+            internal Publisher(ValueEventBus<TConstraint> bus)
             {
-                eventHandlers = valueEvent.events;
+                this.bus = bus;
             }
 
-            readonly Dictionary<Type, (object, WeakPublisher)> eventHandlers;
+            readonly ValueEventBus<TConstraint> bus;
+        }
+
+        public readonly struct SubPublisher<TEvent> : ISafeEventPublisher<TEvent>
+        {
+            public void Publish(
+                TEvent @event,
+                IList<Exception>? exceptionsOutput) =>
+                inner.Publish(@event, exceptionsOutput);
+
+            internal SubPublisher(SafeEvent<TEvent> inner)
+            {
+                this.inner = new(inner);
+            }
+
+            readonly SafeEvent<TEvent>.Publisher inner;
         }
 
         SafeEvent<TEvent> GetInnerEvent<TEvent>()
