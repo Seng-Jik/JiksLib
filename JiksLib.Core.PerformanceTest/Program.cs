@@ -1,4 +1,5 @@
 ﻿using BenchmarkDotNet.Running;
+using JiksLib.PerformanceTest.Collections;
 using JiksLib.PerformanceTest.Control;
 
 namespace JiksLib.PerformanceTest
@@ -14,6 +15,7 @@ namespace JiksLib.PerformanceTest
                 typeof(ValueEventBusBenchmarks),
                 typeof(EventBusComparisonBenchmarks),
                 typeof(ValueEventBusInterfaceBenchmarks),
+                typeof(SparseSetBenchmarks),
             });
 
             switcher.Run(args);

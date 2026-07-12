@@ -135,9 +135,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void Clear()
         {
-            for (int i = 0; i < Count; ++i)
-                InnerBuffer[i] = default!;
-
+            Array.Clear(InnerBuffer, 0, Count);
             Count = 0;
             MaxIndex = -1;
             indexes.Clear();
@@ -220,14 +218,17 @@ namespace JiksLib.Collections
             if (innerIndex >= Count) return false;
             int lastInnerIndex = Count - 1;
 
-            (InnerBuffer[innerIndex], InnerBuffer[lastInnerIndex]) =
-                (InnerBuffer[lastInnerIndex], InnerBuffer[innerIndex]);
+            if (innerIndex != lastInnerIndex)
+            {
+                (InnerBuffer[innerIndex], InnerBuffer[lastInnerIndex]) =
+                    (InnerBuffer[lastInnerIndex], InnerBuffer[innerIndex]);
 
-            (reversedIndexes[innerIndex], reversedIndexes[lastInnerIndex]) =
-                (reversedIndexes[lastInnerIndex], reversedIndexes[innerIndex]);
+                (reversedIndexes[innerIndex], reversedIndexes[lastInnerIndex]) =
+                    (reversedIndexes[lastInnerIndex], reversedIndexes[innerIndex]);
 
-            indexes[index] = lastInnerIndex;
-            indexes[reversedIndexes[innerIndex]] = innerIndex;
+                indexes[index] = lastInnerIndex;
+                indexes[reversedIndexes[innerIndex]] = innerIndex;
+            }
 
             InnerBuffer[--Count] = default!;
             return true;
@@ -239,9 +240,14 @@ namespace JiksLib.Collections
         /// </summary>
         public int IndexOf(T item)
         {
-            for (int i = 0; i < Count; ++i)
-                if (EqualityComparer<T>.Default.Equals(item, InnerBuffer[i]))
+            var buffer = InnerBuffer;
+            var cnt = Count;
+            var comparer = EqualityComparer<T>.Default;
+            for (int i = 0; i < cnt; ++i)
+            {
+                if (comparer.Equals(item, buffer[i]))
                     return reversedIndexes[i];
+            }
 
             return -1;
         }
@@ -279,12 +285,21 @@ namespace JiksLib.Collections
         /// </summary>
         public void CopyToOrdered(ArraySegment<T> target)
         {
-            target.Array.ThrowIfNull();
+            var array = target.Array.ThrowIfNull();
 
             int writeIndex = 0;
-            for (int i = 0; i <= MaxIndex && writeIndex < target.Count; ++i)
-                if (TryIndex(i, out var item))
-                    target.Array![target.Offset + writeIndex++] = item;
+            var buffer = InnerBuffer;
+            var cnt = Count;
+            var maxIdx = MaxIndex;
+            var segCount = target.Count;
+            var segOffset = target.Offset;
+
+            for (int i = 0; i <= maxIdx && writeIndex < segCount; ++i)
+            {
+                int innerIdx = indexes[i];
+                if (innerIdx < cnt)
+                    array[segOffset + writeIndex++] = buffer[innerIdx];
+            }
         }
 
         /// <summary>
@@ -303,9 +318,14 @@ namespace JiksLib.Collections
         /// </summary>
         public bool Contains(T item)
         {
-            for (int i = 0; i < Count; ++i)
-                if (EqualityComparer<T>.Default.Equals(item, InnerBuffer[i]))
+            var buffer = InnerBuffer;
+            var cnt = Count;
+            var comparer = EqualityComparer<T>.Default;
+            for (int i = 0; i < cnt; ++i)
+            {
+                if (comparer.Equals(item, buffer[i]))
                     return true;
+            }
 
             return false;
         }
@@ -373,9 +393,14 @@ namespace JiksLib.Collections
 
             public bool MoveNext()
             {
-                while (++currentIndex <= sparseSet.MaxIndex)
-                    if (sparseSet.TryIndex(currentIndex, out _))
+                var set = sparseSet;
+                var cnt = set.Count;
+                var max = set.MaxIndex;
+                while (++currentIndex <= max)
+                {
+                    if (set.indexes[currentIndex] < cnt)
                         return true;
+                }
 
                 return false;
             }
