@@ -5,6 +5,7 @@ namespace JiksLib.Control
 {
     /// <summary>
     /// 服务定位器
+    /// 注意：如果你使用基于现代.NET版本的Unity，则应该在退出播放模式时Dispose所有的Scope
     /// </summary>
     public static class ServiceLocator
     {

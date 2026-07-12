@@ -40,13 +40,10 @@ namespace JiksLib.Reflection
 
         /// <summary>
         /// 扫描指定程序集中所有的 ScannableAttribute 标记的类型
-        /// 如果指定程序集为 null 则扫描所有程序集
         /// </summary>
         public static ScanResult ScanAssemblies(
-            IEnumerable<Assembly>? assemblies = null)
+            IEnumerable<Assembly> assemblies)
         {
-            assemblies ??= AppDomain.CurrentDomain.GetAssemblies();
-
             InternalResult r = assemblies
                 .SelectMany(x => x.GetTypes())
                 .Select(x => (x, x.GetCustomAttributes<ScannableAttribute>()))
