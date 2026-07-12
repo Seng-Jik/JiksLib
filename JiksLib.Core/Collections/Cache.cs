@@ -103,7 +103,7 @@ namespace JiksLib.Collections
                 throw new ArgumentNullException(nameof(factory));
             if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
-                    nameof(capacity), "容量必须大于零。");
+                    nameof(capacity), "Capacity must be greater than zero.");
 
             return cacheAlgorithm switch
             {
@@ -112,7 +112,7 @@ namespace JiksLib.Collections
                 CacheAlgorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
                 CacheAlgorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
                 _ => throw new ArgumentOutOfRangeException(
-                    nameof(cacheAlgorithm), $"未知的缓存算法：{cacheAlgorithm}。"),
+                    nameof(cacheAlgorithm), $"Unknown cache algorithm: {cacheAlgorithm}."),
             };
         }
 
@@ -136,7 +136,7 @@ namespace JiksLib.Collections
                 throw new ArgumentNullException(nameof(factory));
             if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
-                    nameof(capacity), "容量必须大于零。");
+                    nameof(capacity), "Capacity must be greater than zero.");
 
             return cacheAlgorithm switch
             {
@@ -145,7 +145,7 @@ namespace JiksLib.Collections
                 CacheAlgorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
                 CacheAlgorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
                 _ => throw new ArgumentOutOfRangeException(
-                    nameof(cacheAlgorithm), $"未知的缓存算法：{cacheAlgorithm}。"),
+                    nameof(cacheAlgorithm), $"Unknown cache algorithm: {cacheAlgorithm}."),
             };
         }
 
