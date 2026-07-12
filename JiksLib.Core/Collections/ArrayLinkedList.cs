@@ -31,7 +31,7 @@ namespace JiksLib.Collections
         public int LastSlot { get; private set; } = -1;
 
         /// <summary>
-        /// 容量（数组长度）
+        /// 容量
         /// </summary>
         public int Capacity => array.Length;
 
@@ -89,7 +89,8 @@ namespace JiksLib.Collections
             {
                 ICollection<T> c => c.Count,
                 IReadOnlyCollection<T> roc => roc.Count,
-                _ => collection.Count()
+                ICollection c => c.Count,
+                var c => c.Count()
             };
 
             array = new Node[count];
