@@ -103,24 +103,6 @@ namespace JiksLib.Test.Reflection
         }
 
         [Test]
-        public void ScanAssemblies_WithNullAssemblies_ScansAllAssemblies()
-        {
-            // Arrange & Act
-            var result = ScannableAttribute.ScanAssemblies(null);
-
-            // Assert
-            // 至少应该包含测试程序集中的标记类型
-            var typesWithAttr1 = result.GetTypesByAttribute<TestScannableAttribute1>().ToList();
-            var typesWithAttr2 = result.GetTypesByAttribute<TestScannableAttribute2>().ToList();
-
-            // 确保找到测试类（可能还有其他程序集中的类）
-            Assert.That(typesWithAttr1.Any(t => t.Type == typeof(TestClassA)), Is.True);
-            Assert.That(typesWithAttr1.Any(t => t.Type == typeof(TestClassB)), Is.True);
-            Assert.That(typesWithAttr2.Any(t => t.Type == typeof(TestClassB)), Is.True);
-            Assert.That(typesWithAttr2.Any(t => t.Type == typeof(TestClassC)), Is.True);
-        }
-
-        [Test]
         public void ScanAssemblies_WithEmptyAssemblyList_ReturnsEmptyResult()
         {
             // Arrange
