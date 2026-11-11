@@ -12,14 +12,14 @@ namespace JiksLib.Test.Control
         public void Null_IsNotNull()
         {
             // Arrange & Act & Assert
-            Assert.That(Disposable.Null, Is.Not.Null);
+            Assert.That(Disposable.Empty, Is.Not.Null);
         }
 
         [Test]
         public void Null_Dispose_DoesNotThrow()
         {
             // Arrange
-            var disposable = Disposable.Null;
+            var disposable = Disposable.Empty;
 
             // Act & Assert
             Assert.DoesNotThrow(() => disposable.Dispose());
