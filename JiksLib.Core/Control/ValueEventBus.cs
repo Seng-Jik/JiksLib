@@ -124,7 +124,7 @@ namespace JiksLib.Control
             return e;
         }
 
-        internal delegate void WeakPublisher(
+        delegate void WeakPublisher(
             TConstraint @event,
             IList<Exception>? exceptionsOutput);
 
