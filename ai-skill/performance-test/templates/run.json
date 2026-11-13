@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "status": "success",
+  "startedAt": "2026-11-14T03:57:00+08:00",
+  "finishedAt": "2026-11-14T04:21:00+08:00",
+  "commit": "1a2b3c4d",
+  "commitSubject": "<git log -1 --format=%s>",
+  "branch": "main",
+  "dirty": false,
+  "dirtyFiles": [],
+  "comparable": true,
+  "command": "dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- --filter '*' --allStats --artifacts <abs>/artifacts/benchmark-result/202611140357-1a2b3c4d/raw",
+  "configuration": "Release",
+  "targetFramework": "net10.0",
+  "job": "SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1) + MemoryDiagnoser",
+  "filter": "*",
+  "benchmarkTypes": [
+    "JiksLib.Benchmark.Collections.SparseSetBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusBenchmarks"
+  ],
+  "environment": {
+    "dotnet": "10.0.100",
+    "os": "Windows 11 24H2 (26100)",
+    "cpu": "<CPU 型号>",
+    "memoryGB": 0
+  },
+  "pruned": [],
+  "notes": ""
+}
