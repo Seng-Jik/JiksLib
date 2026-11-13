@@ -43,6 +43,15 @@ namespace JiksLib.Benchmark.Control
             publisher = pub;
         }
 
+        [IterationSetup(Target = nameof(AddListeners_WithWarmup))]
+        public void IterationSetup_AddListenersWithWarmup()
+        {
+            // 初始化 eventBus，并预热监听器存储以避免基准内部因扩容产生分配
+            eventBus = new EventBus<TestEvent>(out var pub);
+            publisher = pub;
+            eventBus.WarmupListenerSlot<TestEvent>(ListenerCount);
+        }
+
         [IterationSetup(Target = nameof(PublishEvent_NoListeners))]
         public void IterationSetup_NoListeners()
         {
@@ -50,9 +59,8 @@ namespace JiksLib.Benchmark.Control
             eventBus = new EventBus<TestEvent>(out var pub);
             publisher = pub;
 
-            // 预热 TypeChain 缓存：发布一次事件来创建并缓存 TypeChain
-            var evt = new TestEvent { Value = 42 };
-            publisher.Publish(evt, null);
+            // 预热类型链缓存：避免第一次发布时在基准内部构建 TypeChain
+            publisher.WarmupPublish(typeof(TestEvent));
         }
 
         [IterationSetup(Target = nameof(PublishEvent_WithListeners))]
@@ -68,9 +76,8 @@ namespace JiksLib.Benchmark.Control
                 eventBus.AddListener(listener);
             }
 
-            // 预热 TypeChain 缓存：发布一次事件来创建并缓存 TypeChain
-            var evt = new TestEvent { Value = 42 };
-            publisher.Publish(evt, null);
+            // 预热类型链缓存：避免第一次发布时在基准内部构建 TypeChain
+            publisher.WarmupPublish(typeof(TestEvent));
         }
 
         [IterationCleanup(Target = nameof(PublishEvent_WithListeners))]
@@ -96,9 +103,8 @@ namespace JiksLib.Benchmark.Control
                 eventBus.AddListener(listener);
             }
 
-            // 预热 TypeChain 缓存：发布一次派生类事件来创建并缓存 TypeChain
-            var evt = new DerivedTestEvent { Value = 42, Message = "Test" };
-            publisher.Publish(evt, null);
+            // 预热类型链缓存：避免第一次发布时在基准内部构建 TypeChain
+            publisher.WarmupPublish(typeof(DerivedTestEvent));
         }
 
         [IterationCleanup(Target = nameof(PublishDerivedEvent_WithBaseListeners))]
@@ -129,12 +135,9 @@ namespace JiksLib.Benchmark.Control
                 eventBus.AddListener(listener);
             }
 
-            // 预热 TypeChain 缓存：发布两种事件类型来创建并缓存 TypeChain
-            var baseEvt = new TestEvent { Value = 42 };
-            publisher.Publish(baseEvt, null);
-
-            var derivedEvt = new DerivedTestEvent { Value = 42, Message = "Test" };
-            publisher.Publish(derivedEvt, null);
+            // 预热类型链缓存：两种事件类型分别预热，避免第一次发布时在基准内部构建 TypeChain
+            publisher.WarmupPublish(typeof(TestEvent));
+            publisher.WarmupPublish(typeof(DerivedTestEvent));
         }
 
         [IterationCleanup(Target = nameof(PublishEvent_MixedListeners))]
@@ -164,6 +167,22 @@ namespace JiksLib.Benchmark.Control
         /// </summary>
         [Benchmark]
         public void AddListeners()
+        {
+            AddAndRemoveListeners();
+        }
+
+        /// <summary>
+        /// 基准测试：预热监听器容量后添加监听器
+        /// 与 AddListeners 的唯一区别是 IterationSetup 里调用了 WarmupListenerSlot，
+        /// 用于对比监听器存储从空 List 扩容与预分配容量的分配差异
+        /// </summary>
+        [Benchmark]
+        public void AddListeners_WithWarmup()
+        {
+            AddAndRemoveListeners();
+        }
+
+        void AddAndRemoveListeners()
         {
             foreach (var listener in listeners)
             {

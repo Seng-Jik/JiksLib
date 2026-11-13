@@ -80,7 +80,21 @@ namespace JiksLib.Benchmark.Control
         }
 
         /// <summary>
+        /// AddListeners_Comparison 每次迭代都从空总线开始。
+        /// 否则监听器会在 GlobalSetup 创建的总线上持续累积，Allocated 会变成累计摊销值而不是本轮添加成本。
+        /// </summary>
+        [IterationSetup(Target = nameof(AddListeners_Comparison))]
+        public void IterationSetup_AddListenersComparison()
+        {
+            refEventBus = new EventBus<TestEvent>(out var refPub);
+            refPublisher = refPub;
+            valueEventBus = new ValueEventBus<IValueEvent>(out var valuePub);
+            valuePublisher = valuePub;
+        }
+
+        /// <summary>
         /// 对比基准测试：添加监听器（引用类型 vs 值类型）
+        /// 每次迭代重建两个总线，测的是从空开始的添加成本
         /// </summary>
         [Benchmark]
         public void AddListeners_Comparison()

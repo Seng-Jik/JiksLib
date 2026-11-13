@@ -40,6 +40,15 @@ namespace JiksLib.Benchmark.Control
             publisher = pub;
         }
 
+        [IterationSetup(Target = nameof(AddListeners_WithWarmup))]
+        public void IterationSetup_AddListenersWithWarmup()
+        {
+            // 初始化 valueEventBus，并预热监听器存储以避免基准内部因扩容产生分配
+            valueEventBus = new ValueEventBus<IValueEvent>(out var pub);
+            publisher = pub;
+            valueEventBus.WarmupListenerSlot<TestValueEvent>(ListenerCount);
+        }
+
         [IterationSetup(Target = nameof(PublishEvent_WithListeners))]
         public void IterationSetup_WithListeners()
         {
@@ -75,6 +84,22 @@ namespace JiksLib.Benchmark.Control
         /// </summary>
         [Benchmark]
         public void AddListeners()
+        {
+            AddAndRemoveListeners();
+        }
+
+        /// <summary>
+        /// 基准测试：预热监听器容量后添加监听器
+        /// 与 AddListeners 的唯一区别是 IterationSetup 里调用了 WarmupListenerSlot，
+        /// 用于对比监听器存储从空 List 扩容与预分配容量的分配差异
+        /// </summary>
+        [Benchmark]
+        public void AddListeners_WithWarmup()
+        {
+            AddAndRemoveListeners();
+        }
+
+        void AddAndRemoveListeners()
         {
             foreach (var listener in listeners)
             {

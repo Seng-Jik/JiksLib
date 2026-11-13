@@ -15,6 +15,29 @@ namespace JiksLib.Collections
     public sealed class Deque<T> : IReadOnlyList<T>
     {
         /// <summary>
+        /// 初始化双端列表
+        /// </summary>
+        public Deque() { }
+
+        /// <summary>
+        /// 使用指定容量初始化双端列表
+        /// 预分配后，元素数量不超过<paramref name="capacity"/>时添加元素不会触发扩容
+        /// </summary>
+        /// <param name="capacity">初始容量（必须非负）</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 当<paramref name="capacity"/>为负数时抛出
+        /// </exception>
+        public Deque(int capacity)
+        {
+            if (capacity < 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(capacity),
+                    "Capacity cannot be negative.");
+
+            buffer = capacity == 0 ? Array.Empty<T>() : new T[capacity];
+        }
+
+        /// <summary>
         /// 索引器
         /// </summary>
         public T this[int index]

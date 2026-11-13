@@ -17,10 +17,11 @@
 | `Gen 0` / `Gen 1` / `Gen 2`（也可能写作 `Gen0`…） | **每 1000 次操作**触发的 GC 次数 | 指标 1 的分配压力 |
 | `Allocated` | **每次操作**的托管分配字节数 | 指标 1 |
 
-两个容易踩的事实：
+三个容易踩的事实：
 
 - `[MemoryDiagnoser]` 会**另起一次运行**来测分配，所以报告里的时间和分配量来自不同的测量轮次，不要假设它们严格同一时刻、也不要用"时间涨了所以分配也涨了"这类因果推断。
 - BDN 默认在每次迭代前强制 GC（`GcForce`），所以报告衡量的是**单次操作**的成本，不含长期堆增长。想看保留内存必须另做探针（见 §7）。
+- Gen 列只在回收次数 > 0 时出现：`MemoryDiagnoser` 对 0 值隐藏整列，报告里没有 Gen 列不代表没测，而是本次没有触发回收。原始计数在 `console.log` 的 `// GC:` 行（`Gen0 Gen1 Gen2 分配字节数 操作数`），可直接核对每次调用的分配量。
 
 ## 2. 指标 1：分配次数与大小
 
@@ -101,67 +102,34 @@ BDN 完全没有碎片化数据。可用口径：
 - 分配量是确定性指标，任何增加都要解释；时间差异在阈值内就老实写"无显著差异"，不要为了有结论而拔高。
 - 判定只在两边 job、TFM、参数、机器一致时才下；否则一律"不可比"并写清哪里不一致。
 
-## 7. 探针模板（碎片化与总体占用）
+## 7. 探针（碎片化与总体占用）
 
-BDN 不测这两项，需要时创建一个**临时** `net10.0` 控制台工程（引用 `JiksLib/JiksLib.csproj`），把源码和输出放进 `<run>/probe/`，不要提交。核心代码：
+BDN 不测这两项。探针已固化在 `JiksLib.Benchmark` 里：`JiksLib.Benchmark/Probes/FootprintProbe.cs`，通过 `probe` 子命令调用，**不要每次再写临时工程**。
 
-```csharp
-using System;
-using System.Diagnostics;
-using System.Text.Json;
-using JiksLib.Collections;
+| 场景 | 测什么 | 规模 |
+| --- | --- | --- |
+| `sparse-set-reserved` | `SparseSet<int>` 预扩容后填入：保留内存、零扩容分配、碎片 | 100,000 |
+| `sparse-set-growth` | 默认容量逐个 `Add`：扩容的累计分配、保留内存、LOH 碎片 | 100,000 |
+| `eventbus-listeners` | `EventBus<T>` 注册监听器：委托数组的保留内存与扩容分配 | 10,000 |
 
-const int N = 100_000;
+调用（每个进程只测一次，3 次 = 3 个进程）：
 
-static void FullGc(bool compacting)
-{
-    GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: compacting);
-    GC.WaitForPendingFinalizers();
-    GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: compacting);
-}
-
-// 1) 基线
-FullGc(compacting: true);
-long baseline = GC.GetTotalMemory(forceFullCollection: true);
-
-// 2) 构造一次并保持引用
-var set = new SparseSet<int>(N);
-for (int i = 0; i < N; i++) set.Add(i);
-
-// 3) 保留内存（compacting GC 后测量）
-long retained = GC.GetTotalMemory(forceFullCollection: true) - baseline;
-
-// 4) 碎片：compacting=false 才能看到 SOH 碎片；compacting=true 主要剩 LOH 碎片
-FullGc(compacting: false);
-var info = GC.GetGCMemoryInfo();
-double fragPercent = info.HeapSizeBytes == 0
-    ? 0
-    : 100.0 * info.FragmentedBytes / info.HeapSizeBytes;
-
-var result = new
-{
-    scenario = "SparseSet<int> fill N=100000",
-    n = N,
-    retainedBytes = retained,
-    retainedPerElement = retained / (double)N,
-    heapSizeBytes = info.HeapSizeBytes,
-    fragmentedBytes = info.FragmentedBytes,
-    fragmentedPercent = fragPercent,
-    pinnedObjects = info.PinnedObjectsCount,
-    peakWorkingSetBytes = Process.GetCurrentProcess().PeakWorkingSet64,
-    measuredAt = DateTimeOffset.Now
-};
-
-Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
-GC.KeepAlive(set);
+```powershell
+dotnet build JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0
+dotnet run --no-build --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- probe sparse-set-growth 1
 ```
 
-注意：
+每个进程输出一行 JSON：`scenario / trial / n / retainedBytes / retainedPerItem / allocatedBytes / allocatedPerItem / heapSizeBytes / fragmentedBytes / fragmentedPercent / pinnedObjects / peakWorkingSetBytes / runtime / at`。`probe --list` 列出场景，`probe`（无参数）打印用法。
 
-- `GC.GetGCMemoryInfo()` 返回的是**上一次 GC** 的信息，所以必须在读之前强制一次 GC。
-- 同一场景重复 3 次（每次新进程），取中位数；不同 N 之间只比"每元素开销"。
-- 输出写到 `<run>/probe/memory.json`，并在 `ai-evaluation.md` 里写明场景、N、重复次数。
-- 探针只测一个场景；不要用它顺手改仓库代码。要长期跟踪，应该另开一个 `[BenchmarkCategory("Footprint")]` 的基准类，而不是每次临时写。
+口径：
+
+- 保留内存 = 构造并持有结构后，`GC.GetTotalMemory(true)` 相对基线的增长；累计分配 = `GC.GetTotalAllocatedBytes(precise: true)` 差值。
+- 碎片 = 强制**非压缩**全量 GC 后 `GC.GetGCMemoryInfo().FragmentedBytes / HeapSizeBytes`。压缩 GC 会抹掉 SOH 碎片、只剩 LOH 碎片；非压缩才能看到完整碎片。`GetGCMemoryInfo()` 返回上一次 GC 的信息，所以读之前必须强制一次 GC。
+- 同一场景跑 3 个独立进程，取中位数；同一进程里连测多个场景会互相污染（堆、LOH、JIT），不要那样做。
+- **碎片率是进程级指标**：宿主程序集、JIT、堆布局都会影响它。探针实现或宿主一变，旧数据只能作历史参考，不能算百分比（实测：同一逻辑从临时工程搬进基准项目后，`sparse-set-growth` 从 43.93% 变成 32.64%，而保留/分配逐字节不变）。
+- 输出写到 `<run>/probe/memory.jsonl`（一行一条），并在 `ai-evaluation.md` 里写明场景、N、重复次数、探针版本。
+
+扩展场景：在 `FootprintProbe.ScenarioNames` 里加名字，在 `Measure` 的 `switch` 里加构造分支（保持"一次只构造一个场景"），必要时加规模常量。场景只应依赖 JiksLib，不要写业务代码。
 
 ## 8. 指标 5：代码字面分析
 
@@ -187,7 +155,7 @@ GC.KeepAlive(set);
 ## 9. 已知限制
 
 - BDN 的分配测量精度约 ±0.5%（官方说明 99.5% 准确），分配次数不可直接获取。
-- `Gen 0/1/2` 是每 1000 次操作的次数，不是每次操作的次数；小分配量时会出现 0 或小数。
+- `Gen 0/1/2` 是每 1000 次操作的次数，不是每次操作的次数；小分配量时会出现 0 或小数；全 0 时整列不会出现在报告里（见 §1）。
 - 时间噪声随机器负载变化；默认 job 的 `invocationCount: 1` 使时间样本比默认配置更抖，跨 run 的时间结论要保守。
 - `GCMemoryInfo` 仅 .NET Core 3.0+；net48 只能写 N/A。
 - 碎片与保留内存是进程级数据，包含探针与运行时自身的分配；只做同探针的纵向比较。

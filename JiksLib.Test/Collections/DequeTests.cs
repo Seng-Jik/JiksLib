@@ -21,6 +21,131 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
+        public void Constructor_WithCapacity_SetsCapacity()
+        {
+            // Arrange & Act
+            var deque = new Deque<int>(10);
+
+            // Assert
+            Assert.That(deque.Capacity, Is.EqualTo(10));
+            Assert.That(deque.Count, Is.EqualTo(0));
+            Assert.That(deque, Is.Empty);
+        }
+
+        [Test]
+        public void Constructor_WithZeroCapacity_CreatesEmptyDeque()
+        {
+            // Arrange & Act
+            var deque = new Deque<int>(0);
+
+            // Assert
+            Assert.That(deque.Capacity, Is.EqualTo(0));
+            Assert.That(deque.Count, Is.EqualTo(0));
+
+            // 容量为 0 的双端列表仍然可用，首次 Add 时自动扩容
+            deque.Add(1);
+
+            Assert.That(deque.Capacity, Is.GreaterThan(0));
+            Assert.That(deque.Count, Is.EqualTo(1));
+            Assert.That(deque[0], Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Constructor_WithNegativeCapacity_ThrowsArgumentOutOfRangeException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Deque<int>(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Deque<string>(-100));
+        }
+
+        [Test]
+        public void Constructor_WithCapacity_AddWithinCapacity_DoesNotResize()
+        {
+            // Arrange
+            var deque = new Deque<int>(4);
+
+            // Act: 正好填满预分配的容量
+            for (int i = 0; i < 4; i++)
+            {
+                deque.Add(i);
+            }
+
+            // Assert
+            Assert.That(deque.Capacity, Is.EqualTo(4));
+            Assert.That(deque.Count, Is.EqualTo(4));
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.That(deque[i], Is.EqualTo(i));
+            }
+        }
+
+        [Test]
+        public void Constructor_WithCapacity_AddBeyondCapacity_Resizes()
+        {
+            // Arrange
+            var deque = new Deque<int>(2);
+
+            // Act: 超出预分配容量，触发扩容
+            for (int i = 0; i < 10; i++)
+            {
+                deque.Add(i);
+            }
+
+            // Assert
+            Assert.That(deque.Capacity, Is.GreaterThan(2));
+            Assert.That(deque.Count, Is.EqualTo(10));
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.That(deque[i], Is.EqualTo(i));
+            }
+        }
+
+        [Test]
+        public void Constructor_WithCapacity_SupportsCircularWrap()
+        {
+            // Arrange
+            var deque = new Deque<int>(4);
+            deque.Add(2);
+            deque.Add(3);
+            deque.AddFront(1);
+            deque.AddFront(0); // [0,1,2,3]，缓冲区已满
+
+            // Act: 移除头部后再添加，rear 回绕到缓冲区开头
+            bool removed = deque.TryRemoveFront(out int front);
+            deque.Add(4); // [1,2,3,4]
+
+            // Assert
+            Assert.That(removed, Is.True);
+            Assert.That(front, Is.EqualTo(0));
+            Assert.That(deque.Capacity, Is.EqualTo(4));
+            Assert.That(deque.Count, Is.EqualTo(4));
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.That(deque[i], Is.EqualTo(i + 1));
+            }
+        }
+
+        [Test]
+        public void Constructor_WithCapacityOne_SupportsAddAndAddFront()
+        {
+            // Arrange
+            var deque = new Deque<int>(1);
+
+            // Act & Assert: 长度为 1 的缓冲区，两端增删都不能越界
+            deque.Add(1);
+            Assert.That(deque.Capacity, Is.EqualTo(1));
+            Assert.That(deque.Count, Is.EqualTo(1));
+            Assert.That(deque[0], Is.EqualTo(1));
+
+            Assert.That(deque.TryRemoveFront(out int removed), Is.True);
+            Assert.That(removed, Is.EqualTo(1));
+
+            deque.AddFront(2);
+            Assert.That(deque.Count, Is.EqualTo(1));
+            Assert.That(deque[0], Is.EqualTo(2));
+        }
+
+        [Test]
         public void Add_AddsToBack()
         {
             // Arrange

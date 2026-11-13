@@ -57,6 +57,24 @@ namespace JiksLib.Benchmark.Control
             }
         }
 
+        /// <summary>
+        /// PublishDirect_WithListeners 也必须真的注册监听器，否则测到的仍是无监听器路径。
+        /// 与接口版本一样在这里重建总线，避免依赖多个 IterationSetup 的执行顺序。
+        /// </summary>
+        [IterationSetup(Target = nameof(PublishDirect_WithListeners))]
+        public void IterationSetup_DirectWithListeners()
+        {
+            valueEventBus = new ValueEventBus<IValueEvent>(out var pub);
+            publisher = pub;
+            interfacePublisher = pub;
+
+            // 添加监听器
+            foreach (var listener in listeners)
+            {
+                valueEventBus.AddListener<TestValueEvent>(listener);
+            }
+        }
+
         [IterationCleanup(Target = nameof(PublishViaInterface_WithListeners))]
         public void IterationCleanup_WithListeners()
         {
@@ -108,7 +126,7 @@ namespace JiksLib.Benchmark.Control
 
         /// <summary>
         /// 基准测试：直接通过 Publisher.Publish 方法发布事件（有监听器）
-        /// 作为对比基准
+        /// 监听器规模与 PublishViaInterface_WithListeners 一致，用于对比接口与直调的派发成本
         /// </summary>
         [Benchmark]
         public void PublishDirect_WithListeners()

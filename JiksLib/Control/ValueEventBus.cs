@@ -25,6 +25,46 @@ namespace JiksLib.Control
         }
 
         /// <summary>
+        /// 预热某一值类型事件类型的监听器存储
+        /// 提前创建该事件类型的内部事件，并预分配指定数量的监听器位置；
+        /// 之后为该事件类型注册不超过<paramref name="capacity"/>个监听器时不会触发扩容分配。
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// 要预热的事件类型，必须是实现<typeparamref name="TConstraint"/>的值类型
+        /// </typeparam>
+        /// <param name="capacity">
+        /// 该事件类型预计注册的监听器数量（必须非负，0 表示只提前创建存储）
+        /// </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 当<paramref name="capacity"/>为负数时抛出
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// 当该事件类型已经预热过，或已经注册过监听器时抛出
+        /// </exception>
+        /// <remarks>
+        /// 每个值类型事件有独立的监听器存储，需要分别预热；建议在启动期集中调用。
+        /// 预热只影响监听器注册路径，不改变事件发布的行为。
+        /// </remarks>
+        public void WarmupListenerSlot<TEvent>(int capacity)
+            where TEvent : struct, TConstraint
+        {
+            if (capacity < 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(capacity),
+                    "Capacity cannot be negative.");
+
+            Type eventType = typeof(TEvent);
+
+            if (events.ContainsKey(eventType))
+                throw new InvalidOperationException(
+                    "WarmupListenerSlot can only be called once per event type, before any listener is added.");
+
+            (SafeEvent<TEvent> safeEvent, WeakPublisher weakPublisher) =
+                CreateInnerEvent<TEvent>(capacity);
+            events.Add(eventType, (safeEvent, weakPublisher));
+        }
+
+        /// <summary>
         /// 注册某一类型的事件监听器
         /// </summary>
         public void AddListener<TEvent>(EventHandler<TEvent> listener)
@@ -115,13 +155,22 @@ namespace JiksLib.Control
             if (events.TryGetValue(typeof(TEvent), out var h))
                 return (SafeEvent<TEvent>)h.Item1;
 
-            SafeEvent<TEvent> e = new(out var publisher);
+            (SafeEvent<TEvent> safeEvent, WeakPublisher weakPublisher) =
+                CreateInnerEvent<TEvent>(0);
+            events.Add(typeof(TEvent), (safeEvent, weakPublisher));
 
-            events.Add(
-                typeof(TEvent),
-                (e, (e, o) => publisher.Publish((TEvent)e, o)));
+            return safeEvent;
+        }
 
-            return e;
+        /// <summary>
+        /// 创建某一值类型事件类型的内部事件及其发布委托
+        /// </summary>
+        static (SafeEvent<TEvent>, WeakPublisher) CreateInnerEvent<TEvent>(int capacity)
+            where TEvent : struct, TConstraint
+        {
+            SafeEvent<TEvent> safeEvent = new(out var publisher, capacity);
+
+            return (safeEvent, (e, o) => publisher.Publish((TEvent)e, o));
         }
 
         delegate void WeakPublisher(

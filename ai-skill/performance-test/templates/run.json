@@ -9,6 +9,7 @@
   "dirty": false,
   "dirtyFiles": [],
   "comparable": true,
+  "probe": "builtin",
   "command": "dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- --filter '*' --allStats --artifacts <abs>/artifacts/benchmark-result/202611140357-1a2b3c4d/raw",
   "configuration": "Release",
   "targetFramework": "net10.0",

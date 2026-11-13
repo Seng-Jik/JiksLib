@@ -39,6 +39,7 @@ for ($i = 2; Test-Path $run; $i++) {
 │   ├── results/             # BDN 生成的报告，按基准类型分文件
 │   ├── *.log                # BDN 自己的运行日志（若生成）
 │   └── ...                  # BDN 生成的工程与构建输出（可重建，可删）
+├── probe/              # 内置探针输出（需要时）：memory.jsonl
 ├── run.json
 ├── ai-evaluation.md
 └── ai-comparison.md
@@ -47,10 +48,10 @@ for ($i = 2; Test-Path $run; $i++) {
 ### `raw/`
 
 - 由 `--artifacts <run>/raw` 指定；不指定时 BDN 会在**当前工作目录**建 `BenchmarkDotNet.Artifacts`（通常是仓库根），这是违规的：把结果移入本 run 目录，或删掉后重跑。
-- 报告默认格式是 CSV、HTML、Markdown，文件名形如
-  `JiksLib.Benchmark.Collections.SparseSetBenchmarks-report.md`。不同类型的基准各一份报告，正好用来按类配对；所以**不要加 `--join`**。
+- 报告默认格式是 CSV、HTML、Markdown（Markdown 为 GitHub 风格，实测文件名为
+  `JiksLib.Benchmark.Collections.SparseSetBenchmarks-report-github.md`）。不同类型的基准各一份报告，正好用来按类配对；所以**不要加 `--join`**。
 - 报告可能在 `results/` 下再按工程 / 配置 / TFM 分层，以实际为准；找文件用
-  `Get-ChildItem raw -Recurse -Filter *-report.md`。
+  `Get-ChildItem raw -Recurse -Filter *-report*`。
 - `console.log` 必须单独保存：BDN 的 Markdown 报告不含运行警告（如 OutOfMemory 提示、环境信息、被跳过的基准），这些只在控制台里。
 - `results/`、`console.log`、`*.log` **只读**，任何情况下不改写。
 - BDN 生成的临时工程和构建输出可以在运行结束后删除（它们是可重建的构建产物，和 `bin` 同类）；删除后在 `run.json` 的 `pruned` 里记录删了什么。`results/` 永远保留。
@@ -72,6 +73,16 @@ for ($i = 2; Test-Path $run; $i++) {
 - 先给判定，再给证据；判定只用四种：改善 / 退化 / 无明显变化 / 不可比。
 - 只比两边都有的基准；缺失项单列。
 - 分配量按精确值比；时间按 `references/metrics.md` 的阈值比。
+- 碎片/保留内存只与同一探针实现/宿主比；探针版本不同就写"不可比"。
+
+### `probe/`
+
+只在需要碎片化/保留内存时才有：
+
+- `memory.jsonl`：内置 `probe` 子命令的输出，一行一条（3 场景 × 3 次 = 9 行）。
+- 必要时放 `README.md`，记录探针版本/宿主与对照数据。
+
+探针实现随代码库演进（`JiksLib.Benchmark/Probes/FootprintProbe.cs`）。**探针实现或宿主改变后，旧的碎片率不能与新的直接比较**：碎片是进程级指标，保留/分配通常逐字节不变而碎片率会变。出现这种情况时在 `probe/README.md` 里同时记录两代数据并指明哪一代是规范值，下一次运行只用规范值。
 
 ### `run.json`
 
@@ -88,6 +99,7 @@ for ($i = 2; Test-Path $run; $i++) {
 | `dirty` | boolean | `git status --porcelain` 是否有输出 |
 | `dirtyFiles` | string[] | 脏文件列表（可截断到 20 条并注明） |
 | `comparable` | boolean | 是否可与默认配置的历史 run 直接比较；用了 `--job short` 等临时参数时为 `false` |
+| `probe` | string | `builtin`（跑了内置探针）/ `none`（未跑）；碎片/保留的对比要求两边一致 |
 | `command` | string | 实际执行的完整命令（含 `--filter`、`--artifacts`） |
 | `configuration` | string | `Release` |
 | `targetFramework` | string | `net10.0`（由 `[SimpleJob]` 固定） |

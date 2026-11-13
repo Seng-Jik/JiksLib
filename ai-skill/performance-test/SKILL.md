@@ -22,6 +22,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 │   ├── console.log       # 本次运行的完整控制台输出
 │   ├── results/          # BDN 报告：每个基准类型一份 md / csv / html
 │   └── ...               # BDN 的运行日志、可重建的构建输出
+├── probe/                # 内置探针输出（需要时）：memory.jsonl 与场景说明
 ├── run.json              # 运行元数据，可比性判断只看这里
 ├── ai-evaluation.md      # AI 评价：本次结果本身
 └── ai-comparison.md      # AI 对比：与上一次运行（可能写"首次基线"）
@@ -43,18 +44,19 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | # | 指标 | 口径 | 来源 |
 |---|------|------|------|
 | 1 | 内存分配次数与大小 | 每次 `[Benchmark]` 调用的托管分配字节数（`Allocated`），配合 `Gen 0/1/2`（每 1000 次操作的 GC 次数）与源码分配点计数 | BDN 报告 + 源码 |
-| 2 | 分配碎片化 | GC 后的 `FragmentedBytes / HeapSizeBytes`、LOH 分配、`PinnedObjectsCount` | `GC.GetGCMemoryInfo()`（探针；net48 记 N/A） |
+| 2 | 分配碎片化 | GC 后的 `FragmentedBytes / HeapSizeBytes`、LOH 分配、`PinnedObjectsCount` | 内置 `JiksLib.Benchmark probe`（net48 记 N/A） |
 | 3 | CPU 时间 | `Mean` / `Median`（单线程即 CPU 时间），并用 Gen 次数与 GC 暂停判断是否被分配污染 | BDN 报告 |
-| 4 | 总体内存占用 | 结构保留字节（`GC.GetTotalMemory(true)` 差值）与进程峰值工作集 | 探针 / `Process.PeakWorkingSet64` |
+| 4 | 总体内存占用 | 结构保留字节（`GC.GetTotalMemory(true)` 差值）与进程峰值工作集 | 内置 `probe` / `Process.PeakWorkingSet64` |
 | 5 | 代码字面分析与建议 | 分配点、装箱、闭包、扩容与拷贝、缓存局部性；给 `文件:行`、预期收益与风险 | 源码 |
 
-三条口径必须记住：
+四条口径必须记住：
 
 1. `Allocated` 是**每次 `[Benchmark]` 方法调用**的分配量，不是"每次元素操作"。方法内部循环 N 次时必须换算，并在评价里写明换算依据（更彻底的做法是改用 `OperationsPerInvoke`）。
-2. BDN **不提供分配次数，也不提供碎片化**。零分配可由 `Allocated = 0` 直接判定；次数用 `Gen0` 与源码分配点共同说明；碎片化和总体占用没有探针就写 `N/A（本次未测）` 和理由。**禁止**用 Gen2 次数冒充碎片化，或用"元素大小 × N"冒充实测。
+2. BDN **不提供分配次数，也不提供碎片化**。零分配可由 `Allocated = 0` 直接判定；次数用 `Gen0` 与源码分配点共同说明；碎片化和总体占用用内置 `JiksLib.Benchmark probe` 测（`references/runbook.md` §6），没测就写 `N/A（本次未测）` 和理由。**禁止**用 Gen2 次数冒充碎片化，或用"元素大小 × N"冒充实测。
 3. 时间只在**同一台机器、同一 job、同一 filter** 之间比较；跨机器只比分配与定性结论。
+4. 碎片率是**进程级**指标（含宿主程序集、JIT 与堆布局）：只有探针实现与宿主完全一致时才能纵向比较；探针改动后旧数据只能作历史参考，不能算百分比。
 
-完整口径、阈值和探针模板见 `references/metrics.md`。
+完整口径、阈值和探针用法见 `references/metrics.md`。
 
 ## 3. 运行流程
 
@@ -79,12 +81,25 @@ dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f ne
 ```
 
 4. 检查 `raw/results/` 有报告文件；没有就是失败，按失败处理，不要凭控制台文字编指标。
-5. 写 `run.json`：commit、dirty、命令、filter、job、机器、dotnet 版本。
-6. 读 `raw/results/` 与对应源码（`JiksLib/...`、`JiksLib.Benchmark/...`），写 `ai-evaluation.md`（模板 `templates/ai-evaluation.md`）。
-7. 找上一次运行写 `ai-comparison.md`（模板 `templates/ai-comparison.md`）。
-8. 对照 §7 检查清单逐条确认。
+5. 需要碎片化/保留内存时跑内置探针（每个场景独立进程，3 次）：
 
-`--list flat` 可以先列出真正会跑的基准。新增基准类**必须**注册到 `JiksLib.Benchmark/Program.cs` 的 `BenchmarkSwitcher`，否则不在运行范围。命令细节、过滤写法、环境要求见 `references/runbook.md`。
+```powershell
+$probe = "$run/probe"
+New-Item -ItemType Directory -Force -Path $probe | Out-Null
+dotnet build JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 | Out-Null
+& { foreach ($s in 'sparse-set-reserved','sparse-set-growth','eventbus-listeners') {
+      foreach ($t in 1,2,3) {
+        dotnet run --no-build --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- probe $s $t
+      }
+    } } | Set-Content "$probe/memory.jsonl"
+```
+
+6. 写 `run.json`：commit、dirty、命令、filter、job、机器、dotnet 版本、是否跑了探针。
+7. 读 `raw/results/`、`probe/memory.jsonl` 与对应源码（`JiksLib/...`、`JiksLib.Benchmark/...`），写 `ai-evaluation.md`（模板 `templates/ai-evaluation.md`）。
+8. 找上一次运行写 `ai-comparison.md`（模板 `templates/ai-comparison.md`）。
+9. 对照 §7 检查清单逐条确认。
+
+`--list flat` 可以先列出真正会跑的基准。新增基准类**必须**注册到 `JiksLib.Benchmark/Program.cs` 的 `BenchmarkSwitcher`，否则不在运行范围；探针场景在 `JiksLib.Benchmark/Probes/FootprintProbe.cs`（`probe` 子命令）里扩展。命令细节、过滤写法、环境要求见 `references/runbook.md`。
 
 ## 4. 上一次运行怎么定
 
@@ -130,8 +145,10 @@ $prev.Name
 - [ ] 目录名 = 开始时间 + 8 位 commit，位置在 `artifacts/benchmark-result/`
 - [ ] `raw/results/` 非空，`raw/console.log` 在，`raw/` 没有被改过
 - [ ] `run.json` 含 commit、dirty、command、filter、job、dotnet 版本
+- [ ] 需要碎片化/保留内存时，`probe/memory.jsonl` 存在且写明了场景、N、重复次数
 - [ ] `ai-evaluation.md` 按 1→5 覆盖指标，缺的写 N/A 和原因
 - [ ] `ai-comparison.md` 写明基线目录名、判定与可比性
+- [ ] 碎片/保留数字只与同一探针宿主比较，没有跨探针版本算百分比
 - [ ] 结论里的每个数字都能在 `raw/results/` 或 `run.json` 里找到
 - [ ] `git status` 里没有 `artifacts/`
 

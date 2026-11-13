@@ -9,6 +9,11 @@ namespace JiksLib.Benchmark.Collections
     /// <summary>
     /// SparseSet 性能基准测试
     /// </summary>
+    /// <remarks>
+    /// Add、Add_WithCapacity、Stress_AddRemove、迭代与 CopyTo 系列在一次 [Benchmark] 调用内部循环 ElementCount 次，
+    /// 因此 Allocated 与 Mean 是「整轮 N 次操作」的值；要比较单次操作，请除以当前的 ElementCount。
+    /// BDN 的 [Benchmark(OperationsPerInvoke = N)] 只接受编译期常量，无法随 [Params] 变化，所以这里用注释说明而不是该特性。
+    /// </remarks>
     [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
     [MemoryDiagnoser]
     public class SparseSetBenchmarks
@@ -50,6 +55,7 @@ namespace JiksLib.Benchmark.Collections
         /// <summary>
         /// 逐个添加元素（含扩容）
         /// </summary>
+        /// <remarks>Allocated 是添加 ElementCount 个元素的合计值，不是单次 Add 的分配。</remarks>
         [Benchmark]
         public void Add()
         {

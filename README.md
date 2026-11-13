@@ -46,12 +46,13 @@ dotnet test JiksLib.Test/JiksLib.Test.csproj --framework net10.0
 ```text
 artifacts/benchmark-result/202611140357-1a2b3c4d/
 ├── raw/                # BenchmarkDotNet 原始输出（results/ 下的 md、csv、html 与运行日志）
+├── probe/              # 需要时：内置探针输出的碎片化与保留内存数据（memory.jsonl）
 ├── run.json            # 运行元数据：提交、dirty、filter、job、机器
 ├── ai-evaluation.md    # AI 评价：按下方指标优先级分析本次结果，并给代码级建议
 └── ai-comparison.md    # AI 对比：与上一次运行（按目录名中的时间判定）逐项比较
 ```
 
-目录名取「运行开始的本地时间 `yyyyMMddHHmm` + 提交 ID 前 8 位」，例如 `202611140357-1a2b3c4d`。指标按重要性排序：内存分配次数与大小、分配碎片化、CPU 时间、总体内存占用，最后是 AI 从代码字面给出的分析与改进建议。完整规则（命名、`run.json` 字段、指标口径与阈值、评价模板）见工作区 skill [ai-skill/performance-test/SKILL.md](ai-skill/performance-test/SKILL.md)。
+目录名取「运行开始的本地时间 `yyyyMMddHHmm` + 提交 ID 前 8 位」，例如 `202611140357-1a2b3c4d`。指标按重要性排序：内存分配次数与大小、分配碎片化、CPU 时间、总体内存占用，最后是 AI 从代码字面给出的分析与改进建议。碎片化与保留内存由内置探针测量：`dotnet run --project JiksLib.Benchmark -- probe <scenario>`（实现见 [FootprintProbe.cs](JiksLib.Benchmark/Probes/FootprintProbe.cs)），结果归档到 run 目录的 `probe/`。完整规则（命名、`run.json` 字段、指标口径与阈值、评价模板）见工作区 skill [ai-skill/performance-test/SKILL.md](ai-skill/performance-test/SKILL.md)。
 
 ## 类索引
 

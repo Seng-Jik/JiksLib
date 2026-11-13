@@ -6,6 +6,7 @@ namespace JiksLib.Control
 {
     /// <summary>
     /// 安全事件处理器委托
+    /// 所谓“安全”，是指事件处理器在执行过程中遇到异常不会中断事件的发布过程，异常会被收集到异常输出列表中
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="event">事件对象</param>
@@ -41,6 +42,27 @@ namespace JiksLib.Control
         public SafeEvent(out Publisher publisher)
         {
             publisher = new(this);
+            listeners = new();
+        }
+
+        /// <summary>
+        /// 使用指定的监听器容量构造安全事件包装器
+        /// 预分配后，注册的监听器数量不超过<paramref name="capacity"/>时不会触发扩容
+        /// </summary>
+        /// <param name="publisher">输出的事件发布器</param>
+        /// <param name="capacity">预分配的监听器数量（必须非负）</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 当<paramref name="capacity"/>为负数时抛出
+        /// </exception>
+        public SafeEvent(out Publisher publisher, int capacity)
+        {
+            if (capacity < 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(capacity),
+                    "Capacity cannot be negative.");
+
+            publisher = new(this);
+            listeners = new(capacity);
         }
 
         /// <summary>
@@ -170,7 +192,7 @@ namespace JiksLib.Control
             readonly SafeEvent<TEvent> @event;
         }
 
-        readonly List<EventHandler<TEvent>?> listeners = new();
+        readonly List<EventHandler<TEvent>?> listeners;
         bool invoking = false;
         int removeIndex = 0;
 

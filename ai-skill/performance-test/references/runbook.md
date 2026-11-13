@@ -74,7 +74,32 @@ dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f ne
 
 `--info` 只打印 BDN 的环境信息（OS、CPU、.NET 版本）然后退出，适合抄进 `environment`，不会跑基准。
 
-## 6. 新增或修改基准
+## 6. 内存/碎片探针
+
+碎片化与保留内存由 `JiksLib.Benchmark` 内置的 `probe` 子命令测量（实现：`JiksLib.Benchmark/Probes/FootprintProbe.cs`）。每个进程只测一个场景，所以每个场景跑 3 个进程取中位数：
+
+```powershell
+$probe = "artifacts/benchmark-result/<run>/probe"
+New-Item -ItemType Directory -Force -Path $probe | Out-Null
+$proj = "JiksLib.Benchmark/JiksLib.Benchmark.csproj"
+
+dotnet build $proj -c Release -f net10.0
+if ($LASTEXITCODE -ne 0) { throw "build failed" }
+
+& { foreach ($s in "sparse-set-reserved","sparse-set-growth","eventbus-listeners") {
+      foreach ($t in 1,2,3) {
+        dotnet run --no-build --project $proj -c Release -f net10.0 -- probe $s $t
+      }
+    } } | Set-Content "$probe/memory.jsonl"
+```
+
+- `probe --list` 列出场景；`probe` 无参数打印用法。
+- 必须先 `dotnet build` 再 `--no-build`，否则 MSBuild 的输出会混进 `memory.jsonl`。
+- 不要在同一个进程里连测多个场景：堆、LOH 与 JIT 状态会互相污染，保留内存与碎片都不再可比。
+- 探针需要 .NET 5+（`GC.GetGCMemoryInfo` / `GC.GetTotalAllocatedBytes`）；net48 目标会返回错误码 3。
+- 新增场景：改 `FootprintProbe.ScenarioNames` 与 `Measure` 的 `switch`，场景只依赖 JiksLib。
+
+## 7. 新增或修改基准
 
 ```csharp
 [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
@@ -95,12 +120,12 @@ public class XxxBenchmarks
 - 放在 `JiksLib.Benchmark/Collections/` 或 `JiksLib.Benchmark/Control/`，一个类一个文件。
 - **必须保留 `[MemoryDiagnoser]`**，否则该类的分配指标全部缺失。
 - **必须注册到 `Program.cs` 的 `BenchmarkSwitcher` 数组**。
-- 方法内部循环 N 次时，加 `[Benchmark(OperationsPerInvoke = N)]` 让耗时按 N 次归一；分配量仍要人工核对（`Allocated` 的口径是"每次调用"）。
+- 方法内部循环 N 次时：N 是编译期常量才可加 `[Benchmark(OperationsPerInvoke = N)]` 让报告按 N 次归一；N 随 `[Params]` 变化时该特性无法使用（只接受常量），要在 XML 注释里说明并在评价里除以 N。
 - `[Params]` 代表真实使用规模；改 `[Params]` 等于改测量口径，要在 `run.json` 的 `notes` 写明"参数集变更"。
 - 不要在 `[Benchmark]` 里打印、写文件、分配日志字符串——这些都会进 `Allocated`。
 - 需要保留状态时用 `[IterationSetup]` / `[IterationCleanup]`，不要靠字段累积（会触发 OOM 提示并污染测量）。
 
-## 7. 故障处理
+## 8. 故障处理
 
 | 现象 | 处理 |
 | --- | --- |
@@ -110,10 +135,12 @@ public class XxxBenchmarks
 | 报告里出现 `-` | 该行数据不可用（诊断器不适用、被跳过、样本不足），照实写 N/A |
 | 仓库根出现 `BenchmarkDotNet.Artifacts` | 忘了 `--artifacts`，删掉重跑 |
 | 同一目录重复运行 | 报告被覆盖，前后结果混在一起：删掉该目录，重新建目录跑 |
+| `probe` 返回 3 | 用 net48 目标运行了探针；改用 `-f net10.0` |
 
-## 8. 运行后收尾
+## 9. 运行后收尾
 
 1. 确认 `raw/results/` 有报告、`raw/console.log` 完整。
-2. 可以删除 `raw/` 下 BDN 生成的临时工程与构建输出（可重建），在 `run.json` 的 `pruned` 记录；`results/` 与日志保留。
-3. 写 `run.json`、`ai-evaluation.md`、`ai-comparison.md`。
-4. 跑一遍 `SKILL.md` §7 的检查清单。
+2. 需要碎片/保留内存时，确认 `probe/memory.jsonl` 有 3 场景 × 3 次的记录。
+3. 可以删除 `raw/` 下 BDN 生成的临时工程与构建输出（可重建），在 `run.json` 的 `pruned` 记录；`results/` 与日志保留。
+4. 写 `run.json`（含是否跑探针）、`ai-evaluation.md`、`ai-comparison.md`。
+5. 跑一遍 `SKILL.md` §7 的检查清单。
