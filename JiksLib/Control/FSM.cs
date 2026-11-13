@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using JiksLib.Collections;
 
 namespace JiksLib.Control
 {
@@ -110,14 +109,14 @@ namespace JiksLib.Control
             /// </summary>
             /// <param name="prevState">前一个状态，如果是第一个状态则为null</param>
             /// <param name="transition">转移</param>
-            void OnEnter(TState? prevState, Option<TTransition> transition);
+            void OnEnter(TState? prevState, TTransition? transition);
 
             /// <summary>
             /// 当退出该状态时调用
             /// </summary>
             /// <param name="transition">转移</param>
             /// <param name="nextState">下一个状态，如果是Reset前的最后一个状态则为null</param>
-            void OnExit(Option<TTransition> transition, TState? nextState);
+            void OnExit(TTransition? transition, TState? nextState);
 
             /// <summary>
             /// 当有限状态机被重置时调用
@@ -139,7 +138,7 @@ namespace JiksLib.Control
 
             if (defaultState != null)
             {
-                Switch(new(transition), defaultState);
+                Switch(transition, defaultState);
                 return true;
             }
 
@@ -167,7 +166,7 @@ namespace JiksLib.Control
 
         public delegate void OnStateSwitchHandler(
             TState oldState,
-            Option<TTransition> transition,
+            TTransition? transition,
             TState newState);
 
 
@@ -224,14 +223,14 @@ namespace JiksLib.Control
             if (transitions != null
                 && transitions.TryGetValue(transition, out var nextState))
             {
-                Switch(new(transition), nextState);
+                Switch(transition, nextState);
                 return true;
             }
 
             return false;
         }
 
-        void Switch(Option<TTransition> transition, TState nextState)
+        void Switch(TTransition? transition, TState nextState)
         {
             var oldState = CurrentState;
             CurrentState.OnExit(transition, nextState);

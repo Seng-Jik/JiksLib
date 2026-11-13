@@ -64,8 +64,7 @@ namespace JiksLib.Collections
         /// <param name="other">要拷贝的ArrayLinkedList</param>
         public ArrayLinkedList(ArrayLinkedList<T> other)
         {
-            if (other == null)
-                throw new ArgumentNullException(nameof(other));
+            other.ThrowIfNull(nameof(other));
 
             array = new Node[other.array.Length];
             Array.Copy(other.array, array, other.arrayUsedCount);
@@ -268,10 +267,7 @@ namespace JiksLib.Collections
         /// <exception cref="ArgumentException">源集合中的元素数大于目标数组片段的容量</exception>
         public void CopyTo(ArraySegment<T> segment)
         {
-            if (segment.Array == null)
-                throw new ArgumentNullException(
-                    nameof(segment),
-                    "Array segment's array cannot be null.");
+            var destArray = segment.Array.ThrowIfNull(nameof(segment));
 
             if (segment.Count < Count)
                 throw new ArgumentException(
@@ -281,7 +277,7 @@ namespace JiksLib.Collections
             int destIndex = segment.Offset;
             while (current != -1)
             {
-                segment.Array[destIndex++] = array[current].Value;
+                destArray[destIndex++] = array[current].Value;
                 current = array[current].Next;
             }
         }

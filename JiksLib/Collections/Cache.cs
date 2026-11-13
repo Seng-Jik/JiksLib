@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JiksLib.Extensions;
 
 namespace JiksLib.Collections
 {
@@ -99,8 +100,7 @@ namespace JiksLib.Collections
             int capacity)
             where TKey : notnull
         {
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
+            factory.ThrowIfNull(nameof(factory));
             if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
                     nameof(capacity), "Capacity must be greater than zero.");
@@ -132,8 +132,7 @@ namespace JiksLib.Collections
             int capacity)
             where TKey : notnull
         {
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
+            factory.ThrowIfNull(nameof(factory));
             if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
                     nameof(capacity), "Capacity must be greater than zero.");

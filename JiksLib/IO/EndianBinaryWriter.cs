@@ -139,10 +139,9 @@ namespace JiksLib.IO
         /// </summary>
         public void Write(ArraySegment<byte> buffer)
         {
-            if (buffer.Array == null)
-                throw new ArgumentException("Buffer array cannot be null.", nameof(buffer));
+            var bufferArray = buffer.Array.ThrowIfNull(nameof(buffer));
 
-            BaseStream.Write(buffer.Array, buffer.Offset, buffer.Count);
+            BaseStream.Write(bufferArray, buffer.Offset, buffer.Count);
         }
 
         /// <summary>
@@ -158,11 +157,10 @@ namespace JiksLib.IO
             ArraySegment<byte> buffer,
             CancellationToken cancellationToken)
         {
-            if (buffer.Array == null)
-                throw new ArgumentException("Buffer array cannot be null.", nameof(buffer));
+            var bufferArray = buffer.Array.ThrowIfNull(nameof(buffer));
 
             return BaseStream.WriteAsync(
-                buffer.Array,
+                bufferArray,
                 buffer.Offset,
                 buffer.Count,
                 cancellationToken);
@@ -173,8 +171,7 @@ namespace JiksLib.IO
         /// </summary>
         public void Write(byte[] buffer)
         {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
+            buffer.ThrowIfNull(nameof(buffer));
 
             BaseStream.Write(buffer, 0, buffer.Length);
         }
@@ -190,8 +187,7 @@ namespace JiksLib.IO
         /// </summary>
         public Task WriteAsync(byte[] buffer, CancellationToken cancellationToken)
         {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
+            buffer.ThrowIfNull(nameof(buffer));
 
             return BaseStream.WriteAsync(
                 buffer,
@@ -247,8 +243,7 @@ namespace JiksLib.IO
         /// </summary>
         public void Write(string value)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfNull(nameof(value));
 
             var bytes = encoding.GetBytes(value);
             Write(bytes.Length);
@@ -266,8 +261,7 @@ namespace JiksLib.IO
         /// </summary>
         public Task WriteAsync(string value, CancellationToken cancellationToken)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+            value.ThrowIfNull(nameof(value));
 
             var bytes = encoding.GetBytes(value);
             Write(bytes.Length);

@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using JiksLib.Extensions;
 
 namespace JiksLib
 {
@@ -359,9 +360,7 @@ namespace JiksLib
             int size,
             string typeName)
         {
-            if (buf.Array == null)
-                throw new ArgumentException(
-                    $"ArraySegment.Array must not be null for {typeName} conversion.");
+            buf.Array.ThrowIfNull();
             if (buf.Count != size)
                 throw new ArgumentException(
                     $"ArraySegment length must be {size} for {typeName} conversion.");

@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using JiksLib.Control;
-using JiksLib.Collections;
 using System;
 using System.Collections.Generic;
 
@@ -19,8 +18,8 @@ namespace JiksLib.Test.Control
             public int OnResetCallCount { get; private set; }
             public FSM<TestState, UnitType, TestTransition>? LastBuildFSM { get; private set; }
             public TestState? LastEnterPrevState { get; private set; }
-            public Option<TestTransition> LastEnterTransition { get; private set; }
-            public Option<TestTransition> LastExitTransition { get; private set; }
+            public TestTransition? LastEnterTransition { get; private set; }
+            public TestTransition? LastExitTransition { get; private set; }
             public TestState? LastExitNextState { get; private set; }
             public TestState? LastResetLastState { get; private set; }
             public TestState? LastResetStartState { get; private set; }
@@ -36,14 +35,14 @@ namespace JiksLib.Test.Control
                 LastBuildFSM = fsm;
             }
 
-            public virtual void OnEnter(TestState? prevState, Option<TestTransition> transition)
+            public virtual void OnEnter(TestState? prevState, TestTransition? transition)
             {
                 OnEnterCallCount++;
                 LastEnterPrevState = prevState;
                 LastEnterTransition = transition;
             }
 
-            public virtual void OnExit(Option<TestTransition> transition, TestState? nextState)
+            public virtual void OnExit(TestTransition? transition, TestState? nextState)
             {
                 OnExitCallCount++;
                 LastExitTransition = transition;
@@ -864,8 +863,8 @@ namespace JiksLib.Test.Control
         private class ThrowingResetState : FSM<ThrowingResetState, UnitType, TestTransition>.IState
         {
             public void OnBuild(FSM<ThrowingResetState, UnitType, TestTransition> fsm, UnitType arg) { }
-            public void OnEnter(ThrowingResetState? prevState, Option<TestTransition> transition) { }
-            public void OnExit(Option<TestTransition> transition, ThrowingResetState? nextState) { }
+            public void OnEnter(ThrowingResetState? prevState, TestTransition? transition) { }
+            public void OnExit(TestTransition? transition, ThrowingResetState? nextState) { }
             public void OnReset(ThrowingResetState? lastState, ThrowingResetState startState)
             {
                 throw new InvalidOperationException("State reset failed");

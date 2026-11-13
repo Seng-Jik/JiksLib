@@ -667,7 +667,7 @@ namespace JiksLib.Test.IO
         }
 
         [Test]
-        public void Write_ArraySegment_WithNullArray_ThrowsArgumentException()
+        public void Write_ArraySegment_WithNullArray_ThrowsArgumentNullException()
         {
             // Arrange
             using var stream = new MemoryStream();
@@ -676,7 +676,7 @@ namespace JiksLib.Test.IO
             var segment = new ArraySegment<byte>();
 
             // Act & Assert
-            Assert.That(() => writer.Write(segment), Throws.ArgumentException.With.Message.Contains("null"));
+            Assert.That(() => writer.Write(segment), Throws.ArgumentNullException.With.Message.Contains("null"));
         }
 
         #endregion

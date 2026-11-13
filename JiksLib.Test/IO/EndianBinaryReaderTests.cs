@@ -615,7 +615,7 @@ namespace JiksLib.Test.IO
         }
 
         [Test]
-        public void ReadBytes_WithNullArray_ThrowsArgumentException()
+        public void ReadBytes_WithNullArray_ThrowsArgumentNullException()
         {
             // Arrange
             using var stream = new MemoryStream(new byte[10]);
@@ -624,7 +624,7 @@ namespace JiksLib.Test.IO
             var segment = new ArraySegment<byte>();
 
             // Act & Assert
-            Assert.That(() => reader.ReadBytes(segment), Throws.ArgumentException.With.Message.Contains("null"));
+            Assert.That(() => reader.ReadBytes(segment), Throws.ArgumentNullException.With.Message.Contains("null"));
         }
 
         [Test]

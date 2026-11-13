@@ -334,9 +334,7 @@ namespace JiksLib.Collections
         /// <exception cref="ArgumentException"></exception>
         public void CopyTo(ArraySegment<T> output)
         {
-            if (output.Array == null)
-                throw new ArgumentException(
-                    "Output array cannot be null.", nameof(output));
+            var outputArray = output.Array.ThrowIfNull(nameof(output));
 
             if (output.Count < Count)
                 throw new ArgumentException(
@@ -344,12 +342,12 @@ namespace JiksLib.Collections
 
             if (front < rear)
             {
-                Array.Copy(buffer, front, output.Array, output.Offset, Count);
+                Array.Copy(buffer, front, outputArray, output.Offset, Count);
             }
             else
             {
-                Array.Copy(buffer, front, output.Array, output.Offset, buffer.Length - front);
-                Array.Copy(buffer, 0, output.Array, output.Offset + buffer.Length - front, rear);
+                Array.Copy(buffer, front, outputArray, output.Offset, buffer.Length - front);
+                Array.Copy(buffer, 0, outputArray, output.Offset + buffer.Length - front, rear);
             }
         }
 
@@ -379,6 +377,8 @@ namespace JiksLib.Collections
                 rear = Count;
             }
         }
+
+        #region Details
 
         /// <summary>
         /// 根据Deque下标计算其在缓冲区内的下标
@@ -462,5 +462,7 @@ namespace JiksLib.Collections
         T[] buffer = Array.Empty<T>();
         int front = 0;
         int rear = 0;
+
+        #endregion
     }
 }

@@ -114,10 +114,9 @@ namespace JiksLib.IO
         /// <returns></returns>
         public int ReadBytes(ArraySegment<byte> buffer)
         {
-            if (buffer.Array == null)
-                throw new ArgumentException("Buffer array cannot be null.", nameof(buffer));
+            var bufferArray = buffer.Array.ThrowIfNull(nameof(buffer));
 
-            return BaseStream.Read(buffer.Array, buffer.Offset, buffer.Count);
+            return BaseStream.Read(bufferArray, buffer.Offset, buffer.Count);
         }
 
 
