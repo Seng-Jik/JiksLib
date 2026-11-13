@@ -278,6 +278,8 @@ namespace JiksLib.Collections
         public BidirectionalDictionary<TValue, TKey> CopyAndReverse() =>
             new(reversed, sequential);
 
+        #region Details
+
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;
 
@@ -300,5 +302,7 @@ namespace JiksLib.Collections
 
         readonly Dictionary<TKey, TValue> sequential;
         readonly Dictionary<TValue, TKey> reversed;
+
+        #endregion
     }
 }

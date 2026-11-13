@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using JiksLib.Extensions;
 
 namespace JiksLib.Collections
 {
@@ -81,11 +82,8 @@ namespace JiksLib.Collections
         /// <param name="collection">源集合</param>
         public ArrayLinkedList(IEnumerable<T> collection)
         {
-            if (collection == null)
-                throw new ArgumentNullException(nameof(collection));
-
             // 获取元素数量
-            int count = collection switch
+            int count = collection.ThrowIfNull(nameof(collection)) switch
             {
                 ICollection<T> c => c.Count,
                 IReadOnlyCollection<T> roc => roc.Count,
@@ -291,7 +289,8 @@ namespace JiksLib.Collections
         /// <summary>
         /// 将集合的元素复制到数组中
         /// </summary>
-        public void CopyTo(T[] array) => CopyTo(new ArraySegment<T>(array));
+        public void CopyTo(T[] array) =>
+            CopyTo(new ArraySegment<T>(array.ThrowIfNull(nameof(array))));
 
         /// <summary>
         /// 查找指定元素的第一个槽位索引
@@ -500,6 +499,8 @@ namespace JiksLib.Collections
             }
         }
 
+        #region Details
+
         void EnsureSlotUsed(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= arrayUsedCount || !array[slotIndex].Used)
@@ -667,5 +668,7 @@ namespace JiksLib.Collections
                 array,
                 arrayIndex,
                 array.Length - arrayIndex));
+
+        #endregion
     }
 }
