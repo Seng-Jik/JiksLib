@@ -1,16 +1,3 @@
 /.claude
 /.vscode
-/Library
-/Logs
-/Temp
-/UserSettings
-/*.csproj
-/JiksLib.sln
-/JiksLib.Core/bin
-/JiksLib.Core/obj
-/JiksLib.Core.Test/bin
-/JiksLib.Core.Test/obj
-/Assets/JiksLib/JiksLib.Core.dll
-JiksLib.Core.PerformanceTest/BenchmarkDotNet.Artifacts
-JiksLib.Core.PerformanceTest/bin
-JiksLib.Core.PerformanceTest/obj
+/artifacts

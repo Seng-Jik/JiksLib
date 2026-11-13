@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="JiksLib.Benchmark/JiksLib.Benchmark.csproj" />
+  <Project Path="JiksLib.Test/JiksLib.Test.csproj" />
+  <Project Path="JiksLib/JiksLib.csproj" />
+</Solution>
