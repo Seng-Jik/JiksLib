@@ -1,7 +1,7 @@
 using System;
 using JiksLib.Control;
 
-namespace JiksLib.PerformanceTest.Control
+namespace JiksLib.Benchmark.Control
 {
     /// <summary>
     /// 测试事件类（引用类型）

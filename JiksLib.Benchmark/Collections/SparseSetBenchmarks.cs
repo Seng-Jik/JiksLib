@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using JiksLib.Collections;
 
-namespace JiksLib.PerformanceTest.Collections
+namespace JiksLib.Benchmark.Collections
 {
     /// <summary>
     /// SparseSet 性能基准测试

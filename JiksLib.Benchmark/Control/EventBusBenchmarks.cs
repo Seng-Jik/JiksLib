@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using JiksLib.Control;
 
-namespace JiksLib.PerformanceTest.Control
+namespace JiksLib.Benchmark.Control
 {
     /// <summary>
     /// EventBus 性能基准测试

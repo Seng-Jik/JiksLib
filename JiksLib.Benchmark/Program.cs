@@ -1,8 +1,8 @@
 ﻿using BenchmarkDotNet.Running;
-using JiksLib.PerformanceTest.Collections;
-using JiksLib.PerformanceTest.Control;
+using JiksLib.Benchmark.Collections;
+using JiksLib.Benchmark.Control;
 
-namespace JiksLib.PerformanceTest
+namespace JiksLib.Benchmark
 {
     internal class Program
     {

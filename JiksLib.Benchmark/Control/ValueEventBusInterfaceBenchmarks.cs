@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using JiksLib.Control;
 
-namespace JiksLib.PerformanceTest.Control
+namespace JiksLib.Benchmark.Control
 {
     /// <summary>
     /// ValueEventBus 接口实现性能基准测试
