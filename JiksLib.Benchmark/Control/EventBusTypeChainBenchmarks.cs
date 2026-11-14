@@ -35,8 +35,8 @@ namespace JiksLib.Benchmark.Control
         private EventBus<TestEvent> classBus = null!;
         private EventBus<TestEvent>.Publisher classPublisher;
 
-        private EventBus<IInterfaceEvent> sharedInterfaceBus = null!;
-        private EventBus<IInterfaceEvent>.Publisher sharedInterfacePublisher;
+        private EventBus<TestEvent> sharedClassBus = null!;
+        private EventBus<TestEvent>.Publisher sharedClassPublisher;
 
         [IterationSetup(Target = nameof(PublishEvent_InterfaceBase))]
         public void SetupInterfaceBase()
@@ -65,23 +65,23 @@ namespace JiksLib.Benchmark.Control
         [IterationSetup(Target = nameof(PublishEvent_SharedTypeChainCache))]
         public void SetupSharedCache()
         {
-            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var cache = EventBus<TestEvent>.TypeChain.MakeTypeChainCache();
 
             classBus = new EventBus<TestEvent>(out var classPub, cache);
             classPublisher = classPub;
-            sharedInterfaceBus = new EventBus<IInterfaceEvent>(
-                out var interfacePub,
+            sharedClassBus = new EventBus<TestEvent>(
+                out var sharedPub,
                 cache);
-            sharedInterfacePublisher = interfacePub;
+            sharedClassPublisher = sharedPub;
 
             for (int i = 0; i < ListenerCount; ++i)
             {
                 classBus.AddListener<TestEvent>(_ => { });
-                sharedInterfaceBus.AddListener<IInterfaceEvent>(_ => { });
+                sharedClassBus.AddListener<TestEvent>(_ => { });
             }
 
             classPublisher.WarmupPublish<ClassAndInterfaceEvent>();
-            sharedInterfacePublisher.WarmupPublish<ClassAndInterfaceEvent>();
+            sharedClassPublisher.WarmupPublish<ClassAndInterfaceEvent>();
         }
 
         [Benchmark]
@@ -101,7 +101,7 @@ namespace JiksLib.Benchmark.Control
         {
             var evt = new ClassAndInterfaceEvent { Value = 42 };
             classPublisher.Publish(evt, null);
-            sharedInterfacePublisher.Publish(evt, null);
+            sharedClassPublisher.Publish(evt, null);
         }
     }
 }

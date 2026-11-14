@@ -12,8 +12,8 @@ namespace JiksLib.Control
     /// TBaseEvent可以是类或接口类型
     /// 仅支持在主线程上使用
     /// 提供最强大的功能，但性能比ValueEventBus差
-    /// TypeChain 缓存可以在多个总线实例之间共享，即使 TBaseEvent 不同；
-    /// 每条链会为不同 TBaseEvent 缓存独立的过滤视图。
+    /// TypeChain 缓存按 TBaseEvent 独立：相同基类型的多个总线可以共享缓存，
+    /// 不同基类型的缓存内容不同，不能共用同一个缓存。
     /// </summary>
     public sealed class EventBus<TBaseEvent>
         where TBaseEvent : class
@@ -23,13 +23,12 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="publisher">构造出的事件发布器</param>
         /// <param name="typeChainCache">
-        /// 用于缓存事件运行时类型对应的 EventBusTypeChain 的缓存。
-        /// 缓存按运行时事件类型存储完整的类链和接口信息，单个缓存可由任意
-        /// <see cref="EventBus{TBaseEvent}"/> 共享；不同 TBaseEvent 的过滤视图
-        /// 按需缓存在 EventBusTypeChain 内，互不干扰。
-        /// 共享时，缓存容量/淘汰算法、WarmupPublish 的视图预热状态以及
+        /// 用于缓存事件运行时类型对应的 TypeChain 的缓存。
+        /// 缓存内容依赖当前 TBaseEvent，只能由相同 TBaseEvent 的多个总线共享；
+        /// 不同 TBaseEvent 的 TypeChain 不兼容。
+        /// 共享时，缓存容量/淘汰算法、WarmupPublish 的预热状态以及
         /// PurgeListenerSlot/PurgeListenerSlots 的清理会作用于所有共享者；
-        /// 被清理后其他总线会在下次发布时重建对应视图，不影响正确性。
+        /// 被清理后其他总线会在下次发布时重建对应类型链，不影响正确性。
         /// </param>
         /// <param name="allowAddRemoveListenerDuringPublish">
         /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到整个最外层发布结束后生效。
@@ -54,7 +53,7 @@ namespace JiksLib.Control
         /// </exception>
         public EventBus(
             out Publisher publisher,
-            ICache<Type, EventBusTypeChain> typeChainCache,
+            ICache<Type, TypeChain> typeChainCache,
             bool allowAddRemoveListenerDuringPublish = false,
             bool allowRecursivePublish = false,
             bool autoPurgeTypeInfo = false,
@@ -80,8 +79,8 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 使用每个实例独立创建的内置 TypeChain 缓存构造事件总线。
-        /// 如果多个总线需要共享 TypeChain 缓存，请使用接受 <see cref="ICache{TKey,TValue}"/>
-        /// 的构造函数传入同一个缓存实例。
+        /// 如果多个相同 TBaseEvent 的总线需要共享 TypeChain 缓存，请使用接受
+        /// <see cref="ICache{TKey,TValue}"/> 的构造函数传入同一个缓存实例。
         /// </summary>
         /// <param name="publisher">构造出的事件发布器</param>
         /// <param name="allowAddRemoveListenerDuringPublish">
@@ -119,7 +118,7 @@ namespace JiksLib.Control
             Cache.Algorithm typeChainCacheAlgorithm = Cache.Algorithm.NeverEvict,
             int typeChainCacheCapacity = 32) : this(
                 out publisher,
-                EventBusTypeChain.MakeTypeChainCache(
+                TypeChain.MakeTypeChainCache(
                     typeChainCacheAlgorithm,
                     typeChainCacheCapacity),
                 allowAddRemoveListenerDuringPublish,
@@ -361,8 +360,8 @@ namespace JiksLib.Control
             /// <remarks>
             /// 类型链按事件的运行时类型缓存：预热基类或接口不会覆盖派生类型，需要按实际发布的事件类型分别预热。
             /// 预热只消除第一次发布时的类型链构建，不改变每次发布的查找与派发成本。
-            /// 重复调用是幂等的；若 TypeChain 缓存与多个总线共享，同一
-            /// (TBaseEvent, 运行时类型) 视图只会构建一次。
+            /// 重复调用是幂等的；若 TypeChain 缓存与相同 TBaseEvent 的其他总线共享，
+            /// 同一运行时类型链只会构建一次。
             /// </remarks>
             public void WarmupPublish(Type type)
             {
@@ -374,10 +373,7 @@ namespace JiksLib.Control
                         $"Type {type} is not assignable to {typeof(TBaseEvent)}.",
                         nameof(type));
 
-                bus
-                    .typeChainCache
-                    .Access(type)
-                    .GetViewWithoutObjectType(typeof(TBaseEvent));
+                bus.typeChainCache.Access(type);
             }
 
             /// <summary>
@@ -412,7 +408,7 @@ namespace JiksLib.Control
 
                 PublishOneShot(@event, eventType, exceptionsOutput);
 
-                foreach (var i in typeChain.GetViewWithoutObjectType(baseEventType))
+                foreach (var i in typeChain.TypesToPublish)
                 {
                     PublishOneShot(@event, i, exceptionsOutput);
 
@@ -420,9 +416,7 @@ namespace JiksLib.Control
                         break;
                 }
 
-                if (baseEventType.IsInterface)
-                    PublishOneShot(@event, baseEventType, exceptionsOutput);
-                else if (baseEventType == typeof(object) && eventType != typeof(object))
+                if (baseEventType != eventType)
                     PublishOneShot(@event, baseEventType, exceptionsOutput);
             }
 
@@ -442,6 +436,88 @@ namespace JiksLib.Control
             {
                 bus = eventBus;
             }
+        }
+
+        /// <summary>
+        /// 某个 EventBus 基类型专用的类型链缓存。
+        /// 每个 TBaseEvent 拥有独立的 TypeChain 与缓存内容，不能跨不同基类型共享。
+        /// 运行时事件类型由 Publisher 直接派发，因此列表只保存需要额外派发的接口或基类类型。
+        /// </summary>
+        public sealed class TypeChain
+        {
+            /// <summary>
+            /// 创建当前 TBaseEvent 专用的 TypeChain 缓存。
+            /// </summary>
+            /// <param name="algorithm">缓存淘汰算法，默认 <see cref="Cache.Algorithm.NeverEvict"/>。</param>
+            /// <param name="capacity">缓存容量；NeverEvict 忽略此参数。</param>
+            /// <returns>可由相同 TBaseEvent 的多个 EventBus 共享的 TypeChain 缓存。</returns>
+            /// <exception cref="ArgumentOutOfRangeException">
+            /// 当容量不合法或 <paramref name="algorithm"/> 未知时抛出。
+            /// </exception>
+            public static ICache<Type, TypeChain> MakeTypeChainCache(
+                Cache.Algorithm algorithm = Cache.Algorithm.NeverEvict,
+                int capacity = 32) =>
+                Cache.Make<Type, TypeChain>(
+                    algorithm,
+                    static x => new(x),
+                    capacity);
+
+            internal TypeChain(Type type)
+            {
+                int typeChainLength = 0;
+
+                for (
+                    var i = type.BaseType;
+                    i != null && i != typeof(object) && i != typeof(TBaseEvent);
+                    i = i.BaseType)
+                {
+                    if (typeof(TBaseEvent).IsAssignableFrom(i))
+                        typeChainLength++;
+                }
+
+                Type[]? interfaces = null;
+
+                if (typeof(TBaseEvent).IsInterface)
+                {
+                    interfaces = type.GetInterfaces();
+
+                    foreach (var i in interfaces)
+                        if (typeof(TBaseEvent).IsAssignableFrom(i)
+                            && i != typeof(TBaseEvent))
+                            typeChainLength++;
+                }
+
+                if (typeChainLength == 0)
+                    TypesToPublish = Array.Empty<Type>();
+                else
+                {
+                    TypesToPublish = new Type[typeChainLength];
+                    int writeIndex = 0;
+
+                    if (interfaces != null)
+                    {
+                        foreach (var i in interfaces)
+                            if (typeof(TBaseEvent).IsAssignableFrom(i)
+                                && i != typeof(TBaseEvent))
+                                TypesToPublish[writeIndex++] = i;
+                    }
+
+                    for (
+                        var i = type.BaseType;
+                        i != null && i != typeof(object) && i != typeof(TBaseEvent);
+                        i = i.BaseType)
+                    {
+                        if (typeof(TBaseEvent).IsAssignableFrom(i))
+                            TypesToPublish[writeIndex++] = i;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// 运行时类型之外需要额外派发的类型；接口基础类型先写接口再写基类，
+            /// 类基础类型按派生到基排列。
+            /// </summary>
+            internal readonly Type[] TypesToPublish;
         }
 
         /// <summary>
@@ -494,110 +570,11 @@ namespace JiksLib.Control
         }
 
         /// <summary>TypeChain 缓存；可由任意 EventBus 共享，并按 TBaseEvent 缓存过滤视图。</summary>
-        readonly ICache<Type, EventBusTypeChain> typeChainCache;
+        readonly ICache<Type, TypeChain> typeChainCache;
         readonly Dictionary<Type, InnerEvent> innerEvents = new();
         readonly bool allowAddRemoveListenerDuringPublish;
         readonly bool allowRecursivePublish;
         readonly bool autoPurgeTypeInfo;
         readonly bool purgeTypeChainCacheWhenAutoPurgeTypeInfo;
-    }
-
-    /// <summary>
-    /// 事件运行时类型对应的类型链缓存。
-    /// 保存接口集合和类继承链（不含运行时类型与 object，二者由 Publisher 单独派发），
-    /// 并按接口基础类型缓存过滤视图；基础接口本身不进入视图，而是由 Publisher
-    /// 单独派发，避免只实现单个接口的类产生大量单元素数组。
-    /// 可由任意 EventBus 实例共享，即使 TBaseEvent 不同。
-    /// </summary>
-    public sealed class EventBusTypeChain
-    {
-        /// <summary>
-        /// 创建可共享的 EventBusTypeChain 缓存。
-        /// </summary>
-        /// <param name="algorithm">缓存淘汰算法，默认 <see cref="Cache.Algorithm.NeverEvict"/>。</param>
-        /// <param name="capacity">缓存容量；NeverEvict 忽略此参数。</param>
-        /// <returns>可由多个 EventBus 共享的 TypeChain 缓存。</returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// 当容量不合法或 <paramref name="algorithm"/> 未知时抛出。
-        /// </exception>
-        public static ICache<Type, EventBusTypeChain> MakeTypeChainCache(
-            Cache.Algorithm algorithm = Cache.Algorithm.NeverEvict,
-            int capacity = 32) =>
-            Cache.Make<Type, EventBusTypeChain>(
-                algorithm,
-                static x => new(x),
-                capacity);
-
-        internal EventBusTypeChain(Type type)
-        {
-            interfaces = type.GetInterfaces();
-            viewForInterfaceBasedEvent = null;
-
-            List<Type>? baseTypes = null;
-
-            for (var current = type.BaseType; current != null; current = current.BaseType)
-            {
-                if (current == typeof(object)) break;
-                baseTypes ??= new(8);
-                baseTypes.Add(current);
-            }
-
-            if (baseTypes == null) this.baseTypes = Array.Empty<Type>();
-            else this.baseTypes = baseTypes.ToArray();
-        }
-
-        /// <summary>
-        /// 获取不包含 object 和基础接口本身的派发视图。
-        /// 类基础类型返回完整基类链；接口基础类型返回可赋值的基类与派生接口。
-        /// 基础接口由 Publisher 单独派发，避免只实现单个接口时为每个 BaseType
-        /// 缓存一个单元素小数组。
-        /// </summary>
-        internal Type[] GetViewWithoutObjectType(Type baseEventType)
-        {
-            if (!baseEventType.IsInterface) return baseTypes;
-
-            if (viewForInterfaceBasedEvent != null
-                && viewForInterfaceBasedEvent.TryGetValue(baseEventType, out var i))
-                return i;
-
-            viewForInterfaceBasedEvent ??= new();
-
-            int typesInViewCount = 0;
-
-            foreach (var baseType in baseTypes)
-                if (baseEventType.IsAssignableFrom(baseType))
-                    typesInViewCount++;
-
-            foreach (var @interface in interfaces)
-                if (baseEventType.IsAssignableFrom(@interface)
-                    && @interface != baseEventType)
-                    typesInViewCount++;
-
-            Type[] filtered = typesInViewCount == 0
-                ? Array.Empty<Type>()
-                : new Type[typesInViewCount];
-            int writeIndex = 0;
-
-            foreach (var baseType in baseTypes)
-                if (baseEventType.IsAssignableFrom(baseType))
-                    filtered[writeIndex++] = baseType;
-
-            foreach (var @interface in interfaces)
-                if (baseEventType.IsAssignableFrom(@interface)
-                    && @interface != baseEventType)
-                    filtered[writeIndex++] = @interface;
-
-            viewForInterfaceBasedEvent[baseEventType] = filtered;
-            return filtered;
-        }
-
-        /// <summary>运行时类型的基类链，按派生到基排列，不含运行时类型和 object。</summary>
-        readonly Type[] baseTypes;
-
-        /// <summary>运行时类型实现的全部接口。</summary>
-        readonly Type[] interfaces;
-
-        /// <summary>按基础接口缓存的过滤视图。</summary>
-        Dictionary<Type, Type[]>? viewForInterfaceBasedEvent;
     }
 }

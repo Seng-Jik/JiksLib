@@ -16,12 +16,12 @@ namespace JiksLib.Benchmark.Control
         private static readonly JiksLib.Control.EventHandler<TestEvent> Listener =
             _ => { };
 
-        private ICache<Type, EventBusTypeChain> sharedCache = null!;
+        private ICache<Type, EventBus<TestEvent>.TypeChain> sharedCache = null!;
 
         [GlobalSetup]
         public void GlobalSetup()
         {
-            sharedCache = EventBusTypeChain.MakeTypeChainCache();
+            sharedCache = EventBus<TestEvent>.TypeChain.MakeTypeChainCache();
 
             // 先用另一个总线预热共享缓存中的 DerivedTestEvent 类型链。
             var warmBus = new EventBus<TestEvent>(out var publisher, sharedCache);

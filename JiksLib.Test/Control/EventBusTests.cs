@@ -1108,51 +1108,49 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void SharedTypeChainCache_WorksAcrossDifferentBaseTypes()
+        public void SharedTypeChainCache_WorksBetweenBusesWithSameBaseType()
         {
             // Arrange
-            var cache = EventBusTypeChain.MakeTypeChainCache();
-            var classBus = new EventBus<TestEventBase>(
-                out var classPublisher,
-                cache);
-            var interfaceBus = new EventBus<IEventInterface>(
-                out var interfacePublisher,
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            var baseBus = new EventBus<TestEventBase>(out var basePublisher, cache);
+            var derivedBus = new EventBus<TestEventBase>(
+                out var derivedPublisher,
                 cache);
 
-            var classCalls = 0;
-            var interfaceCalls = 0;
-            classBus.AddListener<TestEventBase>(e => classCalls++);
-            interfaceBus.AddListener<IEventInterface>(e => interfaceCalls++);
+            var baseCalls = 0;
+            var derivedCalls = 0;
+            baseBus.AddListener<TestEventBase>(e => baseCalls++);
+            derivedBus.AddListener<TestEventA>(e => derivedCalls++);
 
-            var testEvent = new TestEventBoth();
+            var testEvent = new TestEventA("shared-cache");
 
             // Act
-            classPublisher.Publish(testEvent, null);
-            interfacePublisher.Publish(testEvent, null);
+            basePublisher.Publish(testEvent, null);
+            derivedPublisher.Publish(testEvent, null);
 
             // Assert
-            Assert.That(classCalls, Is.EqualTo(1));
-            Assert.That(interfaceCalls, Is.EqualTo(1));
+            Assert.That(baseCalls, Is.EqualTo(1));
+            Assert.That(derivedCalls, Is.EqualTo(1));
         }
 
         [Test]
-        public void SharedTypeChainCache_WarmupIsIdempotentPerBaseType()
+        public void TypeChainCache_WarmupIsIdempotent()
         {
             // Arrange
-            var cache = EventBusTypeChain.MakeTypeChainCache();
-            var classBus = new EventBus<TestEventBase>(
-                out var classPublisher,
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            var firstBus = new EventBus<TestEventBase>(
+                out var firstPublisher,
                 cache);
-            var interfaceBus = new EventBus<IEventInterface>(
-                out var interfacePublisher,
+            var secondBus = new EventBus<TestEventBase>(
+                out var secondPublisher,
                 cache);
 
-            // Act & Assert - 类视图与接口视图相互独立，重复预热是幂等的
-            classPublisher.WarmupPublish<TestEventBoth>();
+            // Act & Assert - 同一基类型的共享缓存，预热是幂等的
+            firstPublisher.WarmupPublish<TestEventA>();
             Assert.DoesNotThrow(
-                () => interfacePublisher.WarmupPublish<TestEventBoth>());
+                () => secondPublisher.WarmupPublish<TestEventA>());
             Assert.DoesNotThrow(
-                () => interfacePublisher.WarmupPublish<TestEventBoth>());
+                () => secondPublisher.WarmupPublish<TestEventA>());
         }
 
         [Test]
@@ -1193,7 +1191,7 @@ namespace JiksLib.Test.Control
         public void PurgeListenerSlot_WithPurgeTypeChainCache_EvictsCacheEntry()
         {
             // Arrange
-            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var eventBus = new EventBus<TestEventBase>(out var publisher, cache);
             publisher.WarmupPublish<TestEventA>();
             Assert.That(
@@ -1215,7 +1213,7 @@ namespace JiksLib.Test.Control
         public void PurgeListenerSlots_WithPurgeTypeChainCache_EvictsOnlyRemovedTypes()
         {
             // Arrange
-            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var eventBus = new EventBus<TestEventBase>(
                 out var publisher,
                 cache);
@@ -1247,7 +1245,7 @@ namespace JiksLib.Test.Control
         public void AutoPurge_TypeChainCacheOption_ControlsEviction()
         {
             // Arrange
-            var cacheWithPurge = EventBusTypeChain.MakeTypeChainCache();
+            var cacheWithPurge = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var busWithPurge = new EventBus<TestEventBase>(
                 out var publisherWithPurge,
                 cacheWithPurge,
@@ -1257,7 +1255,7 @@ namespace JiksLib.Test.Control
             JiksLib.Control.EventHandler<TestEventA> listenerWithPurge = e => { };
             busWithPurge.AddListener(listenerWithPurge);
 
-            var cacheWithoutPurge = EventBusTypeChain.MakeTypeChainCache();
+            var cacheWithoutPurge = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var busWithoutPurge = new EventBus<TestEventBase>(
                 out var publisherWithoutPurge,
                 cacheWithoutPurge,
