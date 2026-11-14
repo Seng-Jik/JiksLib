@@ -170,12 +170,13 @@ namespace JiksLib.Control
 
                 if (listenerCount == 0) return;
 
-                if (removeIndex >= listenerCount || removeIndex < 0)
-                    removeIndex = listenerCount - 1;
+                if (removeIndex >= listenerCount) removeIndex = listenerCount - 1;
+                else if (removeIndex < 0) removeIndex = 0;
 
                 if (listeners[removeIndex] == listener)
                 {
                     listeners[removeIndex] = null;
+                    removeIndex += removeDirection;
                     --ListenerCount;
                     return;
                 }
@@ -183,60 +184,61 @@ namespace JiksLib.Control
                 int offset = 1;
                 for (; ; ++offset)
                 {
-                    int index1 = removeIndex + offset;
-                    int index2 = removeIndex - offset;
+                    int index = removeIndex + offset;
 
-                    if (index1 < listenerCount)
+                    if (index < listenerCount)
                     {
-                        if (listeners[index1] == listener)
+                        if (listeners[index] == listener)
                         {
-                            listeners[index1] = null;
+                            listeners[index] = null;
                             --ListenerCount;
-                            removeIndex = index1 + 1;
+                            removeIndex = index + 1;
+                            removeDirection = 1;
                             return;
                         }
                     }
                     else
                     {
-                        goto BACK_ONLY;
+                        for (int i = removeIndex - offset; i >= 0; --i)
+                        {
+                            if (listeners[i] != listener) continue;
+                            listeners[i] = null;
+                            --ListenerCount;
+                            removeIndex = i - 1;
+                            removeDirection = -1;
+                            return;
+                        }
+
+                        return;
                     }
 
-                    if (index2 >= 0)
+                    index = removeIndex - offset;
+
+                    if (index >= 0)
                     {
-                        if (listeners[index2] == listener)
+                        if (listeners[index] == listener)
                         {
-                            listeners[index2] = null;
+                            listeners[index] = null;
                             --ListenerCount;
-                            removeIndex = index2 - 1;
+                            removeIndex = index - 1;
+                            removeDirection = -1;
                             return;
                         }
                     }
                     else
                     {
-                        goto FRONT_ONLY;
+                        for (int i = offset + removeIndex + 1; i < listenerCount; ++i)
+                        {
+                            if (listeners[i] != listener) continue;
+                            listeners[i] = null;
+                            --ListenerCount;
+                            removeIndex = i + 1;
+                            removeDirection = 1;
+                            return;
+                        }
+
+                        return;
                     }
-                }
-
-                BACK_ONLY:
-
-                for (int i = removeIndex - offset; i >= 0; --i)
-                {
-                    if (listeners[i] != listener) continue;
-                    listeners[i] = null;
-                    --ListenerCount;
-                    removeIndex = i - 1;
-                    return;
-                }
-
-                FRONT_ONLY:
-
-                for (int i = offset + removeIndex; i < listenerCount; ++i)
-                {
-                    if (listeners[i] != listener) continue;
-                    listeners[i] = null;
-                    --ListenerCount;
-                    removeIndex = i + 1;
-                    return;
                 }
             }
         }
@@ -390,6 +392,8 @@ namespace JiksLib.Control
 
         /// <summary>移除监听器时的反向扫描起点提示。</summary>
         int removeIndex = 0;
+
+        int removeDirection = 0;
 
         /// <summary>
         /// 递归发布排队的事件及其异常输出；未启用递归发布时为 null。
