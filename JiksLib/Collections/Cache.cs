@@ -44,6 +44,21 @@ namespace JiksLib.Collections
             bool dontModifyCacheState = false);
 
         /// <summary>
+        /// 清空全部缓存项，并对每个被移除的项触发一次 <see cref="OnEvicted"/>。
+        /// 手动清空不受容量或算法限制，NeverEvict 也允许清空。
+        /// 事件在内部缓存清空后逐个触发，因此处理器中可以安全地重新访问缓存。
+        /// 不需要通知时请使用 <see cref="Clear"/>。
+        /// </summary>
+        void EvictAll();
+
+        /// <summary>
+        /// 清空全部缓存项，但不会触发 <see cref="OnEvicted"/>。
+        /// 与 <see cref="EvictAll"/> 的区别仅在于是否通知淘汰，
+        /// 适用于释放缓存或销毁对象时避免事件处理器的额外开销与副作用。
+        /// </summary>
+        void Clear();
+
+        /// <summary>
         /// 当值被缓存淘汰后调用
         /// </summary>
         public event Action<TKey, TValue>? OnEvicted;
@@ -81,6 +96,21 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="key">要移除的缓存键。</param>
         void Evict(TKey key);
+
+        /// <summary>
+        /// 清空全部缓存项，并对每个被移除的项触发一次 <see cref="OnEvicted"/>。
+        /// 手动清空不受容量或算法限制，NeverEvict 也允许清空。
+        /// 事件在内部缓存清空后逐个触发，因此处理器中可以安全地重新访问缓存。
+        /// 不需要通知时请使用 <see cref="Clear"/>。
+        /// </summary>
+        void EvictAll();
+
+        /// <summary>
+        /// 清空全部缓存项，但不会触发 <see cref="OnEvicted"/>。
+        /// 与 <see cref="EvictAll"/> 的区别仅在于是否通知淘汰，
+        /// 适用于释放缓存或销毁对象时避免事件处理器的额外开销与副作用。
+        /// </summary>
+        void Clear();
 
         /// <summary>
         /// 尝试获取已缓存的值，不会调用异步值工厂。
@@ -253,6 +283,21 @@ namespace JiksLib.Collections
                     PublishEvictedEvent(key, value!);
             }
 
+            public void EvictAll()
+            {
+                // 先快照再清空，最后逐个通知：OnEvicted 处理器重入本缓存时，
+                // 内部结构已经是空的，不会出现边遍历边修改。
+                var evicted = new List<KeyValuePair<TKey, TValue>>();
+                RemoveAllEntries(evicted);
+                foreach (var pair in evicted)
+                    PublishEvictedEvent(pair.Key, pair.Value);
+            }
+
+            public void Clear()
+            {
+                RemoveAllEntries(null);
+            }
+
             public bool GetCached(
                 TKey key,
                 out TValue value,
@@ -277,6 +322,17 @@ namespace JiksLib.Collections
             protected abstract bool TryPeek(TKey key, out TValue? value);
             protected abstract bool TryRemove(TKey key, out TValue? value);
             protected abstract void Put(TKey key, TValue value);
+
+            /// <summary>
+            /// 移除全部缓存项，并重置算法自身的顺序/频率状态。
+            /// </summary>
+            /// <param name="evicted">
+            /// 非 null 时在其中收集被移除的键值对，供 <see cref="EvictAll"/> 在
+            /// 内部状态清空之后再触发事件；为 null 时只清空，不做快照分配。
+            /// </param>
+            protected abstract void RemoveAllEntries(
+                List<KeyValuePair<TKey, TValue>>? evicted);
+
             readonly IAsyncCache<TKey, TValue>.Factory? asyncFactory = null;
             readonly ICache<TKey, TValue>.Factory? factory = null;
         }
@@ -312,6 +368,18 @@ namespace JiksLib.Collections
 
                 cache.Remove(key);
                 return true;
+            }
+
+            protected override void RemoveAllEntries(
+                List<KeyValuePair<TKey, TValue>>? evicted)
+            {
+                if (evicted != null)
+                {
+                    foreach (var pair in cache)
+                        evicted.Add(pair);
+                }
+
+                cache.Clear();
             }
 
             readonly Dictionary<TKey, TValue> cache = new();
@@ -374,6 +442,19 @@ namespace JiksLib.Collections
 
                 cache[key] = value;
                 order.Enqueue(key);
+            }
+
+            protected override void RemoveAllEntries(
+                List<KeyValuePair<TKey, TValue>>? evicted)
+            {
+                if (evicted != null)
+                {
+                    foreach (var pair in cache)
+                        evicted.Add(pair);
+                }
+
+                cache.Clear();
+                order.Clear();
             }
 
             readonly Dictionary<TKey, TValue> cache = new();
@@ -456,6 +537,20 @@ namespace JiksLib.Collections
 
                 var node = accessOrder.AddLast(key);
                 cache[key] = (value, node);
+            }
+
+            protected override void RemoveAllEntries(
+                List<KeyValuePair<TKey, TValue>>? evicted)
+            {
+                if (evicted != null)
+                {
+                    foreach (var pair in cache)
+                        evicted.Add(new KeyValuePair<TKey, TValue>(
+                            pair.Key, pair.Value.value));
+                }
+
+                cache.Clear();
+                accessOrder.Clear();
             }
 
             readonly Dictionary<TKey, (TValue value, LinkedListNode<TKey> node)> cache = new();
@@ -578,6 +673,21 @@ namespace JiksLib.Collections
 
                 var node = list.AddLast(key);
                 cache[key] = new LfuEntry(value, 1, node);
+            }
+
+            protected override void RemoveAllEntries(
+                List<KeyValuePair<TKey, TValue>>? evicted)
+            {
+                if (evicted != null)
+                {
+                    foreach (var pair in cache)
+                        evicted.Add(new KeyValuePair<TKey, TValue>(
+                            pair.Key, pair.Value.value));
+                }
+
+                cache.Clear();
+                freqLists.Clear();
+                minFrequency = 0;
             }
 
             sealed class LfuEntry

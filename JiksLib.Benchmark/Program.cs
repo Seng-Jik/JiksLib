@@ -2,6 +2,7 @@ using BenchmarkDotNet.Running;
 using JiksLib.Benchmark.Collections;
 using JiksLib.Benchmark.Control;
 using JiksLib.Benchmark.Probes;
+using JiksLib.Benchmark.Text;
 
 namespace JiksLib.Benchmark
 {
@@ -27,6 +28,9 @@ namespace JiksLib.Benchmark
                 typeof(ValueEventBusInterfaceBenchmarks),
                 typeof(SparseSetBenchmarks),
                 typeof(CacheBenchmarks),
+                typeof(CacheEvictionBenchmarks),
+                typeof(ReadOnlyListSegmentBenchmarks),
+                typeof(StringSegmentBenchmarks),
             });
 
             switcher.Run(args);

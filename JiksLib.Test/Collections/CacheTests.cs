@@ -776,6 +776,230 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
+        #region EvictAll / Clear 测试
+
+        [Test]
+        public void EvictAll_AllAlgorithms_RemovesAllAndRaisesOnEvicted()
+        {
+            foreach (var algorithm in new[]
+            {
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU,
+                Cache.Algorithm.NeverEvict
+            })
+            {
+                // Arrange
+                var evictedKeys = new List<int>();
+                var evictedValues = new List<string>();
+                var cache = Cache.Make<int, string>(
+                    algorithm, key => "v" + key, 3);
+                cache.OnEvicted += (key, value) =>
+                {
+                    evictedKeys.Add(key);
+                    evictedValues.Add(value);
+                };
+                cache.Access(1);
+                cache.Access(2);
+                cache.Access(3);
+
+                // Act
+                cache.EvictAll();
+
+                // Assert
+                Assert.That(
+                    evictedKeys,
+                    Is.EquivalentTo(new[] { 1, 2, 3 }),
+                    algorithm.ToString());
+                Assert.That(
+                    evictedValues,
+                    Is.EquivalentTo(new[] { "v1", "v2", "v3" }),
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(1, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(2, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(3, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+            }
+        }
+
+        [Test]
+        public void EvictAll_EmptyCache_DoesNotRaiseEvent()
+        {
+            // Arrange
+            var evicted = 0;
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+            cache.OnEvicted += (_, _) => evicted++;
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => cache.EvictAll());
+            Assert.That(evicted, Is.Zero);
+        }
+
+        [Test]
+        public void EvictAll_AllAlgorithms_ResetsInternalState()
+        {
+            foreach (var algorithm in new[]
+            {
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU
+            })
+            {
+                // Arrange
+                var evicted = new List<int>();
+                var cache = Cache.Make<int, string>(
+                    algorithm, key => "v" + key, 2);
+                cache.OnEvicted += (key, _) => evicted.Add(key);
+                cache.Access(1);
+                cache.Access(2);
+                cache.EvictAll();
+                evicted.Clear();
+
+                // Act: 清空后容量重新可用，填满之前不应发生淘汰
+                cache.Access(3);
+                cache.Access(4);
+
+                // Assert
+                Assert.That(evicted, Is.Empty, algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(3, out _, true),
+                    Is.True,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(4, out _, true),
+                    Is.True,
+                    algorithm.ToString());
+            }
+        }
+
+        [Test]
+        public void EvictAll_EventCanReenterCache()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+            cache.OnEvicted += (key, _) =>
+            {
+                evicted.Add(key);
+                cache.Access(100);
+            };
+            cache.Access(1);
+            cache.Access(2);
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => cache.EvictAll());
+            Assert.That(evicted, Is.EquivalentTo(new[] { 1, 2 }));
+            // 处理器中新写入的项不被本次清空波及
+            Assert.That(cache.GetCached(100, out var value, true), Is.True);
+            Assert.That(value, Is.EqualTo("v100"));
+        }
+
+        [Test]
+        public void Clear_AllAlgorithms_RemovesAllWithoutOnEvicted()
+        {
+            foreach (var algorithm in new[]
+            {
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU,
+                Cache.Algorithm.NeverEvict
+            })
+            {
+                // Arrange
+                var evicted = new List<int>();
+                var cache = Cache.Make<int, string>(
+                    algorithm, key => "v" + key, 3);
+                cache.OnEvicted += (key, _) => evicted.Add(key);
+                cache.Access(1);
+                cache.Access(2);
+                cache.Access(3);
+
+                // Act
+                cache.Clear();
+
+                // Assert
+                Assert.That(evicted, Is.Empty, algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(1, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(2, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(3, out _, true),
+                    Is.False,
+                    algorithm.ToString());
+
+                // 容量仍然可用：重新填充不会触发淘汰
+                cache.Access(4);
+                Assert.That(evicted, Is.Empty, algorithm.ToString());
+            }
+        }
+
+        [Test]
+        public void AsyncCache_EvictAll_RaisesOnEvictedAndClears()
+        {
+            // Arrange
+            var evictedKeys = new List<int>();
+            var evictedValues = new List<string>();
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.LFU,
+                (key, onReceive, _) => onReceive("a" + key),
+                3);
+            cache.OnEvicted += (key, value) =>
+            {
+                evictedKeys.Add(key);
+                evictedValues.Add(value);
+            };
+            cache.Access(1, _ => { }, _ => { });
+            cache.Access(2, _ => { }, _ => { });
+
+            // Act
+            cache.EvictAll();
+
+            // Assert
+            Assert.That(evictedKeys, Is.EquivalentTo(new[] { 1, 2 }));
+            Assert.That(evictedValues, Is.EquivalentTo(new[] { "a1", "a2" }));
+            Assert.That(cache.GetCached(1, out _, true), Is.False);
+            Assert.That(cache.GetCached(2, out _, true), Is.False);
+        }
+
+        [Test]
+        public void AsyncCache_Clear_DoesNotRaiseOnEvicted()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.LRU,
+                (key, onReceive, _) => onReceive("a" + key),
+                2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1, _ => { }, _ => { });
+            cache.Access(2, _ => { }, _ => { });
+
+            // Act
+            cache.Clear();
+
+            // Assert
+            Assert.That(evicted, Is.Empty);
+            Assert.That(cache.GetCached(1, out _, true), Is.False);
+            Assert.That(cache.GetCached(2, out _, true), Is.False);
+        }
+
+        #endregion
+
         #region 综合测试
 
         [Test]
