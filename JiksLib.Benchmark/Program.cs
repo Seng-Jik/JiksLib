@@ -21,6 +21,7 @@ namespace JiksLib.Benchmark
                 typeof(EventBusBenchmarks),
                 typeof(EventBusTypeChainBenchmarks),
                 typeof(EventBusWarmupComparisonBenchmarks),
+                typeof(EventBusClearTypeChainCacheBenchmarks),
                 typeof(ValueEventBusBenchmarks),
                 typeof(SafeEventBenchmarks),
                 typeof(SafeEventRecursiveBenchmarks),

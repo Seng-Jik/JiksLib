@@ -1093,7 +1093,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new EventBus<TestEventBase>(
                 out _,
-                autoPurgeTypeInfo: true);
+                autoPurgeListenerSlot: true);
 
             // Act & Assert
             Assert.That(
@@ -1188,29 +1188,86 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void PurgeListenerSlot_WithPurgeTypeChainCache_EvictsCacheEntry()
+        public void ClearTypeChainCache_RemovesCachedTypesButKeepsListeners()
         {
             // Arrange
             var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var eventBus = new EventBus<TestEventBase>(out var publisher, cache);
+            var calls = 0;
+            eventBus.AddListener<TestEventA>(e => calls++);
             publisher.WarmupPublish<TestEventA>();
             Assert.That(
                 cache.GetCached(typeof(TestEventA), out _, true),
                 Is.True);
 
             // Act
-            var removed = eventBus.PurgeListenerSlot<TestEventA>(
-                purgeTypeChainCache: true);
+            publisher.ClearTypeChainCache();
 
             // Assert
-            Assert.That(removed, Is.True);
             Assert.That(
                 cache.GetCached(typeof(TestEventA), out _, true),
                 Is.False);
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(1));
+
+            // 监听器未被清理，下一次发布仍会派发并重建类型链
+            publisher.Publish(new TestEventA("clear-cache"), null);
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
         }
 
         [Test]
-        public void PurgeListenerSlots_WithPurgeTypeChainCache_EvictsOnlyRemovedTypes()
+        public void PurgeListenerSlot_DoesNotClearTypeChainCache()
+        {
+            // Arrange
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            var eventBus = new EventBus<TestEventBase>(out var publisher, cache);
+            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            eventBus.AddListener(listener);
+            publisher.WarmupPublish<TestEventA>();
+            eventBus.RemoveListener(listener);
+
+            // Act
+            var removed = eventBus.PurgeListenerSlot<TestEventA>();
+
+            // Assert
+            Assert.That(removed, Is.True);
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(0));
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
+        }
+
+        [Test]
+        public void ClearTypeChainCache_SharedCache_AffectsOtherBuses()
+        {
+            // Arrange
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            _ = new EventBus<TestEventBase>(out var firstPublisher, cache);
+            _ = new EventBus<TestEventBase>(out var secondPublisher, cache);
+            firstPublisher.WarmupPublish<TestEventA>();
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
+
+            // Act
+            secondPublisher.ClearTypeChainCache();
+
+            // Assert
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.False);
+
+            // 下一发布仍可正常工作，并重新构建共享缓存
+            firstPublisher.Publish(new TestEventA("shared-clear"), null);
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
+        }
+
+        [Test]
+        public void PurgeListenerSlots_DoesNotClearTypeChainCache()
         {
             // Arrange
             var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
@@ -1226,56 +1283,45 @@ namespace JiksLib.Test.Control
             eventBus.RemoveListener(listenerA);
 
             // Act
-            eventBus.PurgeListenerSlots(
-                out var removed,
-                out _,
-                purgeTypeChainCache: true);
+            eventBus.PurgeListenerSlots(out var removed, out var remaining);
 
             // Assert
             Assert.That(removed, Is.EquivalentTo(new[] { typeof(TestEventA) }));
+            Assert.That(remaining, Is.EqualTo(1));
             Assert.That(
                 cache.GetCached(typeof(TestEventA), out _, true),
-                Is.False);
+                Is.True);
             Assert.That(
                 cache.GetCached(typeof(TestEventB), out _, true),
                 Is.True);
         }
 
         [Test]
-        public void AutoPurge_TypeChainCacheOption_ControlsEviction()
+        public void AutoPurgeListenerSlot_DoesNotClearTypeChainCache()
         {
             // Arrange
-            var cacheWithPurge = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
-            var busWithPurge = new EventBus<TestEventBase>(
-                out var publisherWithPurge,
-                cacheWithPurge,
-                autoPurgeTypeInfo: true,
-                purgeTypeChainCacheWhenAutoPurgeTypeInfo: true);
-            publisherWithPurge.WarmupPublish<TestEventA>();
-            JiksLib.Control.EventHandler<TestEventA> listenerWithPurge = e => { };
-            busWithPurge.AddListener(listenerWithPurge);
-
-            var cacheWithoutPurge = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
-            var busWithoutPurge = new EventBus<TestEventBase>(
-                out var publisherWithoutPurge,
-                cacheWithoutPurge,
-                autoPurgeTypeInfo: true,
-                purgeTypeChainCacheWhenAutoPurgeTypeInfo: false);
-            publisherWithoutPurge.WarmupPublish<TestEventA>();
-            JiksLib.Control.EventHandler<TestEventA> listenerWithoutPurge = e => { };
-            busWithoutPurge.AddListener(listenerWithoutPurge);
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            var eventBus = new EventBus<TestEventBase>(
+                out var publisher,
+                cache,
+                autoPurgeListenerSlot: true);
+            publisher.WarmupPublish<TestEventA>();
+            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            eventBus.AddListener(listener);
 
             // Act
-            busWithPurge.RemoveListener(listenerWithPurge);
-            busWithoutPurge.RemoveListener(listenerWithoutPurge);
+            eventBus.RemoveListener(listener);
 
             // Assert
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(0));
             Assert.That(
-                cacheWithPurge.GetCached(typeof(TestEventA), out _, true),
-                Is.False);
-            Assert.That(
-                cacheWithoutPurge.GetCached(typeof(TestEventA), out _, true),
+                cache.GetCached(typeof(TestEventA), out _, true),
                 Is.True);
+
+            publisher.ClearTypeChainCache();
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.False);
         }
 
         [Test]
@@ -1302,6 +1348,84 @@ namespace JiksLib.Test.Control
             Assert.That(observedDuringPublish, Is.EqualTo(1));
             Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(2));
             Assert.That(addedCalls, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Publish_ClassBaseExactRuntimeType_DoesNotDispatchTwice()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventA>(out var publisher);
+            var calls = 0;
+            eventBus.AddListener<TestEventA>(e => calls++);
+
+            // Act
+            publisher.Publish(new TestEventA("exact-base"), null);
+
+            // Assert
+            Assert.That(calls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetListenersCount_WithDelayedRemove_ReportsAppliedCount()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
+            var observedDuringPublish = -1;
+            JiksLib.Control.EventHandler<TestEventA>? listener = null;
+            listener = e =>
+            {
+                observedDuringPublish = eventBus.GetListenersCount<TestEventA>();
+                eventBus.RemoveListener(listener!);
+            };
+            eventBus.AddListener(listener);
+
+            // Act
+            publisher.Publish(new TestEventA("delayed-remove"), null);
+
+            // Assert
+            Assert.That(observedDuringPublish, Is.EqualTo(1));
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Constructor_NullTypeChainCache_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                _ = new EventBus<TestEventBase>(out _, null!));
+        }
+
+        [Test]
+        public void CachedTypeChains_TracksCacheAndClear()
+        {
+            // Arrange
+            var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
+            _ = new EventBus<TestEventBase>(out var publisher, cache);
+            publisher.WarmupPublish<TestEventA>();
+            publisher.WarmupPublish<TestEventB>();
+
+            // Assert
+            Assert.That(publisher.CachedTypeChains, Is.EqualTo(2));
+
+            // Act
+            publisher.ClearTypeChainCache();
+
+            // Assert
+            Assert.That(publisher.CachedTypeChains, Is.EqualTo(0));
+            publisher.WarmupPublish<TestEventA>();
+            Assert.That(publisher.CachedTypeChains, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PurgeListenerSlot_InvalidBaseType_ThrowsArgumentException()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out _);
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(
+                () => eventBus.PurgeListenerSlot(typeof(string)));
         }
 
         #endregion

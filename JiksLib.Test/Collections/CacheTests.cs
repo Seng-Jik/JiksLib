@@ -1047,6 +1047,39 @@ namespace JiksLib.Test.Collections
             Assert.That(r4, Is.EqualTo(5));
         }
 
+        [Test]
+        public void Count_TracksEntriesAfterAccessEvictAndClear()
+        {
+            foreach (var algo in new[]
+            {
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU,
+                Cache.Algorithm.NeverEvict
+            })
+            {
+                var cache = Cache.Make<string, int>(algo, _ => 1, 2);
+
+                Assert.That(cache.Count, Is.EqualTo(0));
+
+                cache.Access("a");
+                cache.Access("b");
+                Assert.That(cache.Count, Is.EqualTo(2));
+
+                cache.Evict("a");
+                Assert.That(cache.Count, Is.EqualTo(1));
+
+                cache.Clear();
+                Assert.That(cache.Count, Is.EqualTo(0));
+
+                cache.Access("c");
+                Assert.That(cache.Count, Is.EqualTo(1));
+
+                cache.EvictAll();
+                Assert.That(cache.Count, Is.EqualTo(0));
+            }
+        }
+
         #endregion
     }
 }

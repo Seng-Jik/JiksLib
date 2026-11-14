@@ -59,6 +59,11 @@ namespace JiksLib.Collections
         void Clear();
 
         /// <summary>
+        /// 当前缓存项数量。
+        /// </summary>
+        int Count { get; }
+
+        /// <summary>
         /// 当值被缓存淘汰后调用
         /// </summary>
         public event Action<TKey, TValue>? OnEvicted;
@@ -126,6 +131,12 @@ namespace JiksLib.Collections
             TKey key,
             out TValue value,
             bool dontModifyCacheState = false);
+
+
+        /// <summary>
+        /// 当前缓存项数量。
+        /// </summary>
+        int Count { get; }
 
         /// <summary>
         /// 当值被缓存淘汰时调用
@@ -240,6 +251,8 @@ namespace JiksLib.Collections
             }
 
             public event Action<TKey, TValue>? OnEvicted;
+
+            public abstract int Count { get; }
 
             TValue ICache<TKey, TValue>.Access(TKey key)
             {
@@ -382,6 +395,8 @@ namespace JiksLib.Collections
                 cache.Clear();
             }
 
+            public override int Count => cache.Count;
+
             readonly Dictionary<TKey, TValue> cache = new();
         }
 
@@ -456,6 +471,8 @@ namespace JiksLib.Collections
                 cache.Clear();
                 order.Clear();
             }
+
+            public override int Count => cache.Count;
 
             readonly Dictionary<TKey, TValue> cache = new();
             readonly Queue<TKey> order = new();
@@ -552,6 +569,8 @@ namespace JiksLib.Collections
                 cache.Clear();
                 accessOrder.Clear();
             }
+
+            public override int Count => cache.Count;
 
             readonly Dictionary<TKey, (TValue value, LinkedListNode<TKey> node)> cache = new();
             readonly LinkedList<TKey> accessOrder = new();
@@ -703,6 +722,8 @@ namespace JiksLib.Collections
                     this.listNode = listNode;
                 }
             }
+
+            public override int Count => cache.Count;
 
             readonly Dictionary<TKey, LfuEntry> cache = new();
             readonly Dictionary<int, LinkedList<TKey>> freqLists = new();

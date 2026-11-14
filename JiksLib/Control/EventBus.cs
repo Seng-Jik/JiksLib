@@ -27,54 +27,50 @@ namespace JiksLib.Control
         /// 缓存内容依赖当前 TBaseEvent，只能由相同 TBaseEvent 的多个总线共享；
         /// 不同 TBaseEvent 的 TypeChain 不兼容。
         /// 共享时，缓存容量/淘汰算法、WarmupPublish 的预热状态以及
-        /// PurgeListenerSlot/PurgeListenerSlots 的清理会作用于所有共享者；
+        /// ClearTypeChainCache 的清理会作用于所有共享者；
         /// 被清理后其他总线会在下次发布时重建对应类型链，不影响正确性。
         /// </param>
         /// <param name="allowAddRemoveListenerDuringPublish">
         /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到整个最外层发布结束后生效。
-        /// 不能与 <paramref name="autoPurgeTypeInfo"/> 同时开启。
+        /// 不能与 <paramref name="autoPurgeListenerSlot"/> 同时开启。
         /// </param>
         /// <param name="allowRecursivePublish">
         /// 是否允许在发布期间再次发布事件；允许时嵌套事件进入 FIFO 队列，
         /// 由最外层发布排空。
         /// </param>
-        /// <param name="autoPurgeTypeInfo">
+        /// <param name="autoPurgeListenerSlot">
         /// 是否在某个事件类型移除最后一个监听器时自动删除其内部存储。
         /// 开启后不能使用 <c>WarmupListenerSlot</c>、<c>PurgeListenerSlot</c>
         /// 或 <c>PurgeListenerSlots</c>。
         /// </param>
-        /// <param name="purgeTypeChainCacheWhenAutoPurgeTypeInfo">
-        /// 自动清理类型信息时，是否同时从共享 TypeChain 缓存中移除对应的运行时类型。
-        /// 默认 true；关闭后仅删除监听器存储，缓存中的类型链保留以供复用。
-        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="typeChainCache"/> 为 null 时抛出。
+        /// </exception>
         /// <exception cref="ArgumentException">
         /// 当 <paramref name="allowAddRemoveListenerDuringPublish"/> 与
-        /// <paramref name="autoPurgeTypeInfo"/> 同时为 true 时抛出。
+        /// <paramref name="autoPurgeListenerSlot"/> 同时为 true 时抛出。
         /// </exception>
         public EventBus(
             out Publisher publisher,
             ICache<Type, TypeChain> typeChainCache,
             bool allowAddRemoveListenerDuringPublish = false,
             bool allowRecursivePublish = false,
-            bool autoPurgeTypeInfo = false,
-            bool purgeTypeChainCacheWhenAutoPurgeTypeInfo = true)
+            bool autoPurgeListenerSlot = false)
         {
-            if (allowAddRemoveListenerDuringPublish && autoPurgeTypeInfo)
+            if (allowAddRemoveListenerDuringPublish && autoPurgeListenerSlot)
                 throw new ArgumentException(
-                    "Cannot allow both adding/removing listeners and auto-purging type info.",
-                    nameof(autoPurgeTypeInfo));
+                    "Cannot allow both adding/removing listeners and auto-purging listener slots.",
+                    nameof(autoPurgeListenerSlot));
+
+            this.typeChainCache = typeChainCache.ThrowIfNull(nameof(typeChainCache));
 
             publisher = new(this);
 
             this.allowAddRemoveListenerDuringPublish =
                 allowAddRemoveListenerDuringPublish;
 
-            this.purgeTypeChainCacheWhenAutoPurgeTypeInfo =
-                purgeTypeChainCacheWhenAutoPurgeTypeInfo;
-
             this.allowRecursivePublish = allowRecursivePublish;
-            this.autoPurgeTypeInfo = autoPurgeTypeInfo;
-            this.typeChainCache = typeChainCache;
+            this.autoPurgeListenerSlot = autoPurgeListenerSlot;
         }
 
         /// <summary>
@@ -85,16 +81,15 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         /// <param name="allowAddRemoveListenerDuringPublish">
         /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到整个最外层发布结束后生效。
-        /// 不能与 <paramref name="autoPurgeTypeInfo"/> 同时开启。
+        /// 不能与 <paramref name="autoPurgeListenerSlot"/> 同时开启。
         /// </param>
         /// <param name="allowRecursivePublish">
         /// 是否允许在发布期间再次发布事件；允许时嵌套事件进入 FIFO 队列，
         /// 由最外层发布排空。
         /// </param>
-        /// <param name="autoPurgeTypeInfo">
-        /// 是否在某个事件类型移除最后一个监听器时自动删除其内部存储。
-        /// 是否同时清理 TypeChain 由
-        /// <paramref name="purgeTypeChainCacheWhenAutoPurgeTypeInfo"/> 控制。
+        /// <param name="autoPurgeListenerSlot">
+        /// 是否在某个事件类型移除最后一个监听器时自动删除其内部监听器存储。
+        /// 该选项不会清理 TypeChain 缓存。
         /// </param>
         /// <param name="typeChainCacheAlgorithm">
         /// TypeChain 缓存的淘汰算法，默认 <see cref="Cache.Algorithm.NeverEvict"/>。
@@ -104,7 +99,7 @@ namespace JiksLib.Control
         /// </param>
         /// <exception cref="ArgumentException">
         /// 当 <paramref name="allowAddRemoveListenerDuringPublish"/> 与
-        /// <paramref name="autoPurgeTypeInfo"/> 同时为 true 时抛出。
+        /// <paramref name="autoPurgeListenerSlot"/> 同时为 true 时抛出。
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// 当容量不合法或 <paramref name="typeChainCacheAlgorithm"/> 未知时抛出。
@@ -113,8 +108,7 @@ namespace JiksLib.Control
             out Publisher publisher,
             bool allowAddRemoveListenerDuringPublish = false,
             bool allowRecursivePublish = false,
-            bool autoPurgeTypeInfo = false,
-            bool purgeTypeChainCacheWhenAutoPurgeTypeInfo = true,
+            bool autoPurgeListenerSlot = false,
             Cache.Algorithm typeChainCacheAlgorithm = Cache.Algorithm.NeverEvict,
             int typeChainCacheCapacity = 32) : this(
                 out publisher,
@@ -123,8 +117,7 @@ namespace JiksLib.Control
                     typeChainCacheCapacity),
                 allowAddRemoveListenerDuringPublish,
                 allowRecursivePublish,
-                autoPurgeTypeInfo,
-                purgeTypeChainCacheWhenAutoPurgeTypeInfo)
+                autoPurgeListenerSlot)
         { }
 
 
@@ -161,13 +154,8 @@ namespace JiksLib.Control
                 var se = (SafeEvent<TEvent>)h.InnerSafeEvent;
                 se.RemoveListener(listener);
 
-                if (autoPurgeTypeInfo && se.ListenerCount <= 0)
-                {
+                if (autoPurgeListenerSlot && se.ListenerCount <= 0)
                     innerEvents.Remove(typeof(TEvent));
-
-                    if (purgeTypeChainCacheWhenAutoPurgeTypeInfo)
-                        typeChainCache.Evict(typeof(TEvent));
-                }
             }
         }
 
@@ -231,9 +219,9 @@ namespace JiksLib.Control
         public void WarmupListenerSlot<TEvent>(int capacity)
             where TEvent : TBaseEvent
         {
-            if (autoPurgeTypeInfo)
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "WarmupListenerSlot cannot be used when autoPurgeTypeInfo is enabled.");
+                    "WarmupListenerSlot cannot be used when autoPurgeListenerSlot is enabled.");
 
             if (capacity < 0)
                 throw new ArgumentOutOfRangeException(
@@ -253,37 +241,36 @@ namespace JiksLib.Control
         /// 手动清理指定事件类型的监听器存储。
         /// 只有该类型当前没有任何监听器时才会移除。
         /// </summary>
-        /// <param name="typeInfo">要清理的事件类型。</param>
-        /// <param name="purgeTypeChainCache">
-        /// 是否同时从 TypeChain 缓存中移除该运行时类型，默认 false。
-        /// 若缓存与其他总线共享，清理会影响所有共享者；
-        /// 其他总线后续发布会重建该类型链，不影响正确性。
-        /// </param>
+        /// <param name="eventType">要清理的事件类型。</param>
         /// <returns>类型不存在或已成功移除时返回 true；仍有监听器时返回 false。</returns>
         /// <exception cref="ArgumentNullException">
-        /// 当 <paramref name="typeInfo"/> 为 null 时抛出。
+        /// 当 <paramref name="eventType"/> 为 null 时抛出。
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// 启用 <c>autoPurgeTypeInfo</c> 时抛出。
+        /// 启用 <c>autoPurgeListenerSlot</c> 时抛出。
         /// </exception>
-        public bool PurgeListenerSlot(Type typeInfo, bool purgeTypeChainCache = false)
+        public bool PurgeListenerSlot(Type eventType)
         {
-            typeInfo.ThrowIfNull(nameof(typeInfo));
+            eventType.ThrowIfNull(nameof(eventType));
 
-            if (autoPurgeTypeInfo)
+            if (!typeof(TBaseEvent).IsAssignableFrom(eventType))
+            {
+                throw new ArgumentException(
+                    $"Event type {eventType} is not assignable to {typeof(TBaseEvent)}.",
+                    nameof(eventType));
+            }
+
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "PurgeListenerSlot cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlot cannot be called when autoPurgeListenerSlot is enabled.");
 
-            if (innerEvents.TryGetValue(typeInfo, out var h))
+            if (innerEvents.TryGetValue(eventType, out var h))
             {
                 if (h.GetListenerCount(h.InnerSafeEvent) > 0)
                     return false;
 
-                innerEvents.Remove(typeInfo);
+                innerEvents.Remove(eventType);
             }
-
-            if (purgeTypeChainCache)
-                typeChainCache.Evict(typeInfo);
 
             return true;
         }
@@ -293,35 +280,29 @@ namespace JiksLib.Control
         /// 只有该类型当前没有任何监听器时才会移除。
         /// </summary>
         /// <typeparam name="TEvent">要清理的事件类型。</typeparam>
-        /// <param name="purgeTypeChainCache">
-        /// 是否同时从 TypeChain 缓存中移除该运行时类型，默认 false。
-        /// </param>
         /// <returns>类型不存在或已成功移除时返回 true；仍有监听器时返回 false。</returns>
-        public bool PurgeListenerSlot<TEvent>(bool purgeTypeChainCache = false)
+        /// <exception cref="InvalidOperationException">
+        /// 启用 <c>autoPurgeListenerSlot</c> 时抛出。
+        /// </exception>
+        public bool PurgeListenerSlot<TEvent>()
             where TEvent : TBaseEvent =>
-            PurgeListenerSlot(typeof(TEvent), purgeTypeChainCache);
+            PurgeListenerSlot(typeof(TEvent));
 
         /// <summary>
         /// 清理所有当前没有监听器的事件类型。
         /// </summary>
         /// <param name="typesRemoved">实际被移除的事件类型列表。</param>
         /// <param name="typesRemaining">清理后仍保留的事件类型数量。</param>
-        /// <param name="purgeTypeChainCache">
-        /// 是否同时从 TypeChain 缓存中移除被清理的运行时类型，默认 false。
-        /// 若缓存与其他总线共享，清理会影响所有共享者；
-        /// 其他总线后续发布会重建对应类型链，不影响正确性。
-        /// </param>
         /// <exception cref="InvalidOperationException">
-        /// 启用 <c>autoPurgeTypeInfo</c> 时抛出。
+        /// 启用 <c>autoPurgeListenerSlot</c> 时抛出。
         /// </exception>
         public void PurgeListenerSlots(
             out List<Type> typesRemoved,
-            out int typesRemaining,
-            bool purgeTypeChainCache = false)
+            out int typesRemaining)
         {
-            if (autoPurgeTypeInfo)
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "PurgeListenerSlots cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlots cannot be called when autoPurgeListenerSlot is enabled.");
 
             typesRemoved = new();
 
@@ -330,10 +311,7 @@ namespace JiksLib.Control
                     typesRemoved.Add(i.Key);
 
             foreach (var t in typesRemoved)
-            {
                 innerEvents.Remove(t);
-                if (purgeTypeChainCache) typeChainCache.Evict(t);
-            }
 
             typesRemaining = innerEvents.Count;
         }
@@ -343,6 +321,36 @@ namespace JiksLib.Control
         /// </summary>
         public readonly struct Publisher : ISafeEventPublisher<TBaseEvent>
         {
+            /// <summary>
+            /// 发布事件
+            /// </summary>
+            /// <param name="@event">事件对象</param>
+            /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
+            public void Publish(
+                TBaseEvent @event,
+                ICollection<Exception>? exceptionsOutput)
+            {
+                var baseEventType = typeof(TBaseEvent);
+                var eventType = @event.ThrowIfNull().GetType();
+
+                var typeChain = bus
+                    .typeChainCache
+                    .Access(eventType);
+
+                PublishOneShot(@event, eventType, exceptionsOutput);
+
+                foreach (var i in typeChain.TypesToPublish)
+                {
+                    PublishOneShot(@event, i, exceptionsOutput);
+
+                    if (!baseEventType.IsInterface && i == baseEventType)
+                        break;
+                }
+
+                if (baseEventType != eventType)
+                    PublishOneShot(@event, baseEventType, exceptionsOutput);
+            }
+
             /// <summary>
             /// 预热某一具体事件类型的发布路径。
             /// 提前构建并缓存该类型的类型链，避免第一次发布该类型时在热路径上分配；
@@ -391,34 +399,22 @@ namespace JiksLib.Control
                 WarmupPublish(typeof(TEvent));
 
             /// <summary>
-            /// 发布事件
+            /// 清空当前 TBaseEvent 的 TypeChain 缓存。
+            /// 会移除所有运行时类型链，包括已经预热但没有监听器的类型；
+            /// 不会清理监听器存储，下一次发布对应类型时会重新构建类型链。
+            /// 若缓存与相同 TBaseEvent 的其他总线共享，会同时清空它们的缓存；
+            /// 预热状态也会丢失。底层使用 <see cref="ICache{TKey,TValue}.Clear"/>，
+            /// 不触发 OnEvicted。
             /// </summary>
-            /// <param name="@event">事件对象</param>
-            /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
-            public void Publish(
-                TBaseEvent @event,
-                ICollection<Exception>? exceptionsOutput)
-            {
-                var baseEventType = typeof(TBaseEvent);
-                var eventType = @event.ThrowIfNull().GetType();
+            public void ClearTypeChainCache() =>
+                bus.typeChainCache.Clear();
 
-                var typeChain = bus
-                    .typeChainCache
-                    .Access(eventType);
-
-                PublishOneShot(@event, eventType, exceptionsOutput);
-
-                foreach (var i in typeChain.TypesToPublish)
-                {
-                    PublishOneShot(@event, i, exceptionsOutput);
-
-                    if (!baseEventType.IsInterface && i == baseEventType)
-                        break;
-                }
-
-                if (baseEventType != eventType)
-                    PublishOneShot(@event, baseEventType, exceptionsOutput);
-            }
+            /// <summary>
+            /// 当前 TypeChain 缓存中的条目数量。
+            /// 包含已经预热但没有监听器的运行时类型；若缓存与相同 TBaseEvent 的
+            /// 其他总线共享，则返回共享缓存的总条目数。
+            /// </summary>
+            public int CachedTypeChains => bus.typeChainCache.Count;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void PublishOneShot(
@@ -443,7 +439,7 @@ namespace JiksLib.Control
         /// 每个 TBaseEvent 拥有独立的 TypeChain 与缓存内容，不能跨不同基类型共享。
         /// 运行时事件类型由 Publisher 直接派发，因此列表只保存需要额外派发的接口或基类类型。
         /// </summary>
-        public sealed class TypeChain
+        public readonly struct TypeChain
         {
             /// <summary>
             /// 创建当前 TBaseEvent 专用的 TypeChain 缓存。
@@ -569,12 +565,10 @@ namespace JiksLib.Control
             }
         }
 
-        /// <summary>TypeChain 缓存；可由任意 EventBus 共享，并按 TBaseEvent 缓存过滤视图。</summary>
         readonly ICache<Type, TypeChain> typeChainCache;
         readonly Dictionary<Type, InnerEvent> innerEvents = new();
         readonly bool allowAddRemoveListenerDuringPublish;
         readonly bool allowRecursivePublish;
-        readonly bool autoPurgeTypeInfo;
-        readonly bool purgeTypeChainCacheWhenAutoPurgeTypeInfo;
+        readonly bool autoPurgeListenerSlot;
     }
 }
