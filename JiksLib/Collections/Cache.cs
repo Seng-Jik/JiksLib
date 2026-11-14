@@ -10,7 +10,7 @@ namespace JiksLib.Collections
     /// </summary>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
-    public interface ICache<TKey, out TValue>
+    public interface ICache<TKey, TValue>
         where TKey : notnull
     {
         /// <summary>
@@ -19,6 +19,29 @@ namespace JiksLib.Collections
         /// 如果值未缓存，则会在淘汰旧值后返回创建的新值
         /// </summary>
         TValue Access(TKey key);
+
+        /// <summary>
+        /// 手动移除指定键的缓存项。
+        /// 如果键存在，会触发 <see cref="OnEvicted"/>；不存在时无操作。
+        /// 手动移除不受容量或算法限制，NeverEvict 也允许手动移除。
+        /// </summary>
+        /// <param name="key">要移除的缓存键。</param>
+        void Evict(TKey key);
+
+        /// <summary>
+        /// 尝试获取已缓存的值，不会调用值工厂。
+        /// </summary>
+        /// <param name="key">要查询的缓存键。</param>
+        /// <param name="value">命中时返回缓存值；未命中时为 default。</param>
+        /// <param name="dontModifyCacheState">
+        /// 为 true 时不改变 LRU 的访问顺序或 LFU 的访问频率；
+        /// 为 false 时按一次正常缓存访问处理。
+        /// </param>
+        /// <returns>缓存命中返回 true；否则返回 false。</returns>
+        bool GetCached(
+            TKey key,
+            out TValue value,
+            bool dontModifyCacheState = false);
 
         /// <summary>
         /// 当值被缓存淘汰后调用
@@ -38,7 +61,7 @@ namespace JiksLib.Collections
     /// </summary>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
-    public interface IAsyncCache<TKey, out TValue>
+    public interface IAsyncCache<TKey, TValue>
         where TKey : notnull
     {
         /// <summary>
@@ -50,6 +73,29 @@ namespace JiksLib.Collections
             TKey key,
             Action<TValue> onReceiveValue,
             Action<Exception> onException);
+
+        /// <summary>
+        /// 手动移除指定键的缓存项。
+        /// 如果键存在，会触发 <see cref="OnEvicted"/>；不存在时无操作。
+        /// 手动移除不受容量或算法限制，NeverEvict 也允许手动移除。
+        /// </summary>
+        /// <param name="key">要移除的缓存键。</param>
+        void Evict(TKey key);
+
+        /// <summary>
+        /// 尝试获取已缓存的值，不会调用异步值工厂。
+        /// </summary>
+        /// <param name="key">要查询的缓存键。</param>
+        /// <param name="value">命中时返回缓存值；未命中时为 default。</param>
+        /// <param name="dontModifyCacheState">
+        /// 为 true 时不改变 LRU 的访问顺序或 LFU 的访问频率；
+        /// 为 false 时按一次正常缓存访问处理。
+        /// </param>
+        /// <returns>缓存命中返回 true；否则返回 false。</returns>
+        bool GetCached(
+            TKey key,
+            out TValue value,
+            bool dontModifyCacheState = false);
 
         /// <summary>
         /// 当值被缓存淘汰时调用
@@ -71,7 +117,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 缓存算法
         /// </summary>
-        public enum CacheAlgorithm
+        public enum Algorithm
         {
             FIFO,
             LRU,
@@ -95,22 +141,22 @@ namespace JiksLib.Collections
         /// capacity &lt;= 0 且算法不是 NeverEvict 时抛出
         /// </exception>
         public static ICache<TKey, TValue> Make<TKey, TValue>(
-            CacheAlgorithm cacheAlgorithm,
+            Algorithm cacheAlgorithm,
             ICache<TKey, TValue>.Factory factory,
             int capacity)
             where TKey : notnull
         {
             factory.ThrowIfNull(nameof(factory));
-            if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
+            if (capacity <= 0 && cacheAlgorithm != Algorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
                     nameof(capacity), "Capacity must be greater than zero.");
 
             return cacheAlgorithm switch
             {
-                CacheAlgorithm.FIFO => new Fifo<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.LRU => new Lru<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
+                Algorithm.FIFO => new Fifo<TKey, TValue>(factory, capacity),
+                Algorithm.LRU => new Lru<TKey, TValue>(factory, capacity),
+                Algorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
+                Algorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
                 _ => throw new ArgumentOutOfRangeException(
                     nameof(cacheAlgorithm), $"Unknown cache algorithm: {cacheAlgorithm}."),
             };
@@ -127,22 +173,22 @@ namespace JiksLib.Collections
         /// capacity &lt;= 0 且算法不是 NeverEvict 时抛出
         /// </exception>
         public static IAsyncCache<TKey, TValue> MakeAsync<TKey, TValue>(
-            CacheAlgorithm cacheAlgorithm,
+            Algorithm cacheAlgorithm,
             IAsyncCache<TKey, TValue>.Factory factory,
             int capacity)
             where TKey : notnull
         {
             factory.ThrowIfNull(nameof(factory));
-            if (capacity <= 0 && cacheAlgorithm != CacheAlgorithm.NeverEvict)
+            if (capacity <= 0 && cacheAlgorithm != Algorithm.NeverEvict)
                 throw new ArgumentOutOfRangeException(
                     nameof(capacity), "Capacity must be greater than zero.");
 
             return cacheAlgorithm switch
             {
-                CacheAlgorithm.FIFO => new Fifo<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.LRU => new Lru<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
-                CacheAlgorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
+                Algorithm.FIFO => new Fifo<TKey, TValue>(factory, capacity),
+                Algorithm.LRU => new Lru<TKey, TValue>(factory, capacity),
+                Algorithm.LFU => new Lfu<TKey, TValue>(factory, capacity),
+                Algorithm.NeverEvict => new NeverEvict<TKey, TValue>(factory),
                 _ => throw new ArgumentOutOfRangeException(
                     nameof(cacheAlgorithm), $"Unknown cache algorithm: {cacheAlgorithm}."),
             };
@@ -201,7 +247,35 @@ namespace JiksLib.Collections
                 OnEvicted?.Invoke(key, value);
             }
 
+            public void Evict(TKey key)
+            {
+                if (TryRemove(key, out TValue? value))
+                    PublishEvictedEvent(key, value!);
+            }
+
+            public bool GetCached(
+                TKey key,
+                out TValue value,
+                bool dontModifyCacheState = false)
+            {
+                TValue? cached;
+                bool found = dontModifyCacheState
+                    ? TryPeek(key, out cached)
+                    : TryGetCache(key, out cached);
+
+                if (found)
+                {
+                    value = cached!;
+                    return true;
+                }
+
+                value = default!;
+                return false;
+            }
+
             protected abstract bool TryGetCache(TKey key, out TValue? value);
+            protected abstract bool TryPeek(TKey key, out TValue? value);
+            protected abstract bool TryRemove(TKey key, out TValue? value);
             protected abstract void Put(TKey key, TValue value);
             readonly IAsyncCache<TKey, TValue>.Factory? asyncFactory = null;
             readonly ICache<TKey, TValue>.Factory? factory = null;
@@ -227,6 +301,18 @@ namespace JiksLib.Collections
 
             protected override bool TryGetCache(TKey key, out TValue? value) =>
                 cache.TryGetValue(key, out value);
+
+            protected override bool TryPeek(TKey key, out TValue? value) =>
+                cache.TryGetValue(key, out value);
+
+            protected override bool TryRemove(TKey key, out TValue? value)
+            {
+                if (!cache.TryGetValue(key, out value))
+                    return false;
+
+                cache.Remove(key);
+                return true;
+            }
 
             readonly Dictionary<TKey, TValue> cache = new();
         }
@@ -254,6 +340,27 @@ namespace JiksLib.Collections
 
             protected override bool TryGetCache(TKey key, out TValue? value) =>
                 cache.TryGetValue(key, out value);
+
+            protected override bool TryPeek(TKey key, out TValue? value) =>
+                cache.TryGetValue(key, out value);
+
+            protected override bool TryRemove(TKey key, out TValue? value)
+            {
+                if (!cache.TryGetValue(key, out value))
+                    return false;
+
+                cache.Remove(key);
+
+                int count = order.Count;
+                for (int i = 0; i < count; ++i)
+                {
+                    var queuedKey = order.Dequeue();
+                    if (!EqualityComparer<TKey>.Default.Equals(queuedKey, key))
+                        order.Enqueue(queuedKey);
+                }
+
+                return true;
+            }
 
             protected override void Put(TKey key, TValue value)
             {
@@ -308,6 +415,32 @@ namespace JiksLib.Collections
 
                 value = default;
                 return false;
+            }
+
+            protected override bool TryPeek(TKey key, out TValue? value)
+            {
+                if (cache.TryGetValue(key, out var entry))
+                {
+                    value = entry.value;
+                    return true;
+                }
+
+                value = default;
+                return false;
+            }
+
+            protected override bool TryRemove(TKey key, out TValue? value)
+            {
+                if (!cache.TryGetValue(key, out var entry))
+                {
+                    value = default;
+                    return false;
+                }
+
+                accessOrder.Remove(entry.node);
+                cache.Remove(key);
+                value = entry.value;
+                return true;
             }
 
             protected override void Put(TKey key, TValue value)
@@ -380,6 +513,45 @@ namespace JiksLib.Collections
 
                 value = default;
                 return false;
+            }
+
+            protected override bool TryPeek(TKey key, out TValue? value)
+            {
+                if (cache.TryGetValue(key, out var entry))
+                {
+                    value = entry.value;
+                    return true;
+                }
+
+                value = default;
+                return false;
+            }
+
+            protected override bool TryRemove(TKey key, out TValue? value)
+            {
+                if (!cache.TryGetValue(key, out var entry))
+                {
+                    value = default;
+                    return false;
+                }
+
+                var list = freqLists[entry.frequency];
+                list.Remove(entry.listNode);
+
+                if (list.Count == 0)
+                {
+                    freqLists.Remove(entry.frequency);
+
+                    if (entry.frequency == minFrequency && freqLists.Count > 0)
+                    {
+                        while (!freqLists.ContainsKey(minFrequency))
+                            ++minFrequency;
+                    }
+                }
+
+                cache.Remove(key);
+                value = entry.value;
+                return true;
             }
 
             protected override void Put(TKey key, TValue value)

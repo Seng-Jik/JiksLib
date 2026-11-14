@@ -16,7 +16,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act & Assert
             Assert.That(
                 () => Cache.Make<int, int>(
-                    Cache.CacheAlgorithm.FIFO, null!, 10),
+                    Cache.Algorithm.FIFO, null!, 10),
                 Throws.ArgumentNullException);
         }
 
@@ -26,7 +26,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act & Assert
             Assert.That(
                 () => Cache.Make<int, int>(
-                    Cache.CacheAlgorithm.FIFO, _ => 0, 0),
+                    Cache.Algorithm.FIFO, _ => 0, 0),
                 Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 
@@ -36,7 +36,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act & Assert
             Assert.That(
                 () => Cache.Make<int, int>(
-                    Cache.CacheAlgorithm.LRU, _ => 0, -1),
+                    Cache.Algorithm.LRU, _ => 0, -1),
                 Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 
@@ -46,7 +46,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act & Assert
             Assert.That(
                 () => Cache.Make<int, int>(
-                    Cache.CacheAlgorithm.LFU, _ => 0, 0),
+                    Cache.Algorithm.LFU, _ => 0, 0),
                 Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 
@@ -55,7 +55,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange & Act
             var cache = Cache.Make<int, int>(
-                Cache.CacheAlgorithm.NeverEvict, key => key * 2, 0);
+                Cache.Algorithm.NeverEvict, key => key * 2, 0);
 
             // Assert
             Assert.That(cache, Is.Not.Null);
@@ -68,7 +68,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act & Assert
             Assert.That(
                 () => Cache.MakeAsync<int, int>(
-                    Cache.CacheAlgorithm.LRU, null!, 10),
+                    Cache.Algorithm.LRU, null!, 10),
                 Throws.ArgumentNullException);
         }
 
@@ -78,7 +78,7 @@ namespace JiksLib.Test.Collections
             // Arrange & Act
             var factoryCalled = false;
             var cache = Cache.MakeAsync<int, int>(
-                Cache.CacheAlgorithm.NeverEvict,
+                Cache.Algorithm.NeverEvict,
                 (key, onReceive, _) =>
                 {
                     factoryCalled = true;
@@ -104,7 +104,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key => $"value{key}", 3);
+                Cache.Algorithm.FIFO, key => $"value{key}", 3);
 
             // Act
             var result = cache.Access(1);
@@ -119,7 +119,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var callCount = 0;
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key =>
+                Cache.Algorithm.FIFO, key =>
                 {
                     callCount++;
                     return $"value{key}";
@@ -140,7 +140,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key => $"value{key}", 3);
+                Cache.Algorithm.FIFO, key => $"value{key}", 3);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -157,7 +157,7 @@ namespace JiksLib.Test.Collections
             // 1 已被淘汰，重新 Access 会调用 factory
             var factoryCallCount = 0;
             var cache2 = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key =>
+                Cache.Algorithm.FIFO, key =>
                 {
                     factoryCallCount++;
                     return $"new{key}";
@@ -178,7 +178,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key => $"value{key}", 2);
+                Cache.Algorithm.FIFO, key => $"value{key}", 2);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act: 多次读取 key=1，但它仍然是最早插入的
@@ -197,7 +197,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key => $"value{key}", 1);
+                Cache.Algorithm.FIFO, key => $"value{key}", 1);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -219,7 +219,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LRU, key => $"value{key}", 3);
+                Cache.Algorithm.LRU, key => $"value{key}", 3);
 
             // Act
             var result = cache.Access(1);
@@ -234,7 +234,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LRU, key => $"value{key}", 3);
+                Cache.Algorithm.LRU, key => $"value{key}", 3);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -254,7 +254,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LRU, key => $"value{key}", 2);
+                Cache.Algorithm.LRU, key => $"value{key}", 2);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -273,7 +273,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LRU, key => $"value{key}", 1);
+                Cache.Algorithm.LRU, key => $"value{key}", 1);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -294,7 +294,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LFU, key => $"value{key}", 3);
+                Cache.Algorithm.LFU, key => $"value{key}", 3);
 
             // Act
             var result = cache.Access(1);
@@ -309,7 +309,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LFU, key => $"value{key}", 3);
+                Cache.Algorithm.LFU, key => $"value{key}", 3);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -330,7 +330,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LFU, key => $"value{key}", 2);
+                Cache.Algorithm.LFU, key => $"value{key}", 2);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act: 1 和 2 频率相同，1 更早进入
@@ -348,7 +348,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LFU, key => $"value{key}", 3);
+                Cache.Algorithm.LFU, key => $"value{key}", 3);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -373,7 +373,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LFU, key => $"value{key}", 1);
+                Cache.Algorithm.LFU, key => $"value{key}", 1);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
 
             // Act
@@ -395,7 +395,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var callCount = 0;
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.NeverEvict, key =>
+                Cache.Algorithm.NeverEvict, key =>
                 {
                     callCount++;
                     return $"value{key}";
@@ -416,7 +416,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evicted = false;
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.NeverEvict, key => $"value{key}", 2);
+                Cache.Algorithm.NeverEvict, key => $"value{key}", 2);
             cache.OnEvicted += (_, _) => evicted = true;
 
             // Act: 添加超过"容量"的值
@@ -442,7 +442,7 @@ namespace JiksLib.Test.Collections
             int evictedKey = 0;
             string? evictedValue = null;
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.FIFO, key => $"value{key}", 2);
+                Cache.Algorithm.FIFO, key => $"value{key}", 2);
             cache.OnEvicted += (key, value) =>
             {
                 evictedKey = key;
@@ -465,7 +465,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evicted = false;
             var cache = Cache.Make<int, string>(
-                Cache.CacheAlgorithm.LRU, key => $"value{key}", 5);
+                Cache.Algorithm.LRU, key => $"value{key}", 5);
             cache.OnEvicted += (_, _) => evicted = true;
 
             // Act
@@ -486,7 +486,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.MakeAsync<int, string>(
-                Cache.CacheAlgorithm.FIFO,
+                Cache.Algorithm.FIFO,
                 (key, onReceive, _) => onReceive($"async{key}"),
                 3);
             string? result = null;
@@ -504,7 +504,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var factoryCallCount = 0;
             var cache = Cache.MakeAsync<int, string>(
-                Cache.CacheAlgorithm.LRU,
+                Cache.Algorithm.LRU,
                 (key, onReceive, _) =>
                 {
                     factoryCallCount++;
@@ -530,7 +530,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.MakeAsync<int, string>(
-                Cache.CacheAlgorithm.FIFO,
+                Cache.Algorithm.FIFO,
                 (key, onReceive, _) => onReceive($"async{key}"),
                 2);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
@@ -551,7 +551,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.MakeAsync<int, string>(
-                Cache.CacheAlgorithm.FIFO,
+                Cache.Algorithm.FIFO,
                 (key, _, onException) => onException(new InvalidOperationException("test error")),
                 3);
             Exception? caught = null;
@@ -571,7 +571,7 @@ namespace JiksLib.Test.Collections
             // Arrange
             var evictedKeys = new List<int>();
             var cache = Cache.MakeAsync<int, string>(
-                Cache.CacheAlgorithm.LRU,
+                Cache.Algorithm.LRU,
                 (key, onReceive, _) => onReceive($"async{key}"),
                 2);
             cache.OnEvicted += (key, _) => evictedKeys.Add(key);
@@ -589,6 +589,193 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
+        #region Evict / GetCached 测试
+
+        [Test]
+        public void Evict_AllAlgorithms_RemovesValueAndRaisesOnEvicted()
+        {
+            foreach (var algorithm in new[]
+            {
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU,
+                Cache.Algorithm.NeverEvict
+            })
+            {
+                // Arrange
+                var evicted = new List<int>();
+                var cache = Cache.Make<int, string>(
+                    algorithm, key => "v" + key, 3);
+                cache.OnEvicted += (key, _) => evicted.Add(key);
+                cache.Access(1);
+                cache.Access(2);
+
+                // Act
+                cache.Evict(1);
+
+                // Assert
+                Assert.That(evicted, Is.EqualTo(new[] { 1 }), algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(1, out _, dontModifyCacheState: true),
+                    Is.False,
+                    algorithm.ToString());
+                Assert.That(
+                    cache.GetCached(2, out var value, dontModifyCacheState: true),
+                    Is.True,
+                    algorithm.ToString());
+                Assert.That(value, Is.EqualTo("v2"));
+            }
+        }
+
+        [Test]
+        public void Evict_UnknownKey_DoesNotRaiseEvent()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+
+            // Act
+            cache.Evict(2);
+
+            // Assert
+            Assert.That(evicted, Is.Empty);
+            Assert.That(cache.GetCached(1, out _, true), Is.True);
+        }
+
+        [Test]
+        public void GetCached_DoesNotCallFactory()
+        {
+            // Arrange
+            var factoryCalls = 0;
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LFU,
+                key =>
+                {
+                    factoryCalls++;
+                    return "v" + key;
+                },
+                2);
+
+            // Act & Assert
+            Assert.That(cache.GetCached(1, out _, true), Is.False);
+            Assert.That(factoryCalls, Is.EqualTo(0));
+
+            cache.Access(1);
+            Assert.That(cache.GetCached(1, out var value, true), Is.True);
+            Assert.That(value, Is.EqualTo("v1"));
+            Assert.That(factoryCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetCached_DontModifyCacheState_DoesNotRefreshLru()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+
+            // Act
+            cache.GetCached(1, out _, dontModifyCacheState: true);
+            cache.Access(3);
+
+            // Assert - 1 仍然是最久未使用的，应被淘汰
+            Assert.That(evicted, Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void GetCached_Default_UpdatesLruState()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+
+            // Act
+            cache.GetCached(1, out _, dontModifyCacheState: false);
+            cache.Access(3);
+
+            // Assert - 1 被刷新为最近使用，2 应被淘汰
+            Assert.That(evicted, Is.EqualTo(new[] { 2 }));
+        }
+
+        [Test]
+        public void Fifo_Evict_PreservesRemainingEvictionOrder()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.FIFO, key => "v" + key, 3);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+            cache.Access(3);
+
+            // Act
+            cache.Evict(2);
+            cache.Access(4);
+            cache.Access(5);
+
+            // Assert - 手动移除 2，之后仍按 1、3 的顺序淘汰
+            Assert.That(evicted, Is.EqualTo(new[] { 2, 1 }));
+        }
+
+        [Test]
+        public void Lfu_Evict_RemovesFrequencyBucketCorrectly()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LFU, key => "v" + key, 2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+            cache.Access(1);
+
+            // Act
+            cache.Evict(1);
+            cache.Access(3);
+            cache.Access(4);
+
+            // Assert - 手动移除 1 后，2 是唯一的频率 1 条目，应被下一次淘汰
+            Assert.That(evicted, Is.EqualTo(new[] { 1, 2 }));
+            Assert.That(cache.GetCached(4, out _, true), Is.True);
+        }
+
+        [Test]
+        public void AsyncCache_GetCachedAndEvict_WorkCorrectly()
+        {
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.LRU,
+                (key, onReceive, _) => onReceive("a" + key),
+                2);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1, _ => { }, _ => { });
+
+            // Act & Assert
+            Assert.That(
+                cache.GetCached(1, out var value, true),
+                Is.True);
+            Assert.That(value, Is.EqualTo("a1"));
+
+            cache.Evict(1);
+
+            Assert.That(evicted, Is.EqualTo(new[] { 1 }));
+            Assert.That(cache.GetCached(1, out _, true), Is.False);
+        }
+
+        #endregion
+
         #region 综合测试
 
         [Test]
@@ -597,10 +784,10 @@ namespace JiksLib.Test.Collections
             // Arrange
             foreach (var algo in new[]
             {
-                Cache.CacheAlgorithm.FIFO,
-                Cache.CacheAlgorithm.LRU,
-                Cache.CacheAlgorithm.LFU,
-                Cache.CacheAlgorithm.NeverEvict
+                Cache.Algorithm.FIFO,
+                Cache.Algorithm.LRU,
+                Cache.Algorithm.LFU,
+                Cache.Algorithm.NeverEvict
             })
             {
                 var cache = Cache.Make<string, List<int>>(
@@ -620,7 +807,7 @@ namespace JiksLib.Test.Collections
         {
             // Arrange
             var cache = Cache.Make<string, int>(
-                Cache.CacheAlgorithm.LRU, k => k.Length, 2);
+                Cache.Algorithm.LRU, k => k.Length, 2);
 
             // Act
             var r1 = cache.Access("hello");

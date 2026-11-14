@@ -9,6 +9,9 @@ namespace JiksLib.Test.Control
     // 测试用的事件基类
     public abstract class TestEventBase { }
 
+    // 同时属于类继承链和接口事件链，用于测试共享 TypeChain 缓存
+    public class TestEventBoth : TestEventBase, IEventInterface { }
+
     // 测试用的具体事件类
     public class TestEventA : TestEventBase
     {
@@ -528,7 +531,9 @@ namespace JiksLib.Test.Control
         public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
         {
             // Arrange
-            var superEvent = new EventBus<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var originalCallCount = 0;
             var addedDuringPublishCallCount = 0;
 
@@ -567,7 +572,9 @@ namespace JiksLib.Test.Control
         public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
         {
             // Arrange
-            var superEvent = new EventBus<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var callCount = 0;
 
             void ListenerToRemove(TestEventA e) => callCount++;
@@ -605,7 +612,9 @@ namespace JiksLib.Test.Control
         public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
         {
             // Arrange
-            var superEvent = new EventBus<TestEventBase>(out var publisher);
+            var superEvent = new EventBus<TestEventBase>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var callCountA = 0;
             var callCountB = 0;
             var callCountC = 0;
@@ -1016,6 +1025,285 @@ namespace JiksLib.Test.Control
 
             // Assert: TestEventB 监听器现在生效
             Assert.That(callCountB, Is.EqualTo(1));
+        }
+
+        #endregion
+
+        #region ListenerCount / Purge 测试
+
+        [Test]
+        public void GetListenersCount_CountsOnlyExactEventType()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out _);
+            eventBus.AddListener<TestEventBase>(e => { });
+            eventBus.AddListener<TestEventA>(e => { });
+
+            // Act & Assert
+            Assert.That(
+                eventBus.GetListenersCount<TestEventBase>(),
+                Is.EqualTo(1));
+            Assert.That(
+                eventBus.GetListenersCount<TestEventA>(),
+                Is.EqualTo(1));
+            Assert.That(
+                eventBus.GetListenersCount<TestEventB>(),
+                Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PurgeTypeInfo_RequiresNoListeners()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out _);
+            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            eventBus.AddListener(listener);
+
+            // Act & Assert
+            Assert.That(eventBus.PurgeListenerSlot<TestEventA>(), Is.False);
+            eventBus.RemoveListener(listener);
+            Assert.That(eventBus.PurgeListenerSlot<TestEventA>(), Is.True);
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PurgeAllTypeInfo_RemovesOnlyEmptyTypes()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(out _);
+            JiksLib.Control.EventHandler<TestEventA> listenerA = e => { };
+            JiksLib.Control.EventHandler<TestEventB> listenerB = e => { };
+            eventBus.AddListener(listenerA);
+            eventBus.AddListener(listenerB);
+            eventBus.RemoveListener(listenerA);
+
+            // Act
+            eventBus.PurgeListenerSlots(out var removed, out var remaining);
+
+            // Assert
+            Assert.That(removed, Is.EquivalentTo(new[] { typeof(TestEventA) }));
+            Assert.That(remaining, Is.EqualTo(1));
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(0));
+            Assert.That(eventBus.GetListenersCount<TestEventB>(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AutoPurge_DisablesWarmupAndPurge()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(
+                out _,
+                autoPurgeTypeInfo: true);
+
+            // Act & Assert
+            Assert.That(
+                () => eventBus.WarmupListenerSlot<TestEventA>(1),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlot<TestEventA>(),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlots(out _, out _),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void SharedTypeChainCache_WorksAcrossDifferentBaseTypes()
+        {
+            // Arrange
+            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var classBus = new EventBus<TestEventBase>(
+                out var classPublisher,
+                cache);
+            var interfaceBus = new EventBus<IEventInterface>(
+                out var interfacePublisher,
+                cache);
+
+            var classCalls = 0;
+            var interfaceCalls = 0;
+            classBus.AddListener<TestEventBase>(e => classCalls++);
+            interfaceBus.AddListener<IEventInterface>(e => interfaceCalls++);
+
+            var testEvent = new TestEventBoth();
+
+            // Act
+            classPublisher.Publish(testEvent, null);
+            interfacePublisher.Publish(testEvent, null);
+
+            // Assert
+            Assert.That(classCalls, Is.EqualTo(1));
+            Assert.That(interfaceCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SharedTypeChainCache_WarmupIsIdempotentPerBaseType()
+        {
+            // Arrange
+            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var classBus = new EventBus<TestEventBase>(
+                out var classPublisher,
+                cache);
+            var interfaceBus = new EventBus<IEventInterface>(
+                out var interfacePublisher,
+                cache);
+
+            // Act & Assert - 类视图与接口视图相互独立，重复预热是幂等的
+            classPublisher.WarmupPublish<TestEventBoth>();
+            Assert.DoesNotThrow(
+                () => interfacePublisher.WarmupPublish<TestEventBoth>());
+            Assert.DoesNotThrow(
+                () => interfacePublisher.WarmupPublish<TestEventBoth>());
+        }
+
+        [Test]
+        public void Publish_ObjectBase_DerivedEvent_CallsObjectAndBaseListenersOnce()
+        {
+            // Arrange
+            var eventBus = new EventBus<object>(out var publisher);
+            var objectCalls = 0;
+            var baseCalls = 0;
+
+            eventBus.AddListener<object>(e => objectCalls++);
+            eventBus.AddListener<TestEventBase>(e => baseCalls++);
+
+            // Act
+            publisher.Publish(new TestEventA("object-base"), null);
+
+            // Assert
+            Assert.That(baseCalls, Is.EqualTo(1));
+            Assert.That(objectCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Publish_ObjectBase_ObjectEvent_DoesNotDispatchTwice()
+        {
+            // Arrange
+            var eventBus = new EventBus<object>(out var publisher);
+            var calls = 0;
+            eventBus.AddListener<object>(e => calls++);
+
+            // Act
+            publisher.Publish(new object(), null);
+
+            // Assert
+            Assert.That(calls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PurgeListenerSlot_WithPurgeTypeChainCache_EvictsCacheEntry()
+        {
+            // Arrange
+            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var eventBus = new EventBus<TestEventBase>(out var publisher, cache);
+            publisher.WarmupPublish<TestEventA>();
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
+
+            // Act
+            var removed = eventBus.PurgeListenerSlot<TestEventA>(
+                purgeTypeChainCache: true);
+
+            // Assert
+            Assert.That(removed, Is.True);
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.False);
+        }
+
+        [Test]
+        public void PurgeListenerSlots_WithPurgeTypeChainCache_EvictsOnlyRemovedTypes()
+        {
+            // Arrange
+            var cache = EventBusTypeChain.MakeTypeChainCache();
+            var eventBus = new EventBus<TestEventBase>(
+                out var publisher,
+                cache);
+            JiksLib.Control.EventHandler<TestEventA> listenerA = e => { };
+            JiksLib.Control.EventHandler<TestEventB> listenerB = e => { };
+            eventBus.AddListener(listenerA);
+            eventBus.AddListener(listenerB);
+            publisher.WarmupPublish<TestEventA>();
+            publisher.WarmupPublish<TestEventB>();
+            eventBus.RemoveListener(listenerA);
+
+            // Act
+            eventBus.PurgeListenerSlots(
+                out var removed,
+                out _,
+                purgeTypeChainCache: true);
+
+            // Assert
+            Assert.That(removed, Is.EquivalentTo(new[] { typeof(TestEventA) }));
+            Assert.That(
+                cache.GetCached(typeof(TestEventA), out _, true),
+                Is.False);
+            Assert.That(
+                cache.GetCached(typeof(TestEventB), out _, true),
+                Is.True);
+        }
+
+        [Test]
+        public void AutoPurge_TypeChainCacheOption_ControlsEviction()
+        {
+            // Arrange
+            var cacheWithPurge = EventBusTypeChain.MakeTypeChainCache();
+            var busWithPurge = new EventBus<TestEventBase>(
+                out var publisherWithPurge,
+                cacheWithPurge,
+                autoPurgeTypeInfo: true,
+                purgeTypeChainCacheWhenAutoPurgeTypeInfo: true);
+            publisherWithPurge.WarmupPublish<TestEventA>();
+            JiksLib.Control.EventHandler<TestEventA> listenerWithPurge = e => { };
+            busWithPurge.AddListener(listenerWithPurge);
+
+            var cacheWithoutPurge = EventBusTypeChain.MakeTypeChainCache();
+            var busWithoutPurge = new EventBus<TestEventBase>(
+                out var publisherWithoutPurge,
+                cacheWithoutPurge,
+                autoPurgeTypeInfo: true,
+                purgeTypeChainCacheWhenAutoPurgeTypeInfo: false);
+            publisherWithoutPurge.WarmupPublish<TestEventA>();
+            JiksLib.Control.EventHandler<TestEventA> listenerWithoutPurge = e => { };
+            busWithoutPurge.AddListener(listenerWithoutPurge);
+
+            // Act
+            busWithPurge.RemoveListener(listenerWithPurge);
+            busWithoutPurge.RemoveListener(listenerWithoutPurge);
+
+            // Assert
+            Assert.That(
+                cacheWithPurge.GetCached(typeof(TestEventA), out _, true),
+                Is.False);
+            Assert.That(
+                cacheWithoutPurge.GetCached(typeof(TestEventA), out _, true),
+                Is.True);
+        }
+
+        [Test]
+        public void GetListenersCount_WithDelayedAdd_ReportsAppliedCount()
+        {
+            // Arrange
+            var eventBus = new EventBus<TestEventBase>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
+            var observedDuringPublish = -1;
+            var addedCalls = 0;
+
+            JiksLib.Control.EventHandler<TestEventA> added = e => addedCalls++;
+            eventBus.AddListener<TestEventA>(e =>
+            {
+                observedDuringPublish = eventBus.GetListenersCount<TestEventA>();
+                eventBus.AddListener(added);
+            });
+
+            // Act
+            publisher.Publish(new TestEventA("delayed-count"), null);
+
+            // Assert
+            Assert.That(observedDuringPublish, Is.EqualTo(1));
+            Assert.That(eventBus.GetListenersCount<TestEventA>(), Is.EqualTo(2));
+            Assert.That(addedCalls, Is.EqualTo(0));
         }
 
         #endregion

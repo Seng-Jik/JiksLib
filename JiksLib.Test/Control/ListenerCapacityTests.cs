@@ -18,7 +18,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             const int capacity = 8;
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, capacity);
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, capacity: capacity);
             int callCount = 0;
 
             // Act
@@ -39,7 +39,7 @@ namespace JiksLib.Test.Control
             // Arrange
             const int capacity = 4;
             const int listenerCount = 6;
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, capacity);
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, capacity: capacity);
             int callCount = 0;
 
             // Act
@@ -58,7 +58,7 @@ namespace JiksLib.Test.Control
         public void SafeEvent_WithZeroCapacity_AddAndPublish_Works()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, 0);
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher, capacity: 0);
             int callCount = 0;
 
             // Act
@@ -73,7 +73,7 @@ namespace JiksLib.Test.Control
         public void SafeEvent_WithNegativeCapacity_Throws()
         {
             Assert.That(
-                () => new SafeEvent<TestSafeEvent>(out _, -1),
+                () => new SafeEvent<TestSafeEvent>(out _, capacity: -1),
                 Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 

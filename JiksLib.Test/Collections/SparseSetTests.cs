@@ -1266,6 +1266,254 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
+        #region AddRange Tests
+
+        [Test]
+        public void AddRange_ArraySegment_ToEmptySet_AddsElementsInOrder()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            var source = new[] { 10, 20, 30 };
+
+            // Act
+            set.AddRange(
+                new ArraySegment<int>(source),
+                out var indexList,
+                out var begin,
+                out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(3));
+            Assert.That(set.MaxIndex, Is.EqualTo(2));
+            Assert.That(set[0], Is.EqualTo(10));
+            Assert.That(set[1], Is.EqualTo(20));
+            Assert.That(set[2], Is.EqualTo(30));
+            Assert.That(begin, Is.EqualTo(0));
+            Assert.That(count, Is.EqualTo(3));
+            Assert.That(indexList[0], Is.EqualTo(0));
+            Assert.That(indexList[1], Is.EqualTo(1));
+            Assert.That(indexList[2], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AddRange_ArraySegment_WithOffset_AppendsSegmentToNonEmptySet()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(1);
+            set.Add(2);
+            var source = new[] { 99, 10, 20, 30, 99 };
+            var segment = new ArraySegment<int>(source, 1, 3); // 10, 20, 30
+
+            // Act
+            set.AddRange(segment, out var indexList, out var begin, out var count);
+
+            // Assert：已有元素不被覆盖，新元素从原来的 Count 位置开始写入
+            Assert.That(set.Count, Is.EqualTo(5));
+            Assert.That(set.MaxIndex, Is.EqualTo(4));
+            Assert.That(set[0], Is.EqualTo(1));
+            Assert.That(set[1], Is.EqualTo(2));
+            Assert.That(set[2], Is.EqualTo(10));
+            Assert.That(set[3], Is.EqualTo(20));
+            Assert.That(set[4], Is.EqualTo(30));
+            Assert.That(begin, Is.EqualTo(2));
+            Assert.That(count, Is.EqualTo(3));
+            Assert.That(indexList[begin], Is.EqualTo(2));
+            Assert.That(indexList[begin + 1], Is.EqualTo(3));
+            Assert.That(indexList[begin + 2], Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AddRange_ArraySegment_ReusesFreedIndexes()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(10); // 下标 0
+            set.Add(20); // 下标 1
+            set.Add(30); // 下标 2
+            set.Add(40); // 下标 3
+            set.RemoveAt(1); // 释放下标 1
+            var source = new[] { 50, 60 };
+
+            // Act
+            set.AddRange(new ArraySegment<int>(source), out var indexList, out var begin, out _);
+
+            // Assert：下标 1 被复用，第二个新元素拿到下标 4
+            Assert.That(set.Count, Is.EqualTo(5));
+            Assert.That(set.MaxIndex, Is.EqualTo(4));
+            Assert.That(set[0], Is.EqualTo(10));
+            Assert.That(set[1], Is.EqualTo(50));
+            Assert.That(set[2], Is.EqualTo(30));
+            Assert.That(set[3], Is.EqualTo(40));
+            Assert.That(set[4], Is.EqualTo(60));
+            Assert.That(indexList[begin], Is.EqualTo(1));
+            Assert.That(indexList[begin + 1], Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AddRange_ArraySegment_TriggersGrowth()
+        {
+            // Arrange
+            var set = new SparseSet<int>(1);
+            set.Add(0);
+            var source = new[] { 1, 2, 3, 4, 5, 6 };
+
+            // Act
+            set.AddRange(new ArraySegment<int>(source), out _, out _, out _);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(7));
+            Assert.That(set.Capacity, Is.GreaterThanOrEqualTo(7));
+            for (int i = 0; i < 7; ++i)
+                Assert.That(set[i], Is.EqualTo(i));
+        }
+
+        [Test]
+        public void AddRange_ArraySegment_EmptySegment_NoOp()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(42);
+            var source = new[] { 1, 2, 3 };
+
+            // Act
+            set.AddRange(new ArraySegment<int>(source, 1, 0), out _, out var begin, out var count);
+
+            // Assert：不改变集合，输出区间起点等于添加前的 Count
+            Assert.That(set.Count, Is.EqualTo(1));
+            Assert.That(set[0], Is.EqualTo(42));
+            Assert.That(begin, Is.EqualTo(1));
+            Assert.That(count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AddRange_ArraySegment_DefaultSegment_NoOp()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(42);
+
+            // Act
+            set.AddRange(default(ArraySegment<int>), out _, out var begin, out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(1));
+            Assert.That(begin, Is.EqualTo(1));
+            Assert.That(count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AddRange_Array_AddsAllElements()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            var items = new[] { 7, 8, 9 };
+
+            // Act
+            set.AddRange(items, out var indexList, out var begin, out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(3));
+            Assert.That(set[0], Is.EqualTo(7));
+            Assert.That(set[1], Is.EqualTo(8));
+            Assert.That(set[2], Is.EqualTo(9));
+            Assert.That(begin, Is.EqualTo(0));
+            Assert.That(count, Is.EqualTo(3));
+            Assert.That(indexList[2], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AddRange_Array_NullArray_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+
+            // Act & Assert
+            Assert.That(
+                () => set.AddRange((int[])null!, out _, out _, out _),
+                Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void AddRange_IEnumerable_List_AddsAllElements()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            IEnumerable<int> items = new List<int> { 10, 20, 30 };
+
+            // Act
+            set.AddRange(items, out var indexList, out var begin, out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(3));
+            Assert.That(set[0], Is.EqualTo(10));
+            Assert.That(set[1], Is.EqualTo(20));
+            Assert.That(set[2], Is.EqualTo(30));
+            Assert.That(begin, Is.EqualTo(0));
+            Assert.That(count, Is.EqualTo(3));
+            Assert.That(indexList[2], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AddRange_IEnumerable_LazySequence_AddsAllElements()
+        {
+            // Arrange：非 ICollection 的惰性序列，方法会先 Count() 再 foreach
+            var set = new SparseSet<int>();
+            IEnumerable<int> items = Enumerable.Range(1, 4).Select(x => x * 10);
+
+            // Act
+            set.AddRange(items, out var indexList, out var begin, out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(4));
+            Assert.That(set[0], Is.EqualTo(10));
+            Assert.That(set[1], Is.EqualTo(20));
+            Assert.That(set[2], Is.EqualTo(30));
+            Assert.That(set[3], Is.EqualTo(40));
+            Assert.That(begin, Is.EqualTo(0));
+            Assert.That(count, Is.EqualTo(4));
+            Assert.That(indexList[3], Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AddRange_IEnumerable_Empty_NoOp()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(1);
+
+            // Act
+            set.AddRange(Enumerable.Empty<int>(), out _, out var begin, out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(1));
+            Assert.That(begin, Is.EqualTo(1));
+            Assert.That(count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AddRange_OutputIndexes_MapToAddedElements()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(100); // 占用稀疏下标 0
+            var items = new[] { 1, 2, 3 };
+
+            // Act
+            set.AddRange(
+                new ArraySegment<int>(items),
+                out var indexList,
+                out var begin,
+                out var count);
+
+            // Assert：indexList[begin + i] 就是第 i 个新元素的稀疏下标
+            Assert.That(count, Is.EqualTo(items.Length));
+            for (int i = 0; i < count; ++i)
+                Assert.That(set[indexList[begin + i]], Is.EqualTo(items[i]));
+        }
+
+        #endregion
+
         #region ICollection<T> Interface Tests
 
         [Test]

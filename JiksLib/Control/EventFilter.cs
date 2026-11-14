@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using JiksLib.Control;
 
 namespace JiksLib.Control
 {
@@ -31,7 +30,7 @@ namespace JiksLib.Control
 
         public void Publish(
             TEvent @event,
-            IList<Exception>? exceptionsOutput)
+            ICollection<Exception>? exceptionsOutput)
         {
             bool success = false;
 

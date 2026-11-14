@@ -24,6 +24,7 @@ namespace JiksLib.Benchmark.Collections
         private SparseSet<int> set = null!;
         private int[] testData = null!;
         private int[] targetArray = null!;
+        private IEnumerable<int> lazyData = null!;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -32,6 +33,7 @@ namespace JiksLib.Benchmark.Collections
             for (int i = 0; i < ElementCount; i++)
                 testData[i] = i;
             targetArray = new int[ElementCount];
+            lazyData = testData.Where(x => x >= 0);
         }
 
         /// <summary>
@@ -74,6 +76,71 @@ namespace JiksLib.Benchmark.Collections
         {
             for (int i = 0; i < ElementCount; i++)
                 set.Add(testData[i]);
+        }
+
+        // ========================================
+        // AddRange
+        // ========================================
+
+        [IterationSetup(Target = nameof(AddRange_ArraySegment))]
+        public void Setup_AddRange_ArraySegment() => set = new SparseSet<int>(ElementCount);
+
+        /// <summary>
+        /// 用数组片段一次性添加 ElementCount 个元素（已预留容量）
+        /// </summary>
+        /// <remarks>Allocated 是整批添加的合计值，不是单个元素的分配。</remarks>
+        [Benchmark]
+        public void AddRange_ArraySegment()
+        {
+            set.AddRange(new ArraySegment<int>(testData), out _, out _, out _);
+        }
+
+        [IterationSetup(Target = nameof(AddRange_ArraySegment_WithGrowth))]
+        public void Setup_AddRange_ArraySegment_WithGrowth() => set = new SparseSet<int>();
+
+        /// <summary>
+        /// 用数组片段一次性添加 ElementCount 个元素（含扩容）
+        /// </summary>
+        [Benchmark]
+        public void AddRange_ArraySegment_WithGrowth()
+        {
+            set.AddRange(new ArraySegment<int>(testData), out _, out _, out _);
+        }
+
+        [IterationSetup(Target = nameof(AddRange_Array))]
+        public void Setup_AddRange_Array() => set = new SparseSet<int>(ElementCount);
+
+        /// <summary>
+        /// 用 T[] 重载一次性添加 ElementCount 个元素（已预留容量）
+        /// </summary>
+        [Benchmark]
+        public void AddRange_Array()
+        {
+            set.AddRange(testData, out _, out _, out _);
+        }
+
+        [IterationSetup(Target = nameof(AddRange_IEnumerable))]
+        public void Setup_AddRange_IEnumerable() => set = new SparseSet<int>(ElementCount);
+
+        /// <summary>
+        /// 用 IEnumerable 重载一次性添加 ElementCount 个元素（源是数组，走 ICollection.Count 快路径）
+        /// </summary>
+        [Benchmark]
+        public void AddRange_IEnumerable()
+        {
+            set.AddRange((IEnumerable<int>)testData, out _, out _, out _);
+        }
+
+        [IterationSetup(Target = nameof(AddRange_IEnumerable_Lazy))]
+        public void Setup_AddRange_IEnumerable_Lazy() => set = new SparseSet<int>(ElementCount);
+
+        /// <summary>
+        /// 用 IEnumerable 重载添加惰性序列（非 ICollection，需要 Count() 与 foreach 各枚举一次）
+        /// </summary>
+        [Benchmark]
+        public void AddRange_IEnumerable_Lazy()
+        {
+            set.AddRange(lazyData, out _, out _, out _);
         }
 
         // ========================================

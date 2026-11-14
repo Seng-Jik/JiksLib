@@ -10,10 +10,10 @@ namespace JiksLib.Test.Control
         sealed class MockPublisher : ISafeEventPublisher<int>
         {
             public int? PublishedEvent { get; private set; }
-            public IList<Exception>? ExceptionsOutput { get; private set; }
+            public ICollection<Exception>? ExceptionsOutput { get; private set; }
             public int PublishCallCount { get; private set; }
 
-            public void Publish(int @event, IList<Exception>? exceptionsOutput)
+            public void Publish(int @event, ICollection<Exception>? exceptionsOutput)
             {
                 PublishedEvent = @event;
                 ExceptionsOutput = exceptionsOutput;
@@ -26,7 +26,7 @@ namespace JiksLib.Test.Control
             public MutableEvent? PublishedEvent { get; private set; }
             public int PublishCallCount { get; private set; }
 
-            public void Publish(MutableEvent @event, IList<Exception>? exceptionsOutput)
+            public void Publish(MutableEvent @event, ICollection<Exception>? exceptionsOutput)
             {
                 PublishedEvent = @event;
                 PublishCallCount++;

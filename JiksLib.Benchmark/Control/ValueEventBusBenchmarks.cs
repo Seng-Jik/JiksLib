@@ -15,6 +15,7 @@ namespace JiksLib.Benchmark.Control
     {
         private ValueEventBus<IValueEvent> valueEventBus = null!;
         private ValueEventBus<IValueEvent>.Publisher publisher;
+        private ValueEventBus<IValueEvent>.SubPublisher<TestValueEvent> subPublisher;
         private List<JiksLib.Control.EventHandler<TestValueEvent>> listeners = null!;
 
         [Params(1, 10, 100, 1000)]
@@ -61,6 +62,18 @@ namespace JiksLib.Benchmark.Control
             {
                 valueEventBus.AddListener<TestValueEvent>(listener);
             }
+        }
+
+        [IterationSetup(Target = nameof(PublishEvent_ViaSubPublisher))]
+        public void IterationSetup_ViaSubPublisher()
+        {
+            valueEventBus = new ValueEventBus<IValueEvent>(out var pub);
+            publisher = pub;
+
+            foreach (var listener in listeners)
+                valueEventBus.AddListener<TestValueEvent>(listener);
+
+            subPublisher = publisher.GetSubPublisher<TestValueEvent>();
         }
 
         [IterationCleanup(Target = nameof(PublishEvent_WithListeners))]
@@ -146,12 +159,23 @@ namespace JiksLib.Benchmark.Control
         /// 基准测试：发布事件（有监听器）
         /// 监听器在迭代设置中添加，在迭代清理中移除
         /// </summary>
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public void PublishEvent_WithListeners()
         {
             // 发布事件（监听器已在 IterationSetup 中添加）
             var evt = new TestValueEvent { Value = 42 };
             publisher.Publish(evt, null);
+        }
+
+        /// <summary>
+        /// 基准测试：通过 SubPublisher 发布事件。
+        /// 用于对比已提前绑定事件类型时，跳过类型查找的收益。
+        /// </summary>
+        [Benchmark]
+        public void PublishEvent_ViaSubPublisher()
+        {
+            var evt = new TestValueEvent { Value = 42 };
+            subPublisher.Publish(evt, null);
         }
     }
 }

@@ -165,7 +165,7 @@ namespace JiksLib.Benchmark.Control
         /// <summary>
         /// 基准测试：添加监听器
         /// </summary>
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public void AddListeners()
         {
             AddAndRemoveListeners();

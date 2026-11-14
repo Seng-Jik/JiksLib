@@ -275,39 +275,43 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void AddListener_NullListener_DoesNotThrowImmediately()
+        public void AddListener_NullListener_ThrowsArgumentNullException()
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
 
             // Act & Assert
-            Assert.DoesNotThrow(() =>
+            Assert.Throws<ArgumentNullException>(() =>
                 eventBus.AddListener<TestValueEventA>(null!));
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(0));
         }
 
         [Test]
-        public void RemoveListener_NullListener_DoesNotThrowImmediately()
+        public void RemoveListener_NullListener_ThrowsArgumentNullException()
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
 
             // Act & Assert
-            Assert.DoesNotThrow(() =>
+            Assert.Throws<ArgumentNullException>(() =>
                 eventBus.RemoveListener<TestValueEventA>(null!));
         }
 
         [Test]
-        public void AddNullListener_IsSafelyIgnored()
+        public void AddNullListener_ThrowsAndOtherListenersStillWork()
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
-            eventBus.AddListener<TestValueEventA>(null!);
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() =>
+                eventBus.AddListener<TestValueEventA>(null!));
+
             var testEvent = new TestValueEventA("Test", 123);
             bool otherListenerCalled = false;
             eventBus.AddListener<TestValueEventA>(e => otherListenerCalled = true);
 
-            // Act & Assert - 不应抛出异常，且其他监听器应被调用
-            Assert.DoesNotThrow(() => publisher.Publish(testEvent, null));
+            publisher.Publish(testEvent, null);
             Assert.That(otherListenerCalled, Is.True);
         }
 
@@ -554,7 +558,9 @@ namespace JiksLib.Test.Control
         public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
         {
             // Arrange
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var originalCallCount = 0;
             var addedDuringPublishCallCount = 0;
 
@@ -593,7 +599,9 @@ namespace JiksLib.Test.Control
         public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
         {
             // Arrange
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var callCount = 0;
 
             void ListenerToRemove(TestValueEventA e) => callCount++;
@@ -631,7 +639,9 @@ namespace JiksLib.Test.Control
         public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
         {
             // Arrange
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var callCountA = 0;
             var callCountB = 0;
             var callCountC = 0;
@@ -831,7 +841,9 @@ namespace JiksLib.Test.Control
         public void ComplexConcurrentModification_WorksCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var results = new List<string>();
             var bAdded = false;
 
@@ -1129,34 +1141,32 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void GetSafeEvent_LazyInitialization()
+        public void AddListener_CreatesListenerStorageLazily()
         {
-            // 测试 GetSafeEvent 方法的惰性初始化行为
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
 
-            // 初始时 events 字典应为空
-            // 通过反射验证私有字段（仅用于测试）
-            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
-                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            // Act & Assert - 未注册时计为 0，注册后才创建对应存储
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventA>(),
+                Is.EqualTo(0));
 
-            Assert.That(eventsField, Is.Not.Null);
-            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
-            Assert.That(events, Is.Not.Null);
-            Assert.That(events.Count, Is.EqualTo(0));
-
-            // 第一次添加监听器 - 应创建 SafeEvent 实例
             eventBus.AddListener<TestValueEventA>(e => { });
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventA>(),
+                Is.EqualTo(1));
 
-            // events 字典应包含一个条目
-            Assert.That(events.Count, Is.EqualTo(1));
-
-            // 添加同一类型的另一个监听器 - 不应创建新 SafeEvent
+            // 同一类型继续添加，不创建新的类型存储
             eventBus.AddListener<TestValueEventA>(e => { });
-            Assert.That(events.Count, Is.EqualTo(1)); // 数量不变
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventA>(),
+                Is.EqualTo(2));
 
-            // 添加不同类型的事件监听器 - 应创建新条目
+            // 不同类型独立创建
             eventBus.AddListener<TestValueEventB>(e => { });
-            Assert.That(events.Count, Is.EqualTo(2));
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventB>(),
+                Is.EqualTo(1));
         }
 
         [Test]
@@ -1321,93 +1331,47 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void WeakPublisher_Delegate_WorksCorrectly()
+        public void Publisher_Publish_DispatchesOnlyMatchingEventType()
         {
-            // 测试 WeakPublisher 委托正确包装了 Publisher.Publish 方法
+            // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
-            var callCount = 0;
+            var callCountA = 0;
+            var callCountB = 0;
 
-            eventBus.AddListener<TestValueEventA>(e => callCount++);
-            eventBus.AddListener<TestValueEventB>(e => callCount++);
+            eventBus.AddListener<TestValueEventA>(e => callCountA++);
+            eventBus.AddListener<TestValueEventB>(e => callCountB++);
 
-            // 通过反射获取 events 字典中的 WeakPublisher 委托
-            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
-                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.That(eventsField, Is.Not.Null);
-
-            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
-            Assert.That(events, Is.Not.Null);
-            Assert.That(events.Count, Is.EqualTo(2)); // TestValueEventA 和 TestValueEventB
-
-            // 获取 TestValueEventA 的 WeakPublisher 委托
-            var testValueEventAEntry = events[typeof(TestValueEventA)];
-            Assert.That(testValueEventAEntry, Is.Not.Null);
-
-            // 元组包含 (object, WeakPublisher)
-            var tupleType = testValueEventAEntry.GetType();
-            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
-
-            // 获取第二个元素（WeakPublisher 委托）
-            var item2Field = tupleType.GetField("Item2");
-            Assert.That(item2Field, Is.Not.Null);
-
-            var weakPublisher = item2Field.GetValue(testValueEventAEntry) as Delegate;
-            Assert.That(weakPublisher, Is.Not.Null);
-
-            // 调用 WeakPublisher 委托
-            var testEvent = new TestValueEventA("WeakPublisherTest", 789);
             var exceptions = new List<Exception>();
 
-            // WeakPublisher 委托签名为 (TConstraint @event, IList<Exception>? exceptionsOutput)
-            weakPublisher.DynamicInvoke(testEvent, exceptions);
+            // Act & Assert
+            publisher.Publish(new TestValueEventA("A", 1), exceptions);
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(0));
 
-            Assert.That(callCount, Is.EqualTo(1)); // 只有 TestValueEventA 监听器被调用
+            publisher.Publish(new TestValueEventB(2.0f, 3.0f), exceptions);
+            Assert.That(callCountA, Is.EqualTo(1));
+            Assert.That(callCountB, Is.EqualTo(1));
+
             Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
         [Test]
-        public void DictionaryStructure_ContainsTupleOfObjectAndWeakPublisher()
+        public void GetListenersCount_TracksEachEventTypeIndependently()
         {
-            // 验证 events 字典现在包含 (object, WeakPublisher) 元组而不是单纯的 object
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
 
-            // 添加一个监听器以初始化字典
+            // Act
             eventBus.AddListener<TestValueEventA>(e => { });
+            eventBus.AddListener<TestValueEventA>(e => { });
+            eventBus.AddListener<TestValueEventB>(e => { });
 
-            // 通过反射检查字典结构
-            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
-                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.That(eventsField, Is.Not.Null);
-
-            var events = eventsField.GetValue(eventBus) as System.Collections.IDictionary;
-            Assert.That(events, Is.Not.Null);
-            Assert.That(events.Count, Is.EqualTo(1));
-
-            var entry = events[typeof(TestValueEventA)];
-            Assert.That(entry, Is.Not.Null);
-
-            // 检查是否是元组
-            var tupleType = entry.GetType();
-            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
-
-            // 检查元组有两个元素
-            var genericArgs = tupleType.GetGenericArguments();
-            Assert.That(genericArgs.Length, Is.EqualTo(2));
-
-            // 第一个元素应该是 object（SafeEvent<TEvent>）
-            // 第二个元素应该是 WeakPublisher 委托
-            var item1Field = tupleType.GetField("Item1");
-            var item2Field = tupleType.GetField("Item2");
-            Assert.That(item1Field, Is.Not.Null);
-            Assert.That(item2Field, Is.Not.Null);
-
-            var item1 = item1Field.GetValue(entry);
-            var item2 = item2Field.GetValue(entry);
-
-            Assert.That(item1, Is.Not.Null);
-            Assert.That(item2, Is.Not.Null);
-            Assert.That(item1, Is.TypeOf<SafeEvent<TestValueEventA>>());
-            Assert.That(item2, Is.InstanceOf<Delegate>());
+            // Assert
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(2));
+            Assert.That(eventBus.GetListenersCount<TestValueEventB>(), Is.EqualTo(1));
+            Assert.That(
+                eventBus.GetListenersCount(typeof(TestValueEventA)),
+                Is.EqualTo(2));
         }
 
         [Test]
@@ -1464,39 +1428,27 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void GetSafeEvent_CreatesTupleWithWeakPublisher()
+        public void WarmupListenerSlot_ThenAddListener_UsesWarmedStorage()
         {
-            // 测试 GetSafeEvent 方法创建包含 WeakPublisher 委托的元组
+            // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
 
-            // 初始时字典应为空
-            var eventsField = typeof(ValueEventBus<IValueEvent>).GetField(
-                "events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var events = eventsField!.GetValue(eventBus) as System.Collections.IDictionary;
-            Assert.That(events!.Count, Is.EqualTo(0));
+            // Act
+            eventBus.WarmupListenerSlot<TestValueEventA>(4);
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventA>(),
+                Is.EqualTo(0));
 
-            // 调用 AddListener 触发 GetSafeEvent
-            eventBus.AddListener<TestValueEventA>(e => { });
+            var callCount = 0;
+            eventBus.AddListener<TestValueEventA>(e => callCount++);
 
-            // 现在字典应包含一个条目
-            Assert.That(events.Count, Is.EqualTo(1));
-
-            var entry = events[typeof(TestValueEventA)];
-            var tupleType = entry!.GetType();
-
-            // 验证是元组
-            Assert.That(tupleType.Name, Does.Contain("ValueTuple"));
-
-            // 获取 WeakPublisher 委托
-            var item2Field = tupleType.GetField("Item2");
-            var weakPublisher = item2Field!.GetValue(entry) as Delegate;
-            Assert.That(weakPublisher, Is.Not.Null);
-
-            // 验证委托可以调用
-            var testEvent = new TestValueEventA("Test", 123);
             var exceptions = new List<Exception>();
+            publisher.Publish(new TestValueEventA("Test", 123), exceptions);
 
-            Assert.DoesNotThrow(() => weakPublisher.DynamicInvoke(testEvent, exceptions));
+            // Assert
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(1));
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(0));
         }
 
         #endregion
@@ -1709,7 +1661,9 @@ namespace JiksLib.Test.Control
         public void GetSubPublisher_AddRemoveListenerDuringPublish_DelayedCorrectly()
         {
             // Arrange
-            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
             var results = new List<string>();
 
             void ListenerB(TestValueEventA e) => results.Add("B");
@@ -1823,6 +1777,120 @@ namespace JiksLib.Test.Control
             subBPublish2.Publish(new TestValueEventB(3.0f, 4.0f), exceptions);
 
             Assert.That(callCount, Is.EqualTo(1));
+        }
+
+        #endregion
+
+        #region ListenerCount / Purge 测试
+
+        [Test]
+        public void GetListenersCount_CountsOnlyExactEventType()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+            eventBus.AddListener<TestValueEventA>(e => { });
+            eventBus.AddListener<TestValueEventA>(e => { });
+            eventBus.AddListener<TestValueEventB>(e => { });
+
+            // Act & Assert
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventA>(),
+                Is.EqualTo(2));
+            Assert.That(
+                eventBus.GetListenersCount<TestValueEventB>(),
+                Is.EqualTo(1));
+            Assert.That(
+                eventBus.GetListenersCount<LargeValueEvent>(),
+                Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PurgeTypeInfo_RequiresNoListeners()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+            JiksLib.Control.EventHandler<TestValueEventA> listener = e => { };
+            eventBus.AddListener(listener);
+
+            // Act & Assert
+            Assert.That(eventBus.PurgeListenerSlot<TestValueEventA>(), Is.False);
+            eventBus.RemoveListener(listener);
+            Assert.That(eventBus.PurgeListenerSlot<TestValueEventA>(), Is.True);
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PurgeAllTypeInfo_RemovesOnlyEmptyTypes()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+            JiksLib.Control.EventHandler<TestValueEventA> listenerA = e => { };
+            JiksLib.Control.EventHandler<TestValueEventB> listenerB = e => { };
+            eventBus.AddListener(listenerA);
+            eventBus.AddListener(listenerB);
+            eventBus.RemoveListener(listenerA);
+
+            // Act
+            eventBus.PurgeListenerSlots(out var removed, out var remaining);
+
+            // Assert
+            Assert.That(removed, Is.EquivalentTo(new[] { typeof(TestValueEventA) }));
+            Assert.That(remaining, Is.EqualTo(1));
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(0));
+            Assert.That(eventBus.GetListenersCount<TestValueEventB>(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AutoPurge_DisablesWarmupSubPublisherAndPurge()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                autoPurgeTypeInfo: true);
+
+            // Act & Assert
+            Assert.That(
+                () => eventBus.WarmupListenerSlot<TestValueEventA>(1),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => publisher.GetSubPublisher<TestValueEventA>(),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlot<TestValueEventA>(),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlots(out _, out _),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void PurgeListenerSlot_NullType_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out _);
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(
+                () => eventBus.PurgeListenerSlot(null!));
+        }
+
+        [Test]
+        public void PurgeListenerSlot_AfterSubPublisher_ThrowsForAllTypes()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
+            publisher.GetSubPublisher<TestValueEventA>();
+
+            // Act & Assert - 当前设计为总线级永久保护，任意类型的 purge 都会被拒绝
+            Assert.That(
+                () => eventBus.PurgeListenerSlot<TestValueEventA>(),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlot<TestValueEventB>(),
+                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(
+                () => eventBus.PurgeListenerSlots(out _, out _),
+                Throws.TypeOf<InvalidOperationException>());
         }
 
         #endregion

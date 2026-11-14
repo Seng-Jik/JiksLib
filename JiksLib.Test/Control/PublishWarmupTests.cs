@@ -97,29 +97,27 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void WarmupPublish_CalledTwice_Throws()
+        public void WarmupPublish_CalledTwice_IsIdempotent()
         {
             // Arrange
             var bus = new EventBus<TestEventBase>(out var publisher);
             publisher.WarmupPublish(typeof(TestEventA));
 
             // Act & Assert
-            Assert.That(
-                () => publisher.WarmupPublish(typeof(TestEventA)),
-                Throws.TypeOf<InvalidOperationException>());
+            Assert.DoesNotThrow(
+                () => publisher.WarmupPublish(typeof(TestEventA)));
         }
 
         [Test]
-        public void WarmupPublish_AfterPublish_Throws()
+        public void WarmupPublish_AfterPublish_IsIdempotent()
         {
             // Arrange
             var bus = new EventBus<TestEventBase>(out var publisher);
             publisher.Publish(new TestEventA("message"), null);
 
-            // Act & Assert：类型链已由首次发布缓存，此时不能再预热
-            Assert.That(
-                () => publisher.WarmupPublish(typeof(TestEventA)),
-                Throws.TypeOf<InvalidOperationException>());
+            // Act & Assert：视图已经存在，再次预热是幂等的
+            Assert.DoesNotThrow(
+                () => publisher.WarmupPublish(typeof(TestEventA)));
         }
 
         [Test]

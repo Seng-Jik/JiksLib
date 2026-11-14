@@ -177,6 +177,147 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
+        /// 批量添加一组元素，并返回它们在稀疏集中的下标
+        /// </summary>
+        /// <remarks>
+        /// 新元素的下标是 <paramref name="outputIndexList"/> 中
+        /// [<paramref name="outputIndexListBegin"/>,
+        /// <paramref name="outputIndexListBegin"/> + <paramref name="outputIndexCount"/>)
+        /// 区间，顺序与 <paramref name="items"/> 的枚举顺序一致。
+        /// 为避免分配，这里直接返回内部的反向索引表，不要写入其中；
+        /// 调用 Remove/RemoveAt/Clear 后该表会被改写，返回的区间随之失效。
+        /// 另外，本方法会先取元素数量、再遍历一次，因此 <paramref name="items"/>
+        /// 必须可以重复枚举；只能枚举一次的序列请先物化。
+        /// </remarks>
+        /// <param name="items">要添加的元素，不能为 null</param>
+        /// <param name="outputIndexList">新元素下标所在的内部列表</param>
+        /// <param name="outputIndexListBegin">新元素下标区间的起始位置</param>
+        /// <param name="outputIndexCount">新元素下标区间的长度</param>
+        public void AddRange(
+            IEnumerable<T> items,
+            out IReadOnlyList<int> outputIndexList,
+            out int outputIndexListBegin,
+            out int outputIndexCount)
+        {
+            int count = items switch
+            {
+                IReadOnlyCollection<T> roc => roc.Count,
+                ICollection<T> c => c.Count,
+                ICollection c => c.Count,
+                var x => x.Count()
+            };
+
+            outputIndexList = reversedIndexes;
+            outputIndexListBegin = Count;
+            outputIndexCount = count;
+
+            if (count == 0) return;
+
+            if (Count + count > InnerBuffer.Length)
+            {
+                int capacity;
+
+                try { capacity = checked(Math.Max(4, (Count + count) * 2)); }
+                catch (OverflowException) { capacity = int.MaxValue; }
+
+                EnsureCapacity(capacity);
+            }
+
+            foreach (var item in items)
+            {
+                int newIndex = Count++;
+
+                InnerBuffer[newIndex] = item;
+
+                if (newIndex > MaxIndex)
+                {
+                    reversedIndexes.Add(newIndex);
+                    indexes.Add(newIndex);
+                    MaxIndex = newIndex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 批量添加数组中的所有元素，并返回它们在稀疏集中的下标
+        /// </summary>
+        /// <remarks>
+        /// 等价于接收 <see cref="ArraySegment{T}"/> 的重载；
+        /// 下标区间的含义与失效条件见该重载。
+        /// </remarks>
+        /// <param name="items">要添加的数组，不能为 null</param>
+        /// <param name="outputIndexList">新元素下标所在的内部列表</param>
+        /// <param name="outputIndexListBegin">新元素下标区间的起始位置</param>
+        /// <param name="outputIndexCount">新元素下标区间的长度</param>
+        public void AddRange(
+            T[] items,
+            out IReadOnlyList<int> outputIndexList,
+            out int outputIndexListBegin,
+            out int outputIndexCount) =>
+            AddRange(
+                new ArraySegment<T>(items),
+                out outputIndexList,
+                out outputIndexListBegin,
+                out outputIndexCount);
+
+        /// <summary>
+        /// 批量添加数组片段中的所有元素，并返回它们在稀疏集中的下标
+        /// </summary>
+        /// <remarks>
+        /// 新元素的下标是 <paramref name="outputIndexList"/> 中
+        /// [<paramref name="outputIndexListBegin"/>,
+        /// <paramref name="outputIndexListBegin"/> + <paramref name="outputIndexCount"/>)
+        /// 区间，顺序与片段中的元素顺序一致。
+        /// 为避免分配，这里直接返回内部的反向索引表，不要写入其中；
+        /// 调用 Remove/RemoveAt/Clear 后该表会被改写，返回的区间随之失效。
+        /// </remarks>
+        /// <param name="items">要添加的数组片段</param>
+        /// <param name="outputIndexList">新元素下标所在的内部列表</param>
+        /// <param name="outputIndexListBegin">新元素下标区间的起始位置</param>
+        /// <param name="outputIndexCount">新元素下标区间的长度</param>
+        public void AddRange(
+            ArraySegment<T> items,
+            out IReadOnlyList<int> outputIndexList,
+            out int outputIndexListBegin,
+            out int outputIndexCount)
+        {
+            outputIndexList = reversedIndexes;
+            outputIndexListBegin = Count;
+            outputIndexCount = items.Count;
+
+            if (items.Count == 0) return;
+
+            if (Count + items.Count > InnerBuffer.Length)
+            {
+                int capacity;
+
+                try { capacity = checked(Math.Max(4, (Count + items.Count) * 2)); }
+                catch (OverflowException) { capacity = int.MaxValue; }
+
+                EnsureCapacity(capacity);
+            }
+
+            Array.Copy(
+                items.Array.ThrowIfNull(nameof(items)),
+                items.Offset,
+                InnerBuffer,
+                Count,
+                items.Count);
+
+            for (int i = 0; i < items.Count; ++i)
+            {
+                int newIndex = Count++;
+
+                if (newIndex > MaxIndex)
+                {
+                    reversedIndexes.Add(newIndex);
+                    indexes.Add(newIndex);
+                    MaxIndex = newIndex;
+                }
+            }
+        }
+
+        /// <summary>
         /// 保留空间
         /// </summary>
         public void EnsureCapacity(int capacity)

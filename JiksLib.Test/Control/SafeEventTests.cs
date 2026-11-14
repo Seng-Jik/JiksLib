@@ -53,6 +53,18 @@ namespace JiksLib.Test.Control
     [TestFixture]
     public class SafeEventTests
     {
+        static SafeEvent<TestSafeEvent> CreateDeferred(
+            out SafeEvent<TestSafeEvent>.Publisher publisher) =>
+            new(out publisher, allowAddRemoveListenerDuringInvoke: true);
+
+        static SafeEvent<TestSafeEvent> CreateRecursive(
+            out SafeEvent<TestSafeEvent>.Publisher publisher,
+            bool allowAddRemoveListenerDuringInvoke = false) =>
+            new(
+                out publisher,
+                allowAddRemoveListenerDuringInvoke,
+                allowRecursiveInvoke: true);
+
         #region 基础功能测试
 
         [Test]
@@ -229,7 +241,7 @@ namespace JiksLib.Test.Control
         public void AddListenerDuringPublish_ListenerNotCalledUntilNextPublish()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var originalCallCount = 0;
             var addedDuringPublishCallCount = 0;
 
@@ -268,7 +280,7 @@ namespace JiksLib.Test.Control
         public void RemoveListenerDuringPublish_ListenerCalledThisTimeButNotNext()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var callCount = 0;
 
             void ListenerToRemove(TestSafeEvent e) => callCount++;
@@ -306,7 +318,7 @@ namespace JiksLib.Test.Control
         public void AddAndRemoveListenersDuringPublish_ChangesAppliedToNextPublish()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var callCountA = 0;
             var callCountB = 0;
             var callCountC = 0;
@@ -345,6 +357,390 @@ namespace JiksLib.Test.Control
             Assert.That(callCountB, Is.EqualTo(1));
             Assert.That(callCountC, Is.EqualTo(1)); // 未增加
             Assert.That(exceptions2.Count, Is.EqualTo(0));
+        }
+
+        #endregion
+
+        #region ListenerCount 语义测试
+
+        [Test]
+        public void ListenerCount_NewInstance_IsZero()
+        {
+            // Arrange & Act
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
+            var safeEventWithCapacity = new SafeEvent<TestSafeEvent>(out _, capacity: 16);
+
+            // Assert - 构造函数只影响内部容量，不会凭空产生监听器
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
+            Assert.That(safeEventWithCapacity.ListenerCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ListenerCount_AddListener_Increments()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
+
+            void Listener1(TestSafeEvent e) { }
+            void Listener2(TestSafeEvent e) { }
+
+            // Act & Assert
+            safeEvent.AddListener(Listener1);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            safeEvent.AddListener(Listener2);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ListenerCount_RemoveListener_Decrements()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
+
+            void Listener1(TestSafeEvent e) { }
+            void Listener2(TestSafeEvent e) { }
+
+            safeEvent.AddListener(Listener1);
+            safeEvent.AddListener(Listener2);
+
+            // Act & Assert
+            safeEvent.RemoveListener(Listener1);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            safeEvent.RemoveListener(Listener2);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ListenerCount_RemoveNotAddedListener_Unchanged()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
+
+            void Listener(TestSafeEvent e) { }
+            void OtherListener(TestSafeEvent e) { }
+
+            safeEvent.AddListener(Listener);
+
+            // Act & Assert - 移除未注册的监听器不应影响已有计数
+            safeEvent.RemoveListener(OtherListener);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            // 重复移除已移除的监听器也不应把计数减成负数
+            safeEvent.RemoveListener(Listener);
+            safeEvent.RemoveListener(Listener);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ListenerCount_DuplicateRegistration_CountsEachTime()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var callCount = 0;
+
+            void Listener(TestSafeEvent e) => callCount++;
+
+            // Act
+            safeEvent.AddListener(Listener);
+            safeEvent.AddListener(Listener);
+
+            // Assert - 重复注册按次数计数，发布时也被调用相应次数
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+            Assert.That(callCount, Is.EqualTo(2));
+
+            // Act & Assert - 一次移除只移除一个匹配项
+            safeEvent.RemoveListener(Listener);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            safeEvent.RemoveListener(Listener);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
+
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+            Assert.That(callCount, Is.EqualTo(2), "移除后不应再被调用");
+        }
+
+        [Test]
+        public void ListenerCount_Publish_DoesNotChangeCount()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+
+            void Listener1(TestSafeEvent e) { }
+            void Listener2(TestSafeEvent e) { }
+
+            safeEvent.AddListener(Listener1);
+            safeEvent.AddListener(Listener2);
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+
+            // Assert
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ListenerCount_AddDuringPublish_UpdatesAfterPublishCompletes()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+            var delayedListenerCallCount = 0;
+            var countObservedDuringPublish = -1;
+
+            void DelayedListener(TestSafeEvent e) => delayedListenerCallCount++;
+
+            void AddingListener(TestSafeEvent e)
+            {
+                safeEvent.AddListener(DelayedListener);
+                countObservedDuringPublish = safeEvent.ListenerCount;
+            }
+
+            safeEvent.AddListener(AddingListener);
+
+            // Act - 发布期间添加的监听器延后生效
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+
+            // Assert
+            Assert.That(countObservedDuringPublish, Is.EqualTo(1),
+                "发布过程中新增的监听器尚未生效，不应计入数量");
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2),
+                "发布结束后延迟添加的监听器才计入数量");
+            Assert.That(delayedListenerCallCount, Is.EqualTo(0));
+
+            // Act - 下一次发布时新监听器生效
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+
+            // Assert
+            Assert.That(delayedListenerCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_RemoveDuringPublish_UpdatesAfterPublishCompletes()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+            var removedListenerCallCount = 0;
+            var countObservedDuringPublish = -1;
+
+            void RemovedListener(TestSafeEvent e) => removedListenerCallCount++;
+
+            void RemovingListener(TestSafeEvent e)
+            {
+                safeEvent.RemoveListener(RemovedListener);
+                countObservedDuringPublish = safeEvent.ListenerCount;
+            }
+
+            safeEvent.AddListener(RemovingListener);
+            safeEvent.AddListener(RemovedListener);
+
+            // Act - 发布期间移除的监听器延后生效
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+
+            // Assert
+            Assert.That(countObservedDuringPublish, Is.EqualTo(2),
+                "待移除的监听器在发布过程中仍然有效，应继续计入数量");
+            Assert.That(removedListenerCallCount, Is.EqualTo(1),
+                "延迟移除的监听器仍会参与本次发布");
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1),
+                "发布结束后待移除的监听器才不再计入数量");
+
+            // Act - 下一次发布时不再调用被移除的监听器
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+
+            // Assert
+            Assert.That(removedListenerCallCount, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_AddAndRemoveSameListenerDuringPublish_NetZero()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+            var temporaryListenerCallCount = 0;
+
+            void TemporaryListener(TestSafeEvent e) => temporaryListenerCallCount++;
+
+            void Listener(TestSafeEvent e)
+            {
+                safeEvent.AddListener(TemporaryListener);
+                safeEvent.RemoveListener(TemporaryListener);
+            }
+
+            safeEvent.AddListener(Listener);
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+
+            // Assert - 延迟操作按入队顺序执行，添加后再移除，计数净变化为零
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+            Assert.That(temporaryListenerCallCount, Is.EqualTo(0));
+
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+            Assert.That(temporaryListenerCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ListenerCount_ListenerRemovesItself_ReachesZeroAfterPublish()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+            var callCount = 0;
+
+            void SelfRemovingListener(TestSafeEvent e)
+            {
+                callCount++;
+                safeEvent.RemoveListener(SelfRemovingListener);
+                Assert.That(safeEvent.ListenerCount, Is.EqualTo(1),
+                    "自身移除被延迟，发布过程中仍应计入数量");
+            }
+
+            safeEvent.AddListener(SelfRemovingListener);
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
+
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+            Assert.That(callCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_ListenerThrows_CountUnchanged()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+
+            void ThrowingListener(TestSafeEvent e) =>
+                throw new InvalidOperationException("Error");
+
+            void NormalListener(TestSafeEvent e) { }
+
+            safeEvent.AddListener(ThrowingListener);
+            safeEvent.AddListener(NormalListener);
+
+            // Act
+            var exceptions = new List<Exception>();
+            publisher.Publish(new TestSafeEvent("Test", 1), exceptions);
+
+            // Assert - 监听器异常被隔离，不影响注册数量
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+
+            safeEvent.RemoveListener(ThrowingListener);
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_DelayedAddAppliedWhenListenerThrows()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+            var delayedListenerCallCount = 0;
+
+            void DelayedListener(TestSafeEvent e) => delayedListenerCallCount++;
+
+            void ThrowingAddingListener(TestSafeEvent e)
+            {
+                safeEvent.AddListener(DelayedListener);
+                throw new InvalidOperationException("Error");
+            }
+
+            safeEvent.AddListener(ThrowingAddingListener);
+
+            var exceptions = new List<Exception>();
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), exceptions);
+
+            // Assert - 异常不会阻止延迟操作生效，发布结束后计数更新
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+
+            publisher.Publish(new TestSafeEvent("Test", 2), null);
+            Assert.That(delayedListenerCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_RecursivePublishAttempt_DoesNotChangeCount()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var listenerCallCount = 0;
+
+            safeEvent.AddListener(e =>
+            {
+                listenerCallCount++;
+                Assert.Throws<InvalidOperationException>(
+                    () => publisher.Publish(new TestSafeEvent("Inner", 1), null));
+                Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Outer", 2), null);
+
+            // Assert
+            Assert.That(listenerCallCount, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void AddNullListenerDuringPublish_ExceptionCollectedAndCountUnchanged()
+        {
+            // Arrange
+            var safeEvent = CreateDeferred(out var publisher);
+
+            void Listener(TestSafeEvent e) => safeEvent.AddListener(null!);
+
+            safeEvent.AddListener(Listener);
+            var exceptions = new List<Exception>();
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), exceptions);
+
+            // Assert - null 校验在入队前完成，异常作为监听器异常被收集，计数不受影响
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(exceptions[0], Is.TypeOf<ArgumentNullException>());
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ListenerCount_TracksManyAddRemoveOperations()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
+            const int listenerCount = 50;
+            var listeners =
+                new JiksLib.Control.EventHandler<TestSafeEvent>[listenerCount];
+
+            for (int i = 0; i < listenerCount; i++)
+            {
+                int index = i;
+                listeners[i] = e => { _ = index; };
+                safeEvent.AddListener(listeners[i]);
+            }
+
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(listenerCount));
+
+            // Act - 移除偶数下标的监听器
+            for (int i = 0; i < listenerCount; i += 2)
+                safeEvent.RemoveListener(listeners[i]);
+
+            // Assert
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(listenerCount / 2));
+
+            // Act - 重复移除已移除的监听器
+            for (int i = 0; i < listenerCount; i += 2)
+                safeEvent.RemoveListener(listeners[i]);
+
+            // Assert - 计数不会变成负数
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(listenerCount / 2));
         }
 
         #endregion
@@ -525,12 +921,12 @@ namespace JiksLib.Test.Control
         public void AddNullListener_ThrowsArgumentNullException()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = new SafeEvent<TestSafeEvent>(out _);
 
-            // Act & Assert
-            // 注意：当前实现不检查null，所以不会抛出异常
-            // Assert.Throws<ArgumentNullException>(() => safeEvent.AddListener(null!));
-            Assert.DoesNotThrow(() => safeEvent.AddListener(null!));
+            // Act & Assert - null 不是合法监听器，校验失败时不能改变计数
+            Assert.Throws<ArgumentNullException>(
+                () => safeEvent.AddListener(null!));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(0));
         }
 
         [Test]
@@ -538,11 +934,19 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var callCount = 0;
 
-            // Act & Assert
-            // 注意：当前实现不检查null，所以不会抛出异常
-            // Assert.Throws<ArgumentNullException>(() => safeEvent.RemoveListener(null!));
-            Assert.DoesNotThrow(() => safeEvent.RemoveListener(null!));
+            void Listener(TestSafeEvent e) => callCount++;
+
+            safeEvent.AddListener(Listener);
+
+            // Act & Assert - 传入null时抛出异常，且不能误删已有监听器
+            Assert.Throws<ArgumentNullException>(
+                () => safeEvent.RemoveListener(null!));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            publisher.Publish(new TestSafeEvent("Test", 1), null);
+            Assert.That(callCount, Is.EqualTo(1));
         }
 
         #endregion
@@ -732,7 +1136,7 @@ namespace JiksLib.Test.Control
         public void ComplexConcurrentModification_WorksCorrectly()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var results = new List<string>();
             var bAdded = false;
 
@@ -958,7 +1362,7 @@ namespace JiksLib.Test.Control
         public void ListenersDelayedOperation_QueueBehavior()
         {
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var callCount = 0;
             var nestedCallCount = 0;
 
@@ -994,7 +1398,7 @@ namespace JiksLib.Test.Control
         {
             // 测试 listenersDelayedOperation 队列在处理后被清空
             // Arrange
-            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var safeEvent = CreateDeferred(out var publisher);
             var callCount = 0;
             var delayedCallCount = 0;
             bool delayedListenerAdded = false;
@@ -1054,6 +1458,476 @@ namespace JiksLib.Test.Control
 
             Assert.That(callCount, Is.EqualTo(1));
             Assert.That(exceptions.Count, Is.EqualTo(0));
+        }
+
+        #endregion
+
+        #region 默认严格策略测试
+
+        [Test]
+        public void AddListenerDuringPublish_DefaultPolicy_ExceptionCollected()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var exceptions = new List<Exception>();
+            var callCount = 0;
+
+            safeEvent.AddListener(e =>
+            {
+                callCount++;
+                safeEvent.AddListener(_ => callCount += 100);
+            });
+
+            // Act
+            Assert.DoesNotThrow(() =>
+                publisher.Publish(new TestSafeEvent("Test", 1), exceptions));
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(exceptions[0], Is.TypeOf<InvalidOperationException>());
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RemoveListenerDuringPublish_DefaultPolicy_ExceptionCollected()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var exceptions = new List<Exception>();
+            var removingCallCount = 0;
+            var removedCallCount = 0;
+
+            void RemovedListener(TestSafeEvent e) => removedCallCount++;
+
+            safeEvent.AddListener(e =>
+            {
+                removingCallCount++;
+                safeEvent.RemoveListener(RemovedListener);
+            });
+            safeEvent.AddListener(RemovedListener);
+
+            // Act
+            publisher.Publish(new TestSafeEvent("Test", 1), exceptions);
+
+            // Assert - 移除被拒绝后，监听器仍保持注册并继续参与本次发布
+            Assert.That(removingCallCount, Is.EqualTo(1));
+            Assert.That(removedCallCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(exceptions[0], Is.TypeOf<InvalidOperationException>());
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RecursivePublish_DefaultPolicy_ExceptionCollected()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
+            var exceptions = new List<Exception>();
+            var callCount = 0;
+
+            safeEvent.AddListener(e =>
+            {
+                callCount++;
+                publisher.Publish(new TestSafeEvent("Inner", 2), null);
+            });
+
+            // Act
+            Assert.DoesNotThrow(() =>
+                publisher.Publish(new TestSafeEvent("Outer", 1), exceptions));
+
+            // Assert - 嵌套发布的异常作为监听器异常被收集，外层发布继续完成
+            Assert.That(callCount, Is.EqualTo(1));
+            Assert.That(exceptions.Count, Is.EqualTo(1));
+            Assert.That(exceptions[0], Is.TypeOf<InvalidOperationException>());
+        }
+
+        #endregion
+
+        #region 递归发布（队列）测试
+
+        [Test]
+        public void RecursivePublish_QueuesEventAndDeliversCorrectPayload()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var received = new List<string>();
+
+            safeEvent.AddListener(e =>
+            {
+                received.Add(e.Message);
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("inner", 2), null);
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 嵌套事件使用自己的对象派发，而不是重复外层事件
+            Assert.That(received, Is.EqualTo(new[] { "outer", "inner" }));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_DeliversQueuedEventsAfterOuterListenersInFifoOrder()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var trace = new List<string>();
+
+            safeEvent.AddListener(e =>
+            {
+                trace.Add("A:" + e.Message);
+                if (e.Message == "outer")
+                {
+                    publisher.Publish(new TestSafeEvent("first", 2), null);
+                    publisher.Publish(new TestSafeEvent("second", 3), null);
+                }
+            });
+            safeEvent.AddListener(e => trace.Add("B:" + e.Message));
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 外层事件先完整派发，再按 FIFO 派发排队事件
+            Assert.That(trace, Is.EqualTo(new[]
+            {
+                "A:outer", "B:outer",
+                "A:first", "B:first",
+                "A:second", "B:second",
+            }));
+        }
+
+        [Test]
+        public void RecursivePublish_NestedCallReturnsBeforeDelivery()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var innerDelivered = false;
+            var returnedBeforeInnerDelivery = false;
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message == "outer")
+                {
+                    publisher.Publish(new TestSafeEvent("inner", 2), null);
+                    returnedBeforeInnerDelivery = !innerDelivered;
+                }
+                else if (e.Message == "inner")
+                {
+                    innerDelivered = true;
+                }
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 嵌套 Publish 只入队，排空发生在监听器返回之后
+            Assert.That(returnedBeforeInnerDelivery, Is.True);
+            Assert.That(innerDelivered, Is.True);
+        }
+
+        [Test]
+        public void RecursivePublish_NestedFromQueuedEvent_IsProcessedInFifoOrder()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var trace = new List<string>();
+
+            safeEvent.AddListener(e =>
+            {
+                trace.Add(e.Message);
+                if (e.Message == "outer")
+                {
+                    publisher.Publish(new TestSafeEvent("first", 2), null);
+                    publisher.Publish(new TestSafeEvent("second", 3), null);
+                }
+                else if (e.Message == "first")
+                {
+                    publisher.Publish(new TestSafeEvent("third", 4), null);
+                }
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 队列排空期间新入队的事件排在已有事件之后
+            Assert.That(trace, Is.EqualTo(new[]
+            {
+                "outer", "first", "second", "third",
+            }));
+        }
+
+        [Test]
+        public void RecursivePublish_NestedEventExceptionsGoToNestedOutput()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var outerExceptions = new List<Exception>();
+            var innerExceptions = new List<Exception>();
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("inner", 2), innerExceptions);
+                else
+                    throw new InvalidOperationException("inner failure");
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), outerExceptions);
+
+            // Assert - 排队事件的异常写入发起该次嵌套发布时传入的输出
+            Assert.That(outerExceptions.Count, Is.EqualTo(0));
+            Assert.That(innerExceptions.Count, Is.EqualTo(1));
+            Assert.That(innerExceptions[0].Message, Is.EqualTo("inner failure"));
+        }
+
+        [Test]
+        public void RecursivePublish_NestedNullOutput_DropsExceptions()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var outerExceptions = new List<Exception>();
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("inner", 2), null);
+                else
+                    throw new InvalidOperationException("inner failure");
+            });
+
+            // Act & Assert - 嵌套调用未提供输出时异常被忽略，不影响外层发布
+            Assert.DoesNotThrow(() =>
+                publisher.Publish(new TestSafeEvent("outer", 1), outerExceptions));
+            Assert.That(outerExceptions.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RecursivePublish_ListenerAddExceptionGoesToNestedOutput()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringInvoke: false,
+                allowRecursiveInvoke: true);
+            var outerExceptions = new List<Exception>();
+            var innerExceptions = new List<Exception>();
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("inner", 2), innerExceptions);
+                else
+                    safeEvent.AddListener(_ => { });
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), outerExceptions);
+
+            // Assert - 排队事件监听器内 AddListener 的异常也进入异常输出
+            Assert.That(outerExceptions.Count, Is.EqualTo(0));
+            Assert.That(innerExceptions.Count, Is.EqualTo(1));
+            Assert.That(innerExceptions[0], Is.TypeOf<InvalidOperationException>());
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_WithDeferredAdd_ListenerAppliesAfterSession()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringInvoke: true,
+                allowRecursiveInvoke: true);
+            var addedCalls = 0;
+            var added = false;
+
+            void AddedListener(TestSafeEvent e) => addedCalls++;
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message != "outer")
+                    return;
+
+                if (!added)
+                {
+                    added = true;
+                    safeEvent.AddListener(AddedListener);
+                }
+
+                publisher.Publish(new TestSafeEvent("inner", 2), null);
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 会话期间新增的监听器不参与本次排队的嵌套事件
+            Assert.That(addedCalls, Is.EqualTo(0));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(2));
+
+            publisher.Publish(new TestSafeEvent("next", 3), null);
+            Assert.That(addedCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_WithDeferredRemove_ListenerStillReceivesQueuedEvent()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringInvoke: true,
+                allowRecursiveInvoke: true);
+            var removedOuterCalls = 0;
+            var removedInnerCalls = 0;
+
+            void RemovedListener(TestSafeEvent e)
+            {
+                if (e.Message == "outer") removedOuterCalls++;
+                else if (e.Message == "inner") removedInnerCalls++;
+            }
+
+            safeEvent.AddListener(e =>
+            {
+                if (e.Message != "outer")
+                    return;
+
+                safeEvent.RemoveListener(RemovedListener);
+                publisher.Publish(new TestSafeEvent("inner", 2), null);
+            });
+            safeEvent.AddListener(RemovedListener);
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 1), null);
+
+            // Assert - 会话期间移除的监听器仍参与本次排队的嵌套事件
+            Assert.That(removedOuterCalls, Is.EqualTo(1));
+            Assert.That(removedInnerCalls, Is.EqualTo(1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+            publisher.Publish(new TestSafeEvent("next", 3), null);
+            Assert.That(removedOuterCalls, Is.EqualTo(1));
+            Assert.That(removedInnerCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_DeepChain_DoesNotOverflowStack()
+        {
+            // Arrange
+            const int limit = 10_000;
+            var safeEvent = CreateRecursive(out var publisher);
+            var callCount = 0;
+
+            safeEvent.AddListener(e =>
+            {
+                callCount++;
+                if (e.Value < limit)
+                    publisher.Publish(new TestSafeEvent("next", e.Value + 1), null);
+            });
+
+            // Act - 若递归发布退化为真实递归，这里会发生 StackOverflowException
+            publisher.Publish(new TestSafeEvent("start", 0), null);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(limit + 1));
+            Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_ConstructorWithCapacityAndPolicies_Works()
+        {
+            // Arrange
+            var safeEvent = new SafeEvent<TestSafeEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringInvoke: true,
+                allowRecursiveInvoke: true,
+                capacity: 8);
+            var callCount = 0;
+
+            safeEvent.AddListener(e =>
+            {
+                callCount++;
+                if (e.Value == 0)
+                    publisher.Publish(new TestSafeEvent("inner", 1), null);
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 0), null);
+
+            // Assert
+            Assert.That(callCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RecursivePublish_QueuedListenerThrows_QueueContinues()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var outerExceptions = new List<Exception>();
+            var innerExceptions = new List<Exception>();
+            var trace = new List<string>();
+
+            safeEvent.AddListener(e =>
+            {
+                trace.Add("A:" + e.Message);
+
+                if (e.Message == "outer")
+                {
+                    publisher.Publish(new TestSafeEvent("first", 1), innerExceptions);
+                    publisher.Publish(new TestSafeEvent("second", 2), innerExceptions);
+                }
+                else if (e.Message == "first")
+                {
+                    throw new InvalidOperationException("nested failure");
+                }
+            });
+            safeEvent.AddListener(e => trace.Add("B:" + e.Message));
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 0), outerExceptions);
+
+            // Assert - 队列中的 first 异常不应阻止 second 继续派发
+            Assert.That(trace, Is.EqualTo(new[]
+            {
+                "A:outer", "B:outer",
+                "A:first", "B:first",
+                "A:second", "B:second",
+            }));
+            Assert.That(outerExceptions, Is.Empty);
+            Assert.That(innerExceptions.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RecursivePublish_MultipleListenersEnqueue_AllQueuedAfterOuter()
+        {
+            // Arrange
+            var safeEvent = CreateRecursive(out var publisher);
+            var trace = new List<string>();
+
+            safeEvent.AddListener(e =>
+            {
+                trace.Add("A:" + e.Message);
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("first", 1), null);
+            });
+            safeEvent.AddListener(e =>
+            {
+                trace.Add("B:" + e.Message);
+                if (e.Message == "outer")
+                    publisher.Publish(new TestSafeEvent("second", 2), null);
+            });
+
+            // Act
+            publisher.Publish(new TestSafeEvent("outer", 0), null);
+
+            // Assert - 两个监听器的嵌套发布都排在外层事件之后，按入队顺序处理
+            Assert.That(trace, Is.EqualTo(new[]
+            {
+                "A:outer", "B:outer",
+                "A:first", "B:first",
+                "A:second", "B:second",
+            }));
         }
 
         #endregion

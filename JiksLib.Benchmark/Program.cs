@@ -18,10 +18,15 @@ namespace JiksLib.Benchmark
             var switcher = new BenchmarkSwitcher(new[]
             {
                 typeof(EventBusBenchmarks),
+                typeof(EventBusTypeChainBenchmarks),
+                typeof(EventBusWarmupComparisonBenchmarks),
                 typeof(ValueEventBusBenchmarks),
+                typeof(SafeEventBenchmarks),
+                typeof(SafeEventRecursiveBenchmarks),
                 typeof(EventBusComparisonBenchmarks),
                 typeof(ValueEventBusInterfaceBenchmarks),
                 typeof(SparseSetBenchmarks),
+                typeof(CacheBenchmarks),
             });
 
             switcher.Run(args);
