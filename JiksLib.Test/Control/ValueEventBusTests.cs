@@ -1805,7 +1805,7 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void PurgeTypeInfo_RequiresNoListeners()
+        public void PurgeListenerSlot_RequiresNoListeners()
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
@@ -1820,7 +1820,7 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void PurgeAllTypeInfo_RemovesOnlyEmptyTypes()
+        public void PurgeListenerSlots_RemovesOnlyEmptyTypes()
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
@@ -1846,7 +1846,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(
                 out var publisher,
-                autoPurgeTypeInfo: true);
+                autoPurgeListenerSlot: true);
 
             // Act & Assert
             Assert.That(
@@ -1924,7 +1924,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(
                 out _,
-                autoPurgeTypeInfo: true);
+                autoPurgeListenerSlot: true);
 
             // Act
             var exception = Assert.Throws<InvalidOperationException>(
@@ -1941,7 +1941,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(
                 out _,
-                autoPurgeTypeInfo: true);
+                autoPurgeListenerSlot: true);
 
             // Act
             var exception = Assert.Throws<InvalidOperationException>(

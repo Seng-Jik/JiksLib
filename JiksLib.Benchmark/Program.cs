@@ -29,6 +29,7 @@ namespace JiksLib.Benchmark
                 typeof(SparseSetBenchmarks),
                 typeof(CacheBenchmarks),
                 typeof(CacheEvictionBenchmarks),
+                typeof(RingBufferBenchmarks),
                 typeof(ReadOnlyListSegmentBenchmarks),
                 typeof(StringSegmentBenchmarks),
             });

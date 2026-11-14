@@ -26,32 +26,32 @@ namespace JiksLib.Control
         /// <param name="publisher">构造出的事件发布器</param>
         /// <param name="allowAddRemoveListenerDuringPublish">
         /// 是否允许在发布期间添加或移除监听器；允许时这些操作会延迟到整个最外层发布结束后生效。
-        /// 不能与 <paramref name="autoPurgeTypeInfo"/> 同时开启。
+        /// 不能与 <paramref name="autoPurgeListenerSlot"/> 同时开启。
         /// </param>
         /// <param name="allowRecursivePublish">
         /// 是否允许在发布期间再次发布事件；允许时嵌套事件进入 FIFO 队列，
         /// 由最外层发布排空。该值会传给内部 SafeEvent 的
         /// <c>allowRecursiveInvoke</c>。
         /// </param>
-        /// <param name="autoPurgeTypeInfo">
+        /// <param name="autoPurgeListenerSlot">
         /// 是否在某个事件类型移除最后一个监听器时自动删除其内部存储。
         /// 开启后不能使用 <c>WarmupListenerSlot</c>、<c>GetSubPublisher</c>、
         /// <c>PurgeListenerSlot</c> 或 <c>PurgeListenerSlots</c>。
         /// </param>
         /// <exception cref="ArgumentException">
         /// 当 <paramref name="allowAddRemoveListenerDuringPublish"/> 与
-        /// <paramref name="autoPurgeTypeInfo"/> 同时为 true 时抛出。
+        /// <paramref name="autoPurgeListenerSlot"/> 同时为 true 时抛出。
         /// </exception>
         public ValueEventBus(
             out Publisher publisher,
             bool allowAddRemoveListenerDuringPublish = false,
             bool allowRecursivePublish = false,
-            bool autoPurgeTypeInfo = false)
+            bool autoPurgeListenerSlot = false)
         {
-            if (allowAddRemoveListenerDuringPublish && autoPurgeTypeInfo)
+            if (allowAddRemoveListenerDuringPublish && autoPurgeListenerSlot)
             {
                 throw new ArgumentException(
-                    "allowAddRemoveListenerDuringInvoke and autoPurgeTypeInfo cannot be enabled at the same time.");
+                    "allowAddRemoveListenerDuringPublish and autoPurgeListenerSlot cannot be enabled at the same time.");
             }
 
             innerEvents = new();
@@ -61,7 +61,7 @@ namespace JiksLib.Control
                 allowAddRemoveListenerDuringPublish;
 
             this.allowRecursivePublish = allowRecursivePublish;
-            this.autoPurgeTypeInfo = autoPurgeTypeInfo;
+            this.autoPurgeListenerSlot = autoPurgeListenerSlot;
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace JiksLib.Control
                 var se = (SafeEvent<TEvent>)eventHandler.InnerSafeEvent;
                 se.RemoveListener(listener);
 
-                if (autoPurgeTypeInfo && se.ListenerCount <= 0)
+                if (autoPurgeListenerSlot && se.ListenerCount <= 0)
                     innerEvents.Remove(typeof(TEvent));
             }
         }
@@ -151,7 +151,7 @@ namespace JiksLib.Control
         /// </exception>
         /// <exception cref="InvalidOperationException">
         /// 当该事件类型已经预热过、已经注册过监听器，或启用了
-        /// <c>autoPurgeTypeInfo</c> 时抛出。
+        /// <c>autoPurgeListenerSlot</c> 时抛出。
         /// </exception>
         /// <remarks>
         /// 每个值类型事件有独立的监听器存储，需要分别预热；建议在启动期集中调用。
@@ -160,9 +160,9 @@ namespace JiksLib.Control
         public void WarmupListenerSlot<TEvent>(int capacity)
             where TEvent : struct, TConstraint
         {
-            if (autoPurgeTypeInfo)
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "WarmupListenerSlot cannot be used when autoPurgeTypeInfo is enabled.");
+                    "WarmupListenerSlot cannot be used when autoPurgeListenerSlot is enabled.");
 
             if (capacity < 0)
                 throw new ArgumentOutOfRangeException(
@@ -182,31 +182,31 @@ namespace JiksLib.Control
         /// 手动清理指定事件类型的内部存储。
         /// 只有该类型当前没有任何监听器时才会移除。
         /// </summary>
-        /// <param name="typeInfo">要清理的事件类型。</param>
+        /// <param name="eventType">要清理的事件类型。</param>
         /// <returns>类型不存在或已成功移除时返回 true；仍有监听器时返回 false。</returns>
         /// <exception cref="InvalidOperationException">
-        /// 启用 <c>autoPurgeTypeInfo</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
+        /// 启用 <c>autoPurgeListenerSlot</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
         /// 后者的限制是永久性的：即使 SubPublisher 已被丢弃，或只创建过其他事件类型的
         /// SubPublisher，本方法仍会抛出。这是为了避免缓存的 SubPublisher 指向被移除的
         /// 内部 SafeEvent；精确追踪所有副本会带来额外开销与复杂度。
         /// </exception>
-        public bool PurgeListenerSlot(Type typeInfo)
+        public bool PurgeListenerSlot(Type eventType)
         {
-            if (autoPurgeTypeInfo)
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "PurgeListenerSlot cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlot cannot be called when autoPurgeListenerSlot is enabled.");
 
             if (subPublisherGot)
                 throw new InvalidOperationException(
                     "PurgeListenerSlot cannot be called after a SubPublisher has been created.");
 
-            if (!innerEvents.TryGetValue(typeInfo, out var h))
+            if (!innerEvents.TryGetValue(eventType, out var h))
                 return true;
 
             if (h.GetListenersCount(h.InnerSafeEvent) > 0)
                 return false;
 
-            innerEvents.Remove(typeInfo);
+            innerEvents.Remove(eventType);
             return true;
         }
 
@@ -225,7 +225,7 @@ namespace JiksLib.Control
         /// <param name="typesRemoved">实际被移除的事件类型列表。</param>
         /// <param name="typesRemaining">清理后仍保留的事件类型数量。</param>
         /// <exception cref="InvalidOperationException">
-        /// 启用 <c>autoPurgeTypeInfo</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
+        /// 启用 <c>autoPurgeListenerSlot</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
         /// 后者的限制是永久性的：即使 SubPublisher 已被丢弃，或只创建过其他事件类型的
         /// SubPublisher，本方法仍会抛出。这是为了避免缓存的 SubPublisher 指向被移除的
         /// 内部 SafeEvent；精确追踪所有副本会带来额外开销与复杂度。
@@ -234,9 +234,9 @@ namespace JiksLib.Control
             out List<Type> typesRemoved,
             out int typesRemaining)
         {
-            if (autoPurgeTypeInfo)
+            if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
-                    "PurgeListenerSlots cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlots cannot be called when autoPurgeListenerSlot is enabled.");
 
             if (subPublisherGot)
                 throw new InvalidOperationException(
@@ -284,7 +284,7 @@ namespace JiksLib.Control
             /// 提供最好的性能。
             /// </summary>
             /// <exception cref="InvalidOperationException">
-            /// 当总线启用了 <c>autoPurgeTypeInfo</c> 时抛出：自动清理可能在
+            /// 当总线启用了 <c>autoPurgeListenerSlot</c> 时抛出：自动清理可能在
             /// SubPublisher 仍被使用时移除对应的内部 SafeEvent。
             /// </exception>
             /// <remarks>
@@ -299,9 +299,9 @@ namespace JiksLib.Control
             public SubPublisher<TEvent> GetSubPublisher<TEvent>()
                 where TEvent : struct, TConstraint
             {
-                if (bus.autoPurgeTypeInfo)
+                if (bus.autoPurgeListenerSlot)
                     throw new InvalidOperationException(
-                        "GetSubPublisher cannot be used when autoPurgeTypeInfo is enabled.");
+                        "GetSubPublisher cannot be used when autoPurgeListenerSlot is enabled.");
 
                 if (!bus.innerEvents.TryGetValue(typeof(TEvent), out var h))
                     h = bus.CreateAndRegisterInnerEvent<TEvent>(0).Item2;
@@ -413,7 +413,7 @@ namespace JiksLib.Control
         readonly Dictionary<Type, InnerPublisher> innerEvents;
         readonly bool allowAddRemoveListenerDuringPublish;
         readonly bool allowRecursivePublish;
-        readonly bool autoPurgeTypeInfo;
+        readonly bool autoPurgeListenerSlot;
 
         #endregion
     }
