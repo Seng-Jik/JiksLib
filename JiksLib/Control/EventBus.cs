@@ -155,7 +155,7 @@ namespace JiksLib.Control
             }
             else
             {
-                innerEvents.ThrowIfNull(nameof(listener));
+                listener.ThrowIfNull(nameof(listener));
             }
         }
 
