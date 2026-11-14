@@ -11,6 +11,10 @@ namespace JiksLib.Control
     /// 仅支持在主线程上使用
     /// 提供较好的性能，只支持值类型的事件，可避免事件发布过程中的装箱操作
     /// 支持配置发布期间监听器增删、递归发布以及空类型自动清理。
+    /// 注意：创建过任意 SubPublisher 后，总线将永久禁止
+    /// PurgeListenerSlot / PurgeListenerSlots；这是为了避免缓存的
+    /// SubPublisher 指向已被移除的内部 SafeEvent。该限制是性能与复杂度的权衡：
+    /// 精确追踪所有 SubPublisher 副本会带来额外开销和生命周期管理复杂度。
     /// </summary>
     /// <typeparam name="TConstraint">约定事件类型必须实现某一接口</typeparam>
     public sealed class ValueEventBus<TConstraint>
@@ -32,7 +36,7 @@ namespace JiksLib.Control
         /// <param name="autoPurgeTypeInfo">
         /// 是否在某个事件类型移除最后一个监听器时自动删除其内部存储。
         /// 开启后不能使用 <c>WarmupListenerSlot</c>、<c>GetSubPublisher</c>、
-        /// <c>PurgeTypeInfo</c> 或 <c>PurgeAllTypeInfo</c>。
+        /// <c>PurgeListenerSlot</c> 或 <c>PurgeListenerSlots</c>。
         /// </param>
         /// <exception cref="ArgumentException">
         /// 当 <paramref name="allowAddRemoveListenerDuringPublish"/> 与
@@ -182,17 +186,19 @@ namespace JiksLib.Control
         /// <returns>类型不存在或已成功移除时返回 true；仍有监听器时返回 false。</returns>
         /// <exception cref="InvalidOperationException">
         /// 启用 <c>autoPurgeTypeInfo</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
-        /// 后者是因为缓存的 SubPublisher 会指向被移除的内部 SafeEvent。
+        /// 后者的限制是永久性的：即使 SubPublisher 已被丢弃，或只创建过其他事件类型的
+        /// SubPublisher，本方法仍会抛出。这是为了避免缓存的 SubPublisher 指向被移除的
+        /// 内部 SafeEvent；精确追踪所有副本会带来额外开销与复杂度。
         /// </exception>
         public bool PurgeListenerSlot(Type typeInfo)
         {
             if (autoPurgeTypeInfo)
                 throw new InvalidOperationException(
-                    "PurgeTypeInfo cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlot cannot be called when autoPurgeTypeInfo is enabled.");
 
             if (subPublisherGot)
                 throw new InvalidOperationException(
-                    "PurgeTypeInfo cannot be called after a SubPublisher has been created.");
+                    "PurgeListenerSlot cannot be called after a SubPublisher has been created.");
 
             if (!innerEvents.TryGetValue(typeInfo, out var h))
                 return true;
@@ -220,6 +226,9 @@ namespace JiksLib.Control
         /// <param name="typesRemaining">清理后仍保留的事件类型数量。</param>
         /// <exception cref="InvalidOperationException">
         /// 启用 <c>autoPurgeTypeInfo</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
+        /// 后者的限制是永久性的：即使 SubPublisher 已被丢弃，或只创建过其他事件类型的
+        /// SubPublisher，本方法仍会抛出。这是为了避免缓存的 SubPublisher 指向被移除的
+        /// 内部 SafeEvent；精确追踪所有副本会带来额外开销与复杂度。
         /// </exception>
         public void PurgeListenerSlots(
             out List<Type> typesRemoved,
@@ -227,11 +236,11 @@ namespace JiksLib.Control
         {
             if (autoPurgeTypeInfo)
                 throw new InvalidOperationException(
-                    "PurgeAllTypeInfo cannot be called when autoPurgeTypeInfo is enabled.");
+                    "PurgeListenerSlots cannot be called when autoPurgeTypeInfo is enabled.");
 
             if (subPublisherGot)
                 throw new InvalidOperationException(
-                    "PurgeAllTypeInfo cannot be called after a SubPublisher has been created.");
+                    "PurgeListenerSlots cannot be called after a SubPublisher has been created.");
 
             typesRemoved = new();
 
@@ -278,6 +287,15 @@ namespace JiksLib.Control
             /// 当总线启用了 <c>autoPurgeTypeInfo</c> 时抛出：自动清理可能在
             /// SubPublisher 仍被使用时移除对应的内部 SafeEvent。
             /// </exception>
+            /// <remarks>
+            /// 调用本方法后，当前总线将永久禁止 <c>PurgeListenerSlot</c> 和
+            /// <c>PurgeListenerSlots</c>，即使返回的 SubPublisher 已被丢弃，或只创建过
+            /// 某一事件类型的 SubPublisher。原因是 SubPublisher 保存了内部
+            /// SafeEvent.Publisher，Purge 后它会指向已移除的 SafeEvent 并静默丢事件；
+            /// 精确追踪所有结构体副本会带来额外开销与生命周期复杂度，因此采用永久禁用的
+            /// 保守策略。这是性能与复杂度的权衡，调用方应在决定使用 SubPublisher 前
+            /// 确认不再需要 Purge。
+            /// </remarks>
             public SubPublisher<TEvent> GetSubPublisher<TEvent>()
                 where TEvent : struct, TConstraint
             {
@@ -386,6 +404,11 @@ namespace JiksLib.Control
             }
         }
 
+        /// <summary>
+        /// 是否创建过任意 SubPublisher；一旦为 true，当前总线将永久禁止
+        /// PurgeListenerSlot/PurgeListenerSlots，避免缓存的 SubPublisher
+        /// 指向已移除的内部 SafeEvent。
+        /// </summary>
         bool subPublisherGot = false;
         readonly Dictionary<Type, InnerPublisher> innerEvents;
         readonly bool allowAddRemoveListenerDuringPublish;

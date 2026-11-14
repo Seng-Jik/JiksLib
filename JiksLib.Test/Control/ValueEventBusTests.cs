@@ -1893,6 +1893,65 @@ namespace JiksLib.Test.Control
                 Throws.TypeOf<InvalidOperationException>());
         }
 
+        [Test]
+        public void GetListenersCount_WithDelayedRemove_ReportsAppliedCount()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out var publisher,
+                allowAddRemoveListenerDuringPublish: true);
+            var observedDuringPublish = -1;
+            JiksLib.Control.EventHandler<TestValueEventA>? listener = null;
+            listener = e =>
+            {
+                observedDuringPublish =
+                    eventBus.GetListenersCount<TestValueEventA>();
+                eventBus.RemoveListener(listener!);
+            };
+            eventBus.AddListener(listener!);
+
+            // Act
+            publisher.Publish(new TestValueEventA("delayed-remove", 1), null);
+
+            // Assert
+            Assert.That(observedDuringPublish, Is.EqualTo(1));
+            Assert.That(eventBus.GetListenersCount<TestValueEventA>(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PurgeListenerSlot_AutoPurgeMessage_UsesCurrentApiName()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out _,
+                autoPurgeTypeInfo: true);
+
+            // Act
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => eventBus.PurgeListenerSlot<TestValueEventA>());
+
+            // Assert
+            Assert.That(exception!.Message, Does.Contain("PurgeListenerSlot"));
+            Assert.That(exception.Message, Does.Not.Contain("PurgeTypeInfo"));
+        }
+
+        [Test]
+        public void PurgeListenerSlots_AutoPurgeMessage_UsesCurrentApiName()
+        {
+            // Arrange
+            var eventBus = new ValueEventBus<IValueEvent>(
+                out _,
+                autoPurgeTypeInfo: true);
+
+            // Act
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => eventBus.PurgeListenerSlots(out _, out _));
+
+            // Assert
+            Assert.That(exception!.Message, Does.Contain("PurgeListenerSlots"));
+            Assert.That(exception.Message, Does.Not.Contain("PurgeAllTypeInfo"));
+        }
+
         #endregion
     }
 }
