@@ -52,6 +52,16 @@ namespace JiksLib.Benchmark.Control
             eventBus.WarmupListenerSlot<TestEvent>(ListenerCount);
         }
 
+        [IterationSetup(Target = nameof(RemoveListenerOnly))]
+        public void IterationSetup_RemoveListenerOnly()
+        {
+            eventBus = new EventBus<TestEvent>(out var pub);
+            publisher = pub;
+
+            foreach (var listener in listeners)
+                eventBus.AddListener(listener);
+        }
+
         [IterationSetup(Target = nameof(PublishEvent_NoListeners))]
         public void IterationSetup_NoListeners()
         {
@@ -180,6 +190,26 @@ namespace JiksLib.Benchmark.Control
         public void AddListeners_WithWarmup()
         {
             AddAndRemoveListeners();
+        }
+
+        /// <summary>
+        /// 基准测试：仅添加监听器，不做移除；每轮 IterationSetup 新建总线。
+        /// </summary>
+        [Benchmark]
+        public void AddListenerOnly()
+        {
+            foreach (var listener in listeners)
+                eventBus.AddListener(listener);
+        }
+
+        /// <summary>
+        /// 基准测试：仅移除监听器；IterationSetup 中预先添加全部监听器。
+        /// </summary>
+        [Benchmark]
+        public void RemoveListenerOnly()
+        {
+            foreach (var listener in listeners)
+                eventBus.RemoveListener(listener);
         }
 
         void AddAndRemoveListeners()

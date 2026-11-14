@@ -166,29 +166,77 @@ namespace JiksLib.Control
             }
             else
             {
-                if (removeIndex >= listeners.Count || removeIndex < 0)
-                    removeIndex = listeners.Count - 1;
+                var listenerCount = listeners.Count;
 
-                for (int i = removeIndex; i >= 0; --i)
+                if (listenerCount == 0) return;
+
+                if (removeIndex >= listenerCount || removeIndex < 0)
+                    removeIndex = listenerCount - 1;
+
+                if (listeners[removeIndex] == listener)
                 {
-                    if (listeners[i] == listener)
+                    listeners[removeIndex] = null;
+                    --ListenerCount;
+                    return;
+                }
+
+                int offset = 1;
+                for (; ; ++offset)
+                {
+                    int index1 = removeIndex + offset;
+                    int index2 = removeIndex - offset;
+
+                    if (index1 < listenerCount)
                     {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        --ListenerCount;
-                        return;
+                        if (listeners[index1] == listener)
+                        {
+                            listeners[index1] = null;
+                            --ListenerCount;
+                            removeIndex = index1 + 1;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        goto BACK_ONLY;
+                    }
+
+                    if (index2 >= 0)
+                    {
+                        if (listeners[index2] == listener)
+                        {
+                            listeners[index2] = null;
+                            --ListenerCount;
+                            removeIndex = index2 - 1;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        goto FRONT_ONLY;
                     }
                 }
 
-                for (int i = removeIndex + 1; i < listeners.Count; ++i)
+                BACK_ONLY:
+
+                for (int i = removeIndex - offset; i >= 0; --i)
                 {
-                    if (listeners[i] == listener)
-                    {
-                        listeners[i] = null;
-                        removeIndex = i - 1;
-                        --ListenerCount;
-                        return;
-                    }
+                    if (listeners[i] != listener) continue;
+                    listeners[i] = null;
+                    --ListenerCount;
+                    removeIndex = i - 1;
+                    return;
+                }
+
+                FRONT_ONLY:
+
+                for (int i = offset + removeIndex; i < listenerCount; ++i)
+                {
+                    if (listeners[i] != listener) continue;
+                    listeners[i] = null;
+                    --ListenerCount;
+                    removeIndex = i + 1;
+                    return;
                 }
             }
         }

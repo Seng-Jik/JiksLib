@@ -19,6 +19,7 @@ namespace JiksLib.Benchmark
             var switcher = new BenchmarkSwitcher(new[]
             {
                 typeof(EventBusBenchmarks),
+                typeof(ListenerRemovalOrderBenchmarks),
                 typeof(EventBusTypeChainBenchmarks),
                 typeof(EventBusWarmupComparisonBenchmarks),
                 typeof(EventBusClearTypeChainCacheBenchmarks),
