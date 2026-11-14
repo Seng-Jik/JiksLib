@@ -70,8 +70,6 @@ namespace JiksLib.Control
         public void AddListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : struct, TConstraint
         {
-            listener.ThrowIfNull(nameof(listener));
-
             SafeEvent<TEvent> safeEvent;
 
             if (innerEvents.TryGetValue(typeof(TEvent), out var eventHandler))
@@ -88,8 +86,6 @@ namespace JiksLib.Control
         public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : struct, TConstraint
         {
-            listener.ThrowIfNull(nameof(listener));
-
             if (innerEvents.TryGetValue(typeof(TEvent), out var eventHandler))
             {
                 var se = (SafeEvent<TEvent>)eventHandler.InnerSafeEvent;
@@ -97,6 +93,10 @@ namespace JiksLib.Control
 
                 if (autoPurgeListenerSlot && se.ListenerCount <= 0)
                     innerEvents.Remove(typeof(TEvent));
+            }
+            else
+            {
+                listener.ThrowIfNull(nameof(listener));
             }
         }
 

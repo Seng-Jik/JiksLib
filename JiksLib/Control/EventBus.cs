@@ -128,8 +128,6 @@ namespace JiksLib.Control
         public void AddListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : TBaseEvent
         {
-            listener.ThrowIfNull(nameof(listener));
-
             SafeEvent<TEvent> safeEvent;
 
             if (innerEvents.TryGetValue(typeof(TEvent), out var h))
@@ -147,8 +145,6 @@ namespace JiksLib.Control
         public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
             where TEvent : TBaseEvent
         {
-            listener.ThrowIfNull(nameof(listener));
-
             if (innerEvents.TryGetValue(typeof(TEvent), out var h))
             {
                 var se = (SafeEvent<TEvent>)h.InnerSafeEvent;
@@ -156,6 +152,10 @@ namespace JiksLib.Control
 
                 if (autoPurgeListenerSlot && se.ListenerCount <= 0)
                     innerEvents.Remove(typeof(TEvent));
+            }
+            else
+            {
+                innerEvents.ThrowIfNull(nameof(listener));
             }
         }
 
