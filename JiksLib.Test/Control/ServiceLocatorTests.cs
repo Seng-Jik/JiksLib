@@ -333,6 +333,34 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
+        public void Reset_ReleasesAllScopesAndRestoresServices()
+        {
+            // Arrange
+            var outer = new TestScope(s => s.RegisterService("outer"));
+            var inner = new TestScope(s => s.RegisterService("inner"));
+            ServiceLocator.EnterScope(outer);
+            ServiceLocator.EnterScope(inner);
+
+            Assert.That(ServiceLocator.Get<string>(), Is.EqualTo("inner"));
+
+            // Act
+            ServiceLocator.Reset();
+
+            // Assert - 所有作用域都被释放，服务回到未注册状态
+            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
+            Assert.That(
+                () => ServiceLocator.Get<string>(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void Reset_WithNoActiveScopes_IsNoOp()
+        {
+            Assert.DoesNotThrow(() => ServiceLocator.Reset());
+            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
+        }
+
+        [Test]
         public void Register_OnlyAllowedDuringOnRegisterServices()
         {
             // Positive test: Register works inside OnRegisterServices

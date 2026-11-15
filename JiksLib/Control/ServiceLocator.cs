@@ -22,12 +22,12 @@ namespace JiksLib.Control
             protected void Register<T>(T service)
                 where T : class
             {
-                if (UnregisterActions == null)
-                    throw new InvalidOperationException(
+                var unregisterStack = UnregisterStack
+                    ?? throw new InvalidOperationException(
                         "Only allow call Register<T> in OnRegisterServices.");
 
                 var old = ServiceHolder<T>.Service;
-                UnregisterActions.Add(() => ServiceHolder<T>.Service = old);
+                unregisterStack.Add(() => ServiceHolder<T>.Service = old);
                 ServiceHolder<T>.Service = service;
             }
 
@@ -37,7 +37,10 @@ namespace JiksLib.Control
             /// </summary>
             protected internal abstract void OnRegisterServices();
 
-            internal List<Action>? UnregisterActions;
+            /// <summary>
+            /// 本次注册产生的注销动作栈；仅在 OnRegisterServices 执行期间非 null
+            /// </summary>
+            internal DisposableStack? UnregisterStack;
         }
 
         /// <summary>
@@ -52,24 +55,33 @@ namespace JiksLib.Control
         {
             scope.ThrowIfNull(nameof(scope));
 
-            List<Action> unregisterActions;
+            DisposableStack unregisterStack;
 
             try
             {
-                scope.UnregisterActions = new();
+                unregisterStack = new DisposableStack();
+                scope.UnregisterStack = unregisterStack;
                 scope.OnRegisterServices();
-                unregisterActions = scope.UnregisterActions;
-                scopes.Add(new ScopeEntry(scope, unregisterActions));
+                scopes.Add(new ScopeEntry(scope, unregisterStack));
             }
-            catch
+            catch (Exception exception)
             {
-                // 注册失败：按注册的逆序回滚已注册的服务，避免半注册状态泄漏
-                RunUnregisterActions(scope.UnregisterActions);
+                // 注册失败：按注册的逆序回滚已注册的服务，避免半注册状态泄漏。
+                // 回滚本身再抛异常时保留原始异常（聚合抛出），不让回滚覆盖它。
+                try
+                {
+                    scope.UnregisterStack?.Dispose();
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new AggregateException(exception, rollbackException);
+                }
+
                 throw;
             }
             finally
             {
-                scope.UnregisterActions = null;
+                scope.UnregisterStack = null;
             }
 
             return Disposable.FromAction(() =>
@@ -78,8 +90,16 @@ namespace JiksLib.Control
                     throw new InvalidOperationException(
                         "Dispose service locator scope must in order.");
 
-                RunUnregisterActions(unregisterActions);
-                scopes.RemoveAt(scopes.Count - 1);
+                try
+                {
+                    // DisposableStack 会按注册的逆序执行注销，并保证单个动作失败不影响其余动作
+                    unregisterStack.Dispose();
+                }
+                finally
+                {
+                    // 即使注销过程抛出异常，也要把作用域出栈，避免后续退出被卡住
+                    scopes.RemoveAt(scopes.Count - 1);
+                }
             });
         }
 
@@ -97,9 +117,8 @@ namespace JiksLib.Control
         public static int ActiveScopeCount => scopes.Count;
 
         /// <summary>
-        /// 释放所有仍处于活动状态的作用域，按进入顺序的逆序执行各自的注销委托。
-        /// 主要用于测试隔离与退出流程；单个注销委托抛出的异常会被收集，全部执行完后
-        /// 以 <see cref="AggregateException"/> 抛出。
+        /// 释放所有仍处于活动状态的作用域，按进入顺序的逆序逐个注销。
+        /// 单个作用域的注销异常会被收集，全部处理完后以 <see cref="AggregateException"/> 抛出。
         /// </summary>
         public static void Reset()
         {
@@ -109,7 +128,7 @@ namespace JiksLib.Control
             {
                 try
                 {
-                    RunUnregisterActions(scopes[i].UnregisterActions);
+                    scopes[i].UnregisterStack.Dispose();
                 }
                 catch (Exception exception)
                 {
@@ -123,27 +142,15 @@ namespace JiksLib.Control
                 throw new AggregateException(exceptions);
         }
 
-        /// <summary>
-        /// 逆序执行注销委托：后注册的服务先恢复，保证同一类型覆盖注册后能回到进入作用域前的值。
-        /// </summary>
-        static void RunUnregisterActions(List<Action>? actions)
-        {
-            if (actions == null)
-                return;
-
-            for (int i = actions.Count - 1; i >= 0; --i)
-                actions[i]();
-        }
-
         readonly struct ScopeEntry
         {
             public readonly Scope Scope;
-            public readonly List<Action> UnregisterActions;
+            public readonly DisposableStack UnregisterStack;
 
-            public ScopeEntry(Scope scope, List<Action> unregisterActions)
+            public ScopeEntry(Scope scope, DisposableStack unregisterStack)
             {
                 Scope = scope;
-                UnregisterActions = unregisterActions;
+                UnregisterStack = unregisterStack;
             }
         }
 
