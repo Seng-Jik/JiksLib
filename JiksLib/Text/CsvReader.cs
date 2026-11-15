@@ -21,6 +21,11 @@ namespace JiksLib.Text
     /// 每条记录会先完整读入内存再解析字段，因此单条记录占用的内存与记录长度成正比；
     /// 记录之间不会缓存。
     /// </para>
+    /// <para>
+    /// 读取器本身<b>不实现 <see cref="IEnumerable{T}"/></b>：底层是单遍流，第二次遍历只会从
+    /// 流的当前位置继续，把它伪装成可重复枚举会误导调用方。需要 LINQ 时请先物化为列表。
+    /// 每一行 <see cref="Row"/> 仍是可重复枚举的（字段缓存在该行的记录字符串上）。
+    /// </para>
     /// </remarks>
     public sealed class CsvReader : IDisposable
     {
@@ -190,9 +195,15 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 一行记录
-        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段
+        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
+        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="string"/>）以支持 LINQ。
         /// </summary>
-        public struct Row : IEnumerator<string>
+        /// <remarks>
+        /// <see cref="Row"/> 是游标：<see cref="GetEnumerator"/> 返回当前游标位置的副本。
+        /// 从读取器取得的行位于第一个字段之前，因此同一个行值可以重复 foreach。
+        /// 通过 <see cref="IEnumerable{T}"/> 遍历会装箱，热路径请使用 foreach。
+        /// </remarks>
+        public struct Row : IEnumerator<string>, IEnumerable<string>
         {
             internal Row(string record, char separator)
             {
@@ -225,6 +236,13 @@ namespace JiksLib.Text
             /// 返回自身，使 Row 可以直接用于 foreach
             /// </summary>
             public Row GetEnumerator() => this;
+
+            /// <summary>
+            /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
+            /// </summary>
+            IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             CsvParser.Row inner;
         }

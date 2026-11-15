@@ -4,6 +4,7 @@ using JiksLib.Text;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace JiksLib.Test.Text
 {
@@ -249,6 +250,50 @@ namespace JiksLib.Test.Text
             Assert.That(
                 () => enumerator.Reset(),
                 Throws.TypeOf<NotSupportedException>());
+        }
+
+        [Test]
+        public void Parser_IsEnumerableOfRow_SupportsLinq()
+        {
+            IEnumerable<CsvParser.Row> rows = new CsvParser("a,b\nc,d");
+
+            var fields = rows
+                .SelectMany(row => row.Select(field => field.ToString()))
+                .ToArray();
+
+            Assert.That(fields, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+        }
+
+        [Test]
+        public void Row_IsEnumerableOfStringSegment_SupportsLinq()
+        {
+            var parser = new CsvParser("a,b,c");
+            var enumerator = parser.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var row = enumerator.Current;
+            var fields = ((IEnumerable<StringSegment>)row)
+                .Select(field => field.ToString())
+                .ToArray();
+
+            Assert.That(fields, Is.EqualTo(new[] { "a", "b", "c" }));
+        }
+
+        [Test]
+        public void Row_CanBeEnumeratedRepeatedly()
+        {
+            var parser = new CsvParser("a,b");
+            var enumerator = parser.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var row = enumerator.Current;
+
+            Assert.That(
+                ((IEnumerable<StringSegment>)row).Select(f => f.ToString()),
+                Is.EqualTo(new[] { "a", "b" }));
+            Assert.That(
+                ((IEnumerable<StringSegment>)row).Select(f => f.ToString()),
+                Is.EqualTo(new[] { "a", "b" }));
         }
     }
 }

@@ -283,6 +283,21 @@ namespace JiksLib.Test.Text
                 Throws.TypeOf<NotSupportedException>());
         }
 
+        [Test]
+        public void Row_IsEnumerableOfString_SupportsLinq()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var row = enumerator.Current;
+            var fields = ((IEnumerable<string>)row).ToArray();
+
+            Assert.That(fields, Is.EqualTo(new[] { "a", "b" }));
+        }
+
         /// <summary>
         /// 每次 Read 最多返回 1 个字节，用于验证读取器能跨缓冲区边界正确拼记录
         /// </summary>

@@ -21,8 +21,13 @@ namespace JiksLib.Text
     /// 记录分隔符支持 CRLF、LF、CR；最后一条记录之后的终止符不会再产生一条空记录。
     /// 空记录按一个空字段处理。解析器不可重入，同一实例只应串行遍历一次。
     /// </para>
+    /// <para>
+    /// 类型同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="Row"/>），因此可以直接用 LINQ；
+    /// 但通过接口遍历会装箱结构体枚举器，热路径请仍使用 <c>foreach</c> 或直接调用
+    /// <see cref="GetEnumerator"/>。
+    /// </para>
     /// </remarks>
-    public sealed class CsvParser
+    public sealed class CsvParser : IEnumerable<CsvParser.Row>
     {
         /// <summary>
         /// 用整个字符串构造解析器
@@ -59,6 +64,13 @@ namespace JiksLib.Text
         public Enumerator GetEnumerator() => new(source, separator);
 
         /// <summary>
+        /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
+        /// </summary>
+        IEnumerator<CsvParser.Row> IEnumerable<CsvParser.Row>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>
         /// 校验分隔符：引号与换行符会破坏 CSV 结构，不允许作为分隔符
         /// </summary>
         internal static char ValidateSeparator(char separator, string paramName = "separator")
@@ -76,9 +88,16 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 一行记录
-        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段
+        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
+        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="StringSegment"/>）以支持 LINQ。
         /// </summary>
-        public struct Row : IEnumerator<StringSegment>
+        /// <remarks>
+        /// <see cref="Row"/> 是游标：<see cref="GetEnumerator"/> 返回当前游标位置的副本。
+        /// 从 <see cref="CsvParser.GetEnumerator"/> 或 <c>foreach</c> 取得的行位于第一个字段之前，
+        /// 因此同一个行值可以重复 foreach；若先手动调用过 <see cref="MoveNext"/>，再 foreach 会从当前位置继续。
+        /// 通过 <see cref="IEnumerable{T}"/> 遍历会装箱，热路径请使用 foreach。
+        /// </remarks>
+        public struct Row : IEnumerator<StringSegment>, IEnumerable<StringSegment>
         {
             /// <summary>
             /// 用记录片段构造行枚举器
@@ -145,6 +164,13 @@ namespace JiksLib.Text
             /// 返回自身，使 Row 可以直接用于 foreach
             /// </summary>
             public Row GetEnumerator() => this;
+
+            /// <summary>
+            /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
+            /// </summary>
+            IEnumerator<StringSegment> IEnumerable<StringSegment>.GetEnumerator() => GetEnumerator();
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             /// <summary>
             /// 解析 position 处的字段，并给出下一个字段的起始位置
