@@ -38,3 +38,21 @@ dotnet_diagnostic.CA1510.severity = none   # 建议 ArgumentNullException.ThrowI
 dotnet_diagnostic.CA1512.severity = none   # 建议 ArgumentOutOfRangeException.ThrowIfNegative（.NET 7+）
 dotnet_diagnostic.CA1847.severity = none   # 建议 string.Contains(char)（net48 无此重载）
 dotnet_diagnostic.CA2249.severity = none   # 同上，建议 Contains 代替 IndexOf（net48 无 char 重载）
+
+# --- 行尾例外 -------------------------------------------------------------
+# 以下文件在仓库中一直是 LF。保持 LF 可以避免修改一行就产生整文件 diff；
+# 必须放在 [*.cs] 之后，EditorConfig 是后出现的规则覆盖先出现的规则。
+[JiksLib/StringSegment.cs]
+end_of_line = lf
+
+[JiksLib/Collections/RingBuffer.cs]
+end_of_line = lf
+
+[JiksLib/Collections/ReadOnlyListSegment.cs]
+end_of_line = lf
+
+[JiksLib/Control/Disposable.cs]
+end_of_line = lf
+
+[JiksLib/Control/DisposableStack.cs]
+end_of_line = lf

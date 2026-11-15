@@ -7,7 +7,7 @@ namespace JiksLib
 {
     /// <summary>
     /// 字符串片段：对 <see cref="string"/> 的一段只读视图。
-    /// 切片、比较、查找与切分都不会复制底层字符串；只有 <see cref="ToString()"/> 等
+    /// 切片、比较、查找与切分都不会复制底层字符串；只有 <see cref="ToString"/> 等
     /// 明确返回 <see cref="string"/> 的成员才会分配。
     /// </summary>
     /// <remarks>
