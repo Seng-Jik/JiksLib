@@ -1,0 +1,13 @@
+# 统一行尾约定，保证 CI（Windows / Linux / macOS）上的 dotnet format 结果一致。
+# 注意：修改本文件不会自动改写已提交文件；如需重新规范化可用
+#   git add --renormalize .
+*.cs        text eol=crlf
+*.csproj    text eol=crlf
+*.props     text eol=crlf
+*.targets   text eol=crlf
+*.slnx      text eol=crlf
+
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.json      text eol=lf
