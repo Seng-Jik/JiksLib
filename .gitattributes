@@ -1,13 +1,16 @@
-# 统一行尾约定，保证 CI（Windows / Linux / macOS）上的 dotnet format 结果一致。
-# 注意：修改本文件不会自动改写已提交文件；如需重新规范化可用
-#   git add --renormalize .
-*.cs        text eol=crlf
-*.csproj    text eol=crlf
-*.props     text eol=crlf
-*.targets   text eol=crlf
-*.slnx      text eol=crlf
+# 行尾约定：由 .editorconfig（*.cs 固定 CRLF）与 CI 的 dotnet format 保证，
+# 不交给 Git 做 EOL 转换。
+#
+# 这里用 -text 而不是 text/eol=crlf：仓库中已入库的文件是 CRLF 字节，
+# 若启用 text 规范化，Git 会在下次提交时把 CRLF 重写成 LF，
+# 导致每个被修改的文件都出现整文件 diff，review 成本很高。
+*.cs        -text
+*.csproj    -text
+*.props     -text
+*.targets   -text
+*.slnx      -text
 
-*.yml       text eol=lf
-*.yaml      text eol=lf
-*.md        text eol=lf
-*.json      text eol=lf
+*.yml       -text
+*.yaml      -text
+*.md        -text
+*.json      -text

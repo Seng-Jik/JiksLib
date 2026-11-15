@@ -40,7 +40,7 @@ namespace JiksLib.Collections
         /// 判断集合是否包含某个元素
         /// 与 <see cref="HashSet{T}.Contains"/> 保持一致：元素为 null 时返回 false，而不是抛异常
         /// </summary>
-        public bool Contains(T item) => item is not null && dict.ContainsKey(item);
+        public bool Contains(T item) => item != null && dict.ContainsKey(item);
 
         /// <summary>
         /// 判断集合中某个元素的重复次数
@@ -49,7 +49,7 @@ namespace JiksLib.Collections
         /// <param name="item">元素</param>
         /// <returns>重复次数</returns>
         public int GetCountOf(T item) =>
-            item is not null && dict.TryGetValue(item, out var count) ? count : 0;
+            item != null && dict.TryGetValue(item, out var count) ? count : 0;
 
         /// <summary>
         /// 清空集合
@@ -91,7 +91,7 @@ namespace JiksLib.Collections
         /// <returns>是否成功移除以及移除后该元素的数量</returns>
         public (bool Success, int Count) Remove(T item)
         {
-            if (item is null)
+            if (item == null)
                 return (false, 0);
 
             if (dict.TryGetValue(item, out var count))

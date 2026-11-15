@@ -22,6 +22,11 @@ indent_size = 4
 # 若使用平台默认换行，Linux/macOS 会把整个仓库判为格式错误。
 end_of_line = crlf
 
+# Unity 兼容约定（无法由分析器强制，靠 review 保证）：
+# 对可能为 UnityEngine.Object 的值，不要使用 `is null` / `is not null`，
+# 因为模式匹配不会走 Unity 重载的 == / !=，无法识别"已销毁对象"；
+# 统一使用 `== null` / `!= null`。同理，避免对这类值使用 `??` 与 `?.`。
+
 # --- 分析器规则取舍 -------------------------------------------------------
 # 以下规则的建议依赖 .NET 7+ API 或会改变公开 API 形态，而本库还需兼容
 # net48 / netstandard2.1，因此保持关闭；其余 CA 规则仍以 warning 呈现。

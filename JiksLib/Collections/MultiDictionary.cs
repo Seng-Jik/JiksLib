@@ -146,7 +146,7 @@ namespace JiksLib.Collections
         {
             get
             {
-                if (key is not null && dict.TryGetValue(key, out var set))
+                if (key != null && dict.TryGetValue(key, out var set))
                     return set;
                 else
                     return Array.Empty<TValue>();
@@ -175,7 +175,7 @@ namespace JiksLib.Collections
         /// </summary>
         /// <param name="key">键</param>
         /// <returns>是否包含该键</returns>
-        public bool ContainsKey(TKey key) => key is not null && dict.ContainsKey(key);
+        public bool ContainsKey(TKey key) => key != null && dict.ContainsKey(key);
 
         /// <summary>
         /// 判断字典中是否包含某个值
@@ -185,7 +185,7 @@ namespace JiksLib.Collections
         /// <returns>是否包含</returns>
         public bool ContainsValue(TValue value)
         {
-            if (value is null)
+            if (value == null)
                 return false;
 
             foreach (var set in dict.Values)
@@ -204,7 +204,7 @@ namespace JiksLib.Collections
         /// <returns>是否包含该键值对</returns>
         public bool Contains(TKey key, TValue value)
         {
-            if (key is null || value is null)
+            if (key == null || value == null)
                 return false;
 
             if (dict.TryGetValue(key, out var set))
@@ -229,7 +229,7 @@ namespace JiksLib.Collections
         /// <returns>值的数量</returns>
         public int GetCountOfKey(TKey key)
         {
-            if (key is not null && dict.TryGetValue(key, out var set))
+            if (key != null && dict.TryGetValue(key, out var set))
                 return set.Count;
 
             return 0;
@@ -244,7 +244,7 @@ namespace JiksLib.Collections
         /// <returns>指定键值对的数量</returns>
         public int GetCountOfKeyValuePair(TKey key, TValue value)
         {
-            if (key is null || value is null)
+            if (key == null || value == null)
                 return 0;
 
             if (dict.TryGetValue(key, out var set))
