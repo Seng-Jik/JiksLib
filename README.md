@@ -130,5 +130,6 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 
 | 类型 | 说明 | 文件 |
 | --- | --- | --- |
-| `CsvReader` | 按 RFC 4180 流式解析 CSV 的读取器，可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
+| `CsvReader` | 从 `Stream` 按 UTF-8（或指定编码）流式读取 CSV 的读取器；每条记录先完整读入内存，再交由字段解析，字段以 `string` 返回；结构体枚举器（`Reader.Row`）可配合 `foreach` 零装箱遍历。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
+| `CsvParser` | 解析内存中 `string` / `StringSegment` 形式的 CSV；字段以底层字符串的 `StringSegment` 切片返回（零拷贝），结构体枚举器（`Parser.Row`）逐行、逐字段遍历；与 `CsvReader` 共用同一套 RFC 4180 解析规则。 | [CsvParser.cs](JiksLib/Text/CsvParser.cs) |
 | `CsvWriter` | 按 RFC 4180 生成 CSV 的写入器，可修改分隔符以输出 TSV / DSV，并支持强制给所有字段加引号。 | [CsvWriter.cs](JiksLib/Text/CsvWriter.cs) |
