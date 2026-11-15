@@ -15,7 +15,8 @@ namespace JiksLib.Text
     /// <para>
     /// 迭代器是结构体：<c>foreach (var row in parser)</c> 得到 <see cref="Row"/>，
     /// <c>foreach (var field in row)</c> 得到 <see cref="StringSegment"/>，全程不装箱、不分配行对象。
-    /// 字段内容默认是对底层字符串的切片（零拷贝）；只有包含转义引号（<c>""</c>）的字段才需要新建字符串。
+    /// 字段内容是对底层字符串的切片（零拷贝）；整个枚举过程零分配。
+    /// 唯一例外是包含转义引号（<c>""</c>）的字段：它的值无法用连续切片表示，读取时需要新建一次字符串。
     /// </para>
     /// <para>
     /// 记录分隔符支持 CRLF、LF、CR；最后一条记录之后的终止符不会再产生一条空记录。

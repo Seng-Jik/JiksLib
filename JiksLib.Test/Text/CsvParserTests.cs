@@ -295,5 +295,48 @@ namespace JiksLib.Test.Text
                 ((IEnumerable<StringSegment>)row).Select(f => f.ToString()),
                 Is.EqualTo(new[] { "a", "b" }));
         }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void Parse_Enumeration_DoesNotAllocate()
+        {
+            // 覆盖：普通字段、引号内含逗号、引号内含换行（这些都不需要解转义）
+            var parser = new CsvParser("a,bb,ccc,\"d,e\",\"f\nf\"\r\nx,y");
+
+            // 预热：把 JIT 与首次调用路径跑热
+            Assert.That(SumFieldLengths(parser, 1), Is.EqualTo(14));
+
+            // 分层编译/GC 记账偶尔会在单次测量里产生一次性分配，取多轮最小增量
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int sum = SumFieldLengths(parser, 100);
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.That(sum, Is.EqualTo(14 * 100));
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0));
+        }
+
+        static int SumFieldLengths(CsvParser parser, int times)
+        {
+            int sum = 0;
+
+            for (int i = 0; i < times; i++)
+            {
+                foreach (var row in parser)
+                {
+                    foreach (var field in row)
+                        sum += field.Length;
+                }
+            }
+
+            return sum;
+        }
+#endif
     }
 }
