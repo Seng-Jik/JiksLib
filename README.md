@@ -130,6 +130,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 
 | 类型 | 说明 | 文件 |
 | --- | --- | --- |
-| `CsvReader` | 从 `Stream` 按 UTF-8（或指定编码）流式读取 CSV 的读取器；每条记录先完整读入内存，再交由字段解析，字段以 `string` 返回；结构体枚举器（`Reader.Row`）可配合 `foreach` 零装箱遍历。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
-| `CsvParser` | 解析内存中 `string` / `StringSegment` 形式的 CSV；字段以底层字符串的 `StringSegment` 切片返回（零拷贝）。`CsvParser` 实现 `IEnumerable<Row>`、`Row` 实现 `IEnumerable<StringSegment>`（可直接用 LINQ），同时提供结构体枚举器让 `foreach` 零装箱；与 `CsvReader` 共用同一套 RFC 4180 解析规则。 | [CsvParser.cs](JiksLib/Text/CsvParser.cs) |
+| `CsvField` | CSV 字段：保存原始切片 `Raw` 与 `HasEscapedQuotes`，`Value` / `ToString()` 才做解转义；不含转义时取值为零分配。 | [CsvField.cs](JiksLib/Text/CsvField.cs) |
+| `CsvParser` | 解析内存中 `string` / `StringSegment` 形式的 CSV，`Row` 逐行产出 `CsvField`（底层字符串切片，零拷贝）。**枚举全程零分配**；只有读取含 `""` 转义的字段的 `Value`/`ToString()` 时才新建一次字符串。`CsvParser` 实现 `IEnumerable<Row>`、`Row` 实现 `IEnumerable<CsvField>`（可直接用 LINQ），同时提供结构体枚举器让 `foreach` 零装箱。 | [CsvParser.cs](JiksLib/Text/CsvParser.cs) |
+| `CsvReader` | 从 `Stream` 按 UTF-8（或指定编码）流式读取 CSV 的读取器；每条记录先完整读入内存，再交由字段解析，字段以 `string` 返回；结构体枚举器（`Reader.Row`）可配合 `foreach` 遍历。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
 | `CsvWriter` | 按 RFC 4180 生成 CSV 的写入器，可修改分隔符以输出 TSV / DSV，并支持强制给所有字段加引号。 | [CsvWriter.cs](JiksLib/Text/CsvWriter.cs) |

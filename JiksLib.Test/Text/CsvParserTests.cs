@@ -265,14 +265,14 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
-        public void Row_IsEnumerableOfStringSegment_SupportsLinq()
+        public void Row_IsEnumerableOfCsvField_SupportsLinq()
         {
             var parser = new CsvParser("a,b,c");
             var enumerator = parser.GetEnumerator();
             Assert.That(enumerator.MoveNext(), Is.True);
 
             var row = enumerator.Current;
-            var fields = ((IEnumerable<StringSegment>)row)
+            var fields = ((IEnumerable<CsvField>)row)
                 .Select(field => field.ToString())
                 .ToArray();
 
@@ -289,11 +289,40 @@ namespace JiksLib.Test.Text
             var row = enumerator.Current;
 
             Assert.That(
-                ((IEnumerable<StringSegment>)row).Select(f => f.ToString()),
+                ((IEnumerable<CsvField>)row).Select(f => f.ToString()),
                 Is.EqualTo(new[] { "a", "b" }));
             Assert.That(
-                ((IEnumerable<StringSegment>)row).Select(f => f.ToString()),
+                ((IEnumerable<CsvField>)row).Select(f => f.ToString()),
                 Is.EqualTo(new[] { "a", "b" }));
+        }
+
+        [Test]
+        public void Field_ExposesRawContentAndLazyValue()
+        {
+            var parser = new CsvParser("\"a\"\"b\",c");
+            var enumerator = parser.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var row = enumerator.Current;
+
+            Assert.That(row.MoveNext(), Is.True);
+            var escaped = row.Current;
+
+            Assert.That(escaped.HasEscapedQuotes, Is.True);
+            Assert.That(escaped.Raw.ToString(), Is.EqualTo("a\"\"b"));
+            Assert.That(escaped.Value.ToString(), Is.EqualTo("a\"b"));
+            Assert.That(escaped.ToString(), Is.EqualTo("a\"b"));
+
+            // 隐式转换等价于 Value，便于 foreach (StringSegment ...) 写法
+            StringSegment implicitValue = escaped;
+            Assert.That(implicitValue.ToString(), Is.EqualTo("a\"b"));
+
+            Assert.That(row.MoveNext(), Is.True);
+            var plain = row.Current;
+
+            Assert.That(plain.HasEscapedQuotes, Is.False);
+            Assert.That(plain.Raw, Is.EqualTo(plain.Value));
+            Assert.That(plain.ToString(), Is.EqualTo("c"));
         }
 
 #if NET5_0_OR_GREATER
@@ -304,7 +333,7 @@ namespace JiksLib.Test.Text
             var parser = new CsvParser("a,bb,ccc,\"d,e\",\"f\nf\"\r\nx,y");
 
             // 预热：把 JIT 与首次调用路径跑热
-            Assert.That(SumFieldLengths(parser, 1), Is.EqualTo(14));
+            Assert.That(SumRawLengths(parser, 1), Is.EqualTo(14));
 
             // 分层编译/GC 记账偶尔会在单次测量里产生一次性分配，取多轮最小增量
             long best = long.MaxValue;
@@ -312,7 +341,7 @@ namespace JiksLib.Test.Text
             for (int round = 0; round < 5; round++)
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();
-                int sum = SumFieldLengths(parser, 100);
+                int sum = SumRawLengths(parser, 100);
                 long after = GC.GetAllocatedBytesForCurrentThread();
 
                 Assert.That(sum, Is.EqualTo(14 * 100));
@@ -322,7 +351,77 @@ namespace JiksLib.Test.Text
             Assert.That(best, Is.EqualTo(0));
         }
 
-        static int SumFieldLengths(CsvParser parser, int times)
+        [Test]
+        public void Parse_EnumerationWithEscapedQuotes_DoesNotAllocate()
+        {
+            // 只看 Raw：即使字段含 "" 转义，枚举也不分配
+            var parser = new CsvParser("\"a\"\"b\",c,\"d\"\"e\"");
+
+            Assert.That(SumRawLengths(parser, 1), Is.EqualTo(9));
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int sum = SumRawLengths(parser, 100);
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.That(sum, Is.EqualTo(9 * 100));
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Field_Value_DoesNotAllocateForPlainField()
+        {
+            var parser = new CsvParser("a,bb,ccc");
+
+            Assert.That(SumValueLengths(parser, 1), Is.EqualTo(6));
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int sum = SumValueLengths(parser, 100);
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.That(sum, Is.EqualTo(6 * 100));
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Field_Value_AllocatesForEscapedField()
+        {
+            var field = GetFirstField(new CsvParser("\"a\"\"b\""));
+
+            // 预热
+            Assert.That(field.Value.Length, Is.EqualTo(3));
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            var value = field.Value;
+            long after = GC.GetAllocatedBytesForCurrentThread();
+
+            Assert.That(value.ToString(), Is.EqualTo("a\"b"));
+            Assert.That(after, Is.GreaterThan(before));
+        }
+
+        static CsvField GetFirstField(CsvParser parser)
+        {
+            var enumerator = parser.GetEnumerator();
+            enumerator.MoveNext();
+            var row = enumerator.Current;
+            row.MoveNext();
+            return row.Current;
+        }
+
+        static int SumRawLengths(CsvParser parser, int times)
         {
             int sum = 0;
 
@@ -331,7 +430,23 @@ namespace JiksLib.Test.Text
                 foreach (var row in parser)
                 {
                     foreach (var field in row)
-                        sum += field.Length;
+                        sum += field.Raw.Length;
+                }
+            }
+
+            return sum;
+        }
+
+        static int SumValueLengths(CsvParser parser, int times)
+        {
+            int sum = 0;
+
+            for (int i = 0; i < times; i++)
+            {
+                foreach (var row in parser)
+                {
+                    foreach (var field in row)
+                        sum += field.Value.Length;
                 }
             }
 
