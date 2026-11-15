@@ -9,7 +9,9 @@ namespace JiksLib.Collections
 {
     /// <summary>
     /// 优先级队列
-    /// 使用二叉堆实现，提供基于优先级的元素出队顺序
+    /// 使用二叉堆实现，提供基于优先级的元素出队顺序。
+    /// 语义与 .NET 6 的 PriorityQueue 一致：出队的是比较器认为"最小"的元素，
+    /// 即优先级数值越小越先出队；需要"大者优先"请传入反向比较器。
     /// </summary>
     /// <typeparam name="TElement">元素类型</typeparam>
     /// <typeparam name="TPriority">优先级类型</typeparam>
@@ -71,7 +73,7 @@ namespace JiksLib.Collections
         /// <param name="capacity">初始容量</param>
         public PriorityQueue(int capacity) :
             this(capacity, Comparer<TPriority>.Default)
-        {}
+        { }
 
         /// <summary>
         /// 获取优先级队列的容量
@@ -94,9 +96,9 @@ namespace JiksLib.Collections
         public void Clear() => heap.Clear();
 
         /// <summary>
-        /// 移除并返回优先级最高的元素
+        /// 移除并返回优先级最小的元素
         /// </summary>
-        /// <returns>优先级最高的元素及其优先级</returns>
+        /// <returns>优先级最小的元素及其优先级</returns>
         /// <exception cref="InvalidOperationException">优先级队列为空时抛出</exception>
         public (TElement, TPriority) Dequeue()
         {
@@ -107,12 +109,12 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 移除优先级最高的元素，然后添加新元素
+        /// 移除优先级最小的元素，然后添加新元素
         /// 此操作比先调用<see cref="Dequeue"/>再调用<see cref="Enqueue"/>更高效
         /// </summary>
         /// <param name="element">要添加的新元素</param>
         /// <param name="priority">新元素的优先级</param>
-        /// <returns>被移除的优先级最高的元素及其优先级</returns>
+        /// <returns>被移除的优先级最小的元素及其优先级</returns>
         /// <exception cref="InvalidOperationException">优先级队列为空时抛出</exception>
         public (TElement, TPriority) DequeueEnqueue(
             TElement element, TPriority priority)
@@ -216,9 +218,9 @@ namespace JiksLib.Collections
 #endif
 
         /// <summary>
-        /// 返回优先级最高的元素但不移除它
+        /// 返回优先级最小的元素但不移除它
         /// </summary>
-        /// <returns>优先级最高的元素及其优先级</returns>
+        /// <returns>优先级最小的元素及其优先级</returns>
         /// <exception cref="InvalidOperationException">优先级队列为空时抛出</exception>
         public (TElement, TPriority) Peek()
         {
@@ -234,10 +236,10 @@ namespace JiksLib.Collections
         public void TrimExcess() => heap.TrimExcess();
 
         /// <summary>
-        /// 尝试移除并返回优先级最高的元素
+        /// 尝试移除并返回优先级最小的元素
         /// </summary>
-        /// <param name="element">如果成功，则为优先级最高的元素；否则为默认值</param>
-        /// <param name="priority">如果成功，则为优先级最高的元素的优先级；否则为默认值</param>
+        /// <param name="element">如果成功，则为优先级最小的元素；否则为默认值</param>
+        /// <param name="priority">如果成功，则为优先级最小的元素的优先级；否则为默认值</param>
         /// <returns>如果成功移除元素则为true；如果优先级队列为空则为false</returns>
         public bool TryDequeue(out TElement element, out TPriority priority)
         {
@@ -261,10 +263,10 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 尝试返回优先级最高的元素但不移除它
+        /// 尝试返回优先级最小的元素但不移除它
         /// </summary>
-        /// <param name="element">如果成功，则为优先级最高的元素；否则为默认值</param>
-        /// <param name="priority">如果成功，则为优先级最高的元素的优先级；否则为默认值</param>
+        /// <param name="element">如果成功，则为优先级最小的元素；否则为默认值</param>
+        /// <param name="priority">如果成功，则为优先级最小的元素的优先级；否则为默认值</param>
         /// <returns>如果成功获取元素则为true；如果优先级队列为空则为false</returns>
         public bool TryPeek(out TElement element, out TPriority priority)
         {

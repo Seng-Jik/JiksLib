@@ -140,6 +140,22 @@ namespace JiksLib.Test
             Assert.That(() => nullParent.CreateSubProgress(0f, 1f), Throws.ArgumentNullException);
         }
 
+        [TestCase(float.NaN, 1f)]
+        [TestCase(0f, float.PositiveInfinity)]
+        [TestCase(float.NegativeInfinity, 1f)]
+        public void CreateSubProgress_WithNaNOrInfinity_ThrowsArgumentOutOfRange(
+            float startProgress,
+            float endProgress)
+        {
+            // Arrange
+            var parent = Progress.Create<float>(_ => { });
+
+            // Act & Assert
+            Assert.That(
+                () => parent.CreateSubProgress(startProgress, endProgress),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
         [Test]
         public void CreateSubProgress_WithNullProgressParent_ReturnsNullProgress()
         {

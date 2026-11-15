@@ -187,15 +187,24 @@ namespace JiksLib.Test.Control
             // Arrange
             var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
             var innerPublishAttempted = false;
+            Exception? innerPublishException = null;
 
             safeEvent.AddListener(e =>
             {
-                // 尝试在发布过程中再次发布
-                if (!innerPublishAttempted)
+                // 尝试在发布过程中再次发布；在监听器内捕获异常，
+                // 断言必须放到 Publish 之外，否则失败会被 SafeEvent 当作监听器异常吞掉。
+                if (innerPublishAttempted)
+                    return;
+
+                innerPublishAttempted = true;
+
+                try
                 {
-                    innerPublishAttempted = true;
-                    Assert.Throws<InvalidOperationException>(() =>
-                        publisher.Publish(new TestSafeEvent("Inner", 4444), null));
+                    publisher.Publish(new TestSafeEvent("Inner", 4444), null);
+                }
+                catch (Exception ex)
+                {
+                    innerPublishException = ex;
                 }
             });
 
@@ -205,6 +214,8 @@ namespace JiksLib.Test.Control
             var exceptions = new List<Exception>();
             Assert.DoesNotThrow(() => publisher.Publish(testEvent, exceptions));
             Assert.That(innerPublishAttempted, Is.True);
+            Assert.That(innerPublishException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(exceptions, Is.Empty);
         }
 
         [Test]
@@ -213,13 +224,21 @@ namespace JiksLib.Test.Control
             // Arrange
             var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
             var callCount = 0;
+            Exception? innerPublishException = null;
 
             safeEvent.AddListener(e =>
             {
                 callCount++;
-                // 尝试递归发布
-                Assert.Throws<InvalidOperationException>(() =>
-                    publisher.Publish(new TestSafeEvent("Recursive", 999), null));
+
+                // 尝试递归发布；在监听器内捕获异常，断言放到 Publish 之外
+                try
+                {
+                    publisher.Publish(new TestSafeEvent("Recursive", 999), null);
+                }
+                catch (Exception ex)
+                {
+                    innerPublishException = ex;
+                }
             });
 
             var testEvent = new TestSafeEvent("Test", 111);
@@ -230,7 +249,8 @@ namespace JiksLib.Test.Control
 
             // Assert
             Assert.That(callCount, Is.EqualTo(1));
-            Assert.That(exceptions.Count, Is.EqualTo(0));
+            Assert.That(innerPublishException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(exceptions, Is.Empty);
         }
 
         #endregion
@@ -673,21 +693,32 @@ namespace JiksLib.Test.Control
             // Arrange
             var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
             var listenerCallCount = 0;
+            Exception? innerPublishException = null;
 
             safeEvent.AddListener(e =>
             {
                 listenerCallCount++;
-                Assert.Throws<InvalidOperationException>(
-                    () => publisher.Publish(new TestSafeEvent("Inner", 1), null));
-                Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+
+                // 在监听器内捕获递归发布的异常，断言放到 Publish 之外
+                try
+                {
+                    publisher.Publish(new TestSafeEvent("Inner", 1), null);
+                }
+                catch (Exception ex)
+                {
+                    innerPublishException = ex;
+                }
             });
 
             // Act
-            publisher.Publish(new TestSafeEvent("Outer", 2), null);
+            var exceptions = new List<Exception>();
+            publisher.Publish(new TestSafeEvent("Outer", 2), exceptions);
 
             // Assert
+            Assert.That(innerPublishException, Is.TypeOf<InvalidOperationException>());
             Assert.That(listenerCallCount, Is.EqualTo(1));
             Assert.That(safeEvent.ListenerCount, Is.EqualTo(1));
+            Assert.That(exceptions, Is.Empty);
         }
 
         [Test]

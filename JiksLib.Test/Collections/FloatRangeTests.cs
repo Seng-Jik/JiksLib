@@ -329,16 +329,17 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Constructor_WithNaN_DoesNotThrow()
+        public void Constructor_WithNaN_ThrowsArgumentException()
         {
             // Arrange
             float min = float.NaN;
             float max = float.NaN;
 
             // Act & Assert
-            // NaN comparisons are always false, so min > max is false
-            Assert.DoesNotThrow(() =>
-                new FloatRange(min, true, max, true));
+            // NaN 无法参与区间比较，构造时直接拒绝，避免后续 Contains 静默返回 false
+            Assert.That(
+                () => new FloatRange(min, true, max, true),
+                Throws.TypeOf<ArgumentException>());
         }
 
         [Test]

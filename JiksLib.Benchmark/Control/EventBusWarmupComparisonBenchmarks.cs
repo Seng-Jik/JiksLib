@@ -9,7 +9,7 @@ namespace JiksLib.Benchmark.Control
     /// <summary>
     /// EventBus 首次发布时，独立缓存与预共享 TypeChain 缓存的对比。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class EventBusWarmupComparisonBenchmarks
     {

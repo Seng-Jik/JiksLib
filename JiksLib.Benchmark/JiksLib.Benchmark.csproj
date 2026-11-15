@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,6 +6,9 @@
     <TargetFrameworks>net10.0;net11.0;net48</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- 基准工程不参与发布，关闭分析器以避免测量代码的告警淹没构建输出 -->
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

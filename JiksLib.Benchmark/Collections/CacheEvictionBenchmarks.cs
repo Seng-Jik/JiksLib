@@ -9,7 +9,7 @@ namespace JiksLib.Benchmark.Collections
     /// Cache 手动 Evict 在不同算法下的成本对比。
     /// FIFO 需要维护顺序队列，LRU/LFU 为节点移除，NeverEvict 仅字典操作。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class CacheEvictionBenchmarks
     {

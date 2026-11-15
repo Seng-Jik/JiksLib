@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0;net11.0;net48;netstandard2.1</TargetFrameworks>
@@ -6,9 +6,31 @@
     <LangVersion>9.0</LangVersion>
     <Authors>许兴逸 Seng Jik</Authors>
     <PackageId>JiksLib</PackageId>
+    <Title>JiksLib</Title>
     <Version>1.0.0</Version>
     <Description>综合杂项工具库。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- NuGet 元数据 -->
+    <PackageTags>unity;gamedev;collections;eventbus;fsm;csv;binary</PackageTags>
+    <RepositoryUrl>https://github.com/Seng-Jik/JiksLib</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Seng-Jik/JiksLib</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- 符号包 -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- 生成 XML 文档 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 已有大量公开成员缺少 XML 文档注释，暂不把 CS1591（缺少文档注释）视为错误；
+         待注释补齐后可移除本项，让 CS1591 重新参与检查。 -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

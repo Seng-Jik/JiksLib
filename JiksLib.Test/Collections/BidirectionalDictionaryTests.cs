@@ -99,7 +99,7 @@ namespace JiksLib.Test.Collections
             Assert.That(copy.ContainsKey("key2"), Is.True);
         }
 
-#if NETCOREAPP
+#if NETCOREAPP && !JIKS_NS21
         [Test]
         public void Constructor_WithKeyValuePairs_CreatesDictionary()
         {

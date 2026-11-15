@@ -843,13 +843,16 @@ namespace JiksLib.Test.Control
         [Test]
         public void GenericConstraint_NonTBaseEventInterface_CannotAddListener()
         {
-            // 验证不能添加非TBaseEvent接口的监听器
-            // 这应该导致编译错误，但我们可以通过反射测试运行时行为
+            // 泛型约束 where TEvent : TBaseEvent 在编译期生效，无法用运行时断言证明；
+            // 这里改为验证约束允许的行为：注册基类型监听器后，派生事件也会被派发。
+            var bus = new EventBus<TestEventBase>(out var publisher);
+            var received = 0;
 
-            // 注意：这个测试主要是文档作用
-            // 实际编译时泛型约束会阻止添加
+            bus.AddListener<TestEventBase>(e => received++);
 
-            Assert.Pass("泛型约束 where TEvent : TBaseEvent 确保编译时类型安全");
+            publisher.Publish(new TestEventA("derived"), null);
+
+            Assert.That(received, Is.EqualTo(1));
         }
 
         #endregion

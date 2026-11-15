@@ -74,9 +74,14 @@ namespace JiksLib.IO
         { }
 
         /// <summary>
-        /// 关闭流和二进制写入器
+        /// 关闭该写入器
+        /// 若 leaveOpen 为 false，则同时关闭基础流
         /// </summary>
-        public void Close() => BaseStream.Close();
+        public void Close()
+        {
+            if (!leaveOpen)
+                BaseStream.Close();
+        }
 
         /// <summary>
         /// 清除缓冲区并将所有数据写入基础流
@@ -96,7 +101,7 @@ namespace JiksLib.IO
             BaseStream.FlushAsync();
 
         /// <summary>
-        /// 释放该写入器，若 leaveOpen = true，则同时释放基础流
+        /// 释放该写入器，若 leaveOpen = false，则同时释放基础流
         /// </summary>
         public void Dispose()
         {
@@ -237,6 +242,18 @@ namespace JiksLib.IO
         /// </summary>
         public void Write(ulong value) =>
             WriteInt(value, 8, endian.GetBytes);
+
+        /// <summary>
+        /// 写入一个单精度浮点数
+        /// </summary>
+        public void Write(float value) =>
+            Write(endian.GetBytes(value));
+
+        /// <summary>
+        /// 写入一个双精度浮点数
+        /// </summary>
+        public void Write(double value) =>
+            Write(endian.GetBytes(value));
 
         /// <summary>
         /// 写入一个字符串

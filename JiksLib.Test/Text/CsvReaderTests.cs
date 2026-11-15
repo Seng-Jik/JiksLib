@@ -18,8 +18,10 @@ namespace JiksLib.Test.Text
             // Act
             using var reader = new CsvReader(csvContent);
 
-            // Assert
-            Assert.That(reader, Is.Not.Null);
+            // Assert - 不只是"构造没抛异常"，还要验证解析结果
+            Assert.That(reader.PopField(), Is.EqualTo("a"));
+            Assert.That(reader.PopField(), Is.EqualTo("b"));
+            Assert.That(reader.PopField(), Is.EqualTo("c"));
         }
 
         [Test]
@@ -112,17 +114,37 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
-        public void NextRecord_MovesToNextLine()
+        public void NextRecord_SkipsCurrentRecord_KnownIssue()
         {
             // Arrange
             var csvContent = "a,b,c\n1,2,3";
             using var reader = new CsvReader(csvContent);
 
             // Act & Assert
+            // 已知缺陷 P0-1：构造后的读取器被认为"位于第一条记录内部"，
+            // 第一次 NextRecord 会把首条记录解析后丢弃，因此这里只能读到第二条。
+            // 该用例固定当前行为；期望行为见下方 Ignore 的用例。
             Assert.That(reader.NextRecord(), Is.True);
             Assert.That(reader.PopField(), Is.EqualTo("1"));
             Assert.That(reader.PopField(), Is.EqualTo("2"));
             Assert.That(reader.PopField(), Is.EqualTo("3"));
+        }
+
+        [Test]
+        [Ignore("P0-1：NextRecord 不应丢弃首条记录；修复后移除 Ignore 并删除 KnownIssue 用例")]
+        public void NextRecord_ShouldNotSkipFirstRecord()
+        {
+            // Arrange
+            var csvContent = "a,b,c\n1,2,3";
+            using var reader = new CsvReader(csvContent);
+
+            // Act
+            Assert.That(reader.NextRecord(), Is.True);
+
+            // Assert
+            Assert.That(reader.PopField(), Is.EqualTo("a"));
+            Assert.That(reader.PopField(), Is.EqualTo("b"));
+            Assert.That(reader.PopField(), Is.EqualTo("c"));
         }
 
         [Test]

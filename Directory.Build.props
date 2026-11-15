@@ -5,4 +5,31 @@
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
 
   </PropertyGroup>
+
+  <!-- 代码质量与发布行为：本文件被 JiksLib、JiksLib.Test、JiksLib.Benchmark 三个项目共同继承 -->
+  <PropertyGroup>
+
+    <!-- 启用内置 .NET 代码分析器；net48 / netstandard2.1 目标默认不启用，这里一并打开 -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- 先采用 minimum 规则集，避免既有代码产生大量告警；后续可逐步提升（如 latest-recommended） -->
+    <AnalysisLevel>latest-minimum</AnalysisLevel>
+    <!-- 警告视为错误，避免新增编译告警进入主干 -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      分析器（CAxxxx）建议暂不阻断构建：其中一部分建议依赖 .NET 7+ API
+      （如 ArgumentNullException.ThrowIfNull）或会改变公开 API 形态（如 CA1822 把实例方法改静态），
+      在 net48 / netstandard2.1 目标上无法采用。编译器告警（CSxxxx）仍然视为错误。
+      后续可按 .editorconfig 逐条把可采用的规则提升为 error。
+    -->
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+
+    <!-- 可重现构建；CI 下额外启用持续集成构建模式 -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- 生成可移植 PDB，符号包（snupkg）才有内容可打包；embedded 时 snupkg 会因无内容报 NU5017 -->
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+
+  </PropertyGroup>
 </Project>

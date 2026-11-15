@@ -139,15 +139,17 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Remove_NullItem_ThrowsArgumentNullException()
+        public void Remove_NullItem_ReturnsFalse()
         {
             // Arrange
             var set = new MultiHashSet<string>();
 
-            // Act & Assert
-            // Implementation now validates null items using ThrowIfNull
-            // This test verifies the expected behavior
-            Assert.That(() => set.Remove(null!), Throws.ArgumentNullException);
+            // Act
+            var result = set.Remove(null!);
+
+            // Assert - 与 HashSet<T>.Remove(null) 一致：返回 false 而不是抛异常
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Count, Is.EqualTo(0));
         }
 
         [Test]
@@ -172,15 +174,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Contains_NullItem_ThrowsArgumentNullException()
+        public void Contains_NullItem_ReturnsFalse()
         {
             // Arrange
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Implementation now validates null items using ThrowIfNull
-            // This test verifies the expected behavior
-            Assert.That(() => set.Contains(null!), Throws.ArgumentNullException);
+            // 与 HashSet<T>.Contains(null) 一致：返回 false 而不是抛异常
+            Assert.That(set.Contains(null!), Is.False);
         }
 
         [Test]
@@ -207,15 +208,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void GetCountOf_NullItem_ThrowsArgumentNullException()
+        public void GetCountOf_NullItem_ReturnsZero()
         {
             // Arrange
             var set = new MultiHashSet<string>();
 
             // Act & Assert
-            // Implementation now validates null items using ThrowIfNull
-            // This test verifies the expected behavior
-            Assert.That(() => set.GetCountOf(null!), Throws.ArgumentNullException);
+            // 与查询语义保持一致：null 元素计数为 0
+            Assert.That(set.GetCountOf(null!), Is.EqualTo(0));
         }
 
         [Test]

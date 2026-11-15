@@ -16,7 +16,7 @@ namespace JiksLib.Benchmark.Collections
     /// 同时提供 Deque 的对应操作作为参照：Deque.Add 是追加入队，RingBuffer.Add 是写入到下标 0；
     /// Deque.TryRemoveFront 与 RingBuffer.TryRemoveOldest 都移除最旧元素，可直接比较。
     /// </remarks>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class RingBufferBenchmarks
     {

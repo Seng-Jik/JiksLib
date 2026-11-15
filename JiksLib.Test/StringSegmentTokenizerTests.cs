@@ -201,37 +201,48 @@ namespace JiksLib.Test
         {
             var segment = new StringSegment("a,bb,ccc,dddd,eeeee,ffffff");
 
-            // 预热，确保 JIT 与首次调用产生的分配不计入测量。
-            Assert.That(SumTokenLengths(segment, 1), Is.EqualTo(21));
+            // 预热：用与测量相同的工作量把 JIT / 分层编译路径跑热。
+            Assert.That(SumTokenLengths(segment, 1000), Is.EqualTo(21000));
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
+            // 分层编译与 GC 记账偶尔会在单次测量里产生一次性分配，
+            // 因此取多轮中的最小增量：稳定分配会在每轮出现，一次性噪声不会。
+            long best = long.MaxValue;
 
-            int sum = SumTokenLengths(segment, 1000);
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int sum = SumTokenLengths(segment, 1000);
+                long after = GC.GetAllocatedBytesForCurrentThread();
 
-            long after = GC.GetAllocatedBytesForCurrentThread();
+                Assert.That(sum, Is.EqualTo(21000));
+                best = Math.Min(best, after - before);
+            }
 
-            Assert.That(sum, Is.EqualTo(21000));
-            Assert.That(after, Is.EqualTo(before));
+            Assert.That(best, Is.EqualTo(0));
         }
 
         [Test]
         public void SegmentEnumerator_DoesNotAllocate()
         {
             var segment = new StringSegment("abcdefghij");
+            const int expectedPerRound = (97 + 98 + 99 + 100 + 101 + 102 + 103 + 104 + 105 + 106) * 1000;
 
-            Assert.That(SumChars(segment, 1), Is.EqualTo(97 + 98 + 99 + 100 + 101 + 102 + 103 + 104 + 105 + 106));
+            // 预热
+            Assert.That(SumChars(segment, 1000), Is.EqualTo(expectedPerRound));
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
+            long best = long.MaxValue;
 
-            int sum = SumChars(segment, 1000);
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int sum = SumChars(segment, 1000);
+                long after = GC.GetAllocatedBytesForCurrentThread();
 
-            long after = GC.GetAllocatedBytesForCurrentThread();
+                Assert.That(sum, Is.EqualTo(expectedPerRound));
+                best = Math.Min(best, after - before);
+            }
 
-            Assert.That(
-                sum,
-                Is.EqualTo((97 + 98 + 99 + 100 + 101 + 102 + 103 + 104 + 105 + 106) * 1000));
-
-            Assert.That(after, Is.EqualTo(before));
+            Assert.That(best, Is.EqualTo(0));
         }
 
         static int SumTokenLengths(StringSegment segment, int times)

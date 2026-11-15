@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using JiksLib.Extensions;
 
 namespace JiksLib
 {
@@ -108,6 +107,32 @@ namespace JiksLib
         public abstract ulong ToUInt64(ArraySegment<byte> bytes);
         public abstract void GetBytes(ulong value, ArraySegment<byte> output);
         public byte[] GetBytes(ulong value) => NormalGetBytes(8, value, GetBytes);
+
+        #endregion
+
+        #region Single
+
+        public float ToSingle(ArraySegment<byte> bytes) =>
+            Int32BitsToSingle(ToInt32(bytes));
+
+        public byte[] GetBytes(float value) =>
+            GetBytes(SingleToInt32Bits(value));
+
+        public void GetBytes(float value, ArraySegment<byte> output) =>
+            GetBytes(SingleToInt32Bits(value), output);
+
+        #endregion
+
+        #region Double
+
+        public double ToDouble(ArraySegment<byte> bytes) =>
+            BitConverter.Int64BitsToDouble(ToInt64(bytes));
+
+        public byte[] GetBytes(double value) =>
+            GetBytes(BitConverter.DoubleToInt64Bits(value));
+
+        public void GetBytes(double value, ArraySegment<byte> output) =>
+            GetBytes(BitConverter.DoubleToInt64Bits(value), output);
 
         #endregion
 
@@ -360,10 +385,16 @@ namespace JiksLib
             int size,
             string typeName)
         {
-            buf.Array.ThrowIfNull();
-            if (buf.Count != size)
+            if (buf.Array == null)
+                throw new ArgumentNullException(
+                    nameof(buf),
+                    "ArraySegment.Array must not be null.");
+
+            if (buf.Count < size)
                 throw new ArgumentException(
-                    $"ArraySegment length must be {size} for {typeName} conversion.");
+                    $"ArraySegment length must be {size} for {typeName} conversion, " +
+                    $"but was {buf.Count}.",
+                    nameof(buf));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -376,6 +407,31 @@ namespace JiksLib
             ArraySegment<byte> segment = new(bytes, 0, size);
             originalFunc(arg, segment);
             return bytes;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static float Int32BitsToSingle(int bits)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+            return BitConverter.Int32BitsToSingle(bits);
+#else
+            // net48 等旧目标框架没有位模式转换 API，
+            // 先得到本机端序的字节，再交给 BitConverter 按本机端序解释。
+            return BitConverter.ToSingle(SystemEndian.GetBytes(bits), 0);
+#endif
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static int SingleToInt32Bits(float value)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+            return BitConverter.SingleToInt32Bits(value);
+#else
+            // net48 等旧目标框架没有位模式转换 API，
+            // 先得到本机端序的字节，再按本机端序读回位模式。
+            return SystemEndian.ToInt32(
+                new ArraySegment<byte>(BitConverter.GetBytes(value)));
+#endif
         }
 
         internal EndianBitConverter() { }

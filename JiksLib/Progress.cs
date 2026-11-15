@@ -28,7 +28,6 @@ namespace JiksLib
         /// 创建子进度报告器
         /// 子进度是父进度的一部分，当子进度被报告时，父进度将报告对应的部分的进度
         /// </summary>
-        /// <typeparam name="T">进度类型</typeparam>
         /// <param name="parentProgress">父进度报告器</param>
         /// <param name="startProgress">子进度开始部分</param>
         /// <param name="endProgress">子进度结束部分</param>

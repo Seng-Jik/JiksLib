@@ -93,9 +93,12 @@ namespace JiksLib.Extensions
         /// </summary>
         /// <typeparam name="T">元素类型</typeparam>
         /// <param name="ls">要抽取元素的列表</param>
-        /// <param name="randomNumber">随机数，范围为[0,1]</param>
+        /// <param name="randomNumber">随机数，范围为[0,1]，取 1 时返回最后一个元素</param>
         /// <returns>随机抽取的元素</returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="InvalidOperationException">列表为空时抛出</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="randomNumber"/> 为 NaN 或不在 [0,1] 内时抛出
+        /// </exception>
         public static T RandomSelect<T>(
             this IReadOnlyList<T> ls,
             float randomNumber)
@@ -104,7 +107,15 @@ namespace JiksLib.Extensions
                 throw new InvalidOperationException(
                     "ls cannot be empty.");
 
-            return ls[(int)(randomNumber * (ls.Count - 1))];
+            if (float.IsNaN(randomNumber) || randomNumber < 0f || randomNumber > 1f)
+                throw new ArgumentOutOfRangeException(
+                    nameof(randomNumber),
+                    "Random number must be within [0, 1].");
+
+            int index = (int)(randomNumber * ls.Count);
+            if (index >= ls.Count) index = ls.Count - 1;
+
+            return ls[index];
         }
 
         /// <summary>
@@ -113,6 +124,7 @@ namespace JiksLib.Extensions
         /// <typeparam name="T">元素类型</typeparam>
         /// <param name="ls">要抽取元素的列表</param>
         /// <param name="randomNumber">随机数，范围为[0,1]</param>
+        /// <param name="getWeight">获取元素权重的函数</param>
         /// <returns>随机抽取的元素的下标</returns>
         /// <exception cref="InvalidOperationException"></exception>
         public static int RandomSelectIndex<T>(

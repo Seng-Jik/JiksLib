@@ -591,40 +591,35 @@ namespace JiksLib.Test.Collections
 
         #region Evict / GetCached 测试
 
-        [Test]
-        public void Evict_AllAlgorithms_RemovesValueAndRaisesOnEvicted()
+        [TestCase(Cache.Algorithm.FIFO)]
+        [TestCase(Cache.Algorithm.LRU)]
+        [TestCase(Cache.Algorithm.LFU)]
+        [TestCase(Cache.Algorithm.NeverEvict)]
+        public void Evict_AllAlgorithms_RemovesValueAndRaisesOnEvicted(
+            Cache.Algorithm algorithm)
         {
-            foreach (var algorithm in new[]
-            {
-                Cache.Algorithm.FIFO,
-                Cache.Algorithm.LRU,
-                Cache.Algorithm.LFU,
-                Cache.Algorithm.NeverEvict
-            })
-            {
-                // Arrange
-                var evicted = new List<int>();
-                var cache = Cache.Make<int, string>(
-                    algorithm, key => "v" + key, 3);
-                cache.OnEvicted += (key, _) => evicted.Add(key);
-                cache.Access(1);
-                cache.Access(2);
+            // Arrange
+            var evicted = new List<int>();
+            var cache = Cache.Make<int, string>(
+                algorithm, key => "v" + key, 3);
+            cache.OnEvicted += (key, _) => evicted.Add(key);
+            cache.Access(1);
+            cache.Access(2);
 
-                // Act
-                cache.Evict(1);
+            // Act
+            cache.Evict(1);
 
-                // Assert
-                Assert.That(evicted, Is.EqualTo(new[] { 1 }), algorithm.ToString());
-                Assert.That(
-                    cache.GetCached(1, out _, dontModifyCacheState: true),
-                    Is.False,
-                    algorithm.ToString());
-                Assert.That(
-                    cache.GetCached(2, out var value, dontModifyCacheState: true),
-                    Is.True,
-                    algorithm.ToString());
-                Assert.That(value, Is.EqualTo("v2"));
-            }
+            // Assert
+            Assert.That(evicted, Is.EqualTo(new[] { 1 }), algorithm.ToString());
+            Assert.That(
+                cache.GetCached(1, out _, dontModifyCacheState: true),
+                Is.False,
+                algorithm.ToString());
+            Assert.That(
+                cache.GetCached(2, out var value, dontModifyCacheState: true),
+                Is.True,
+                algorithm.ToString());
+            Assert.That(value, Is.EqualTo("v2"));
         }
 
         [Test]

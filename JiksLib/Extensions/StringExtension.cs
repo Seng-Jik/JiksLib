@@ -48,7 +48,12 @@ namespace JiksLib.Extensions
             string prefix,
             out string? remain)
         {
-            if (!x.StartsWith(prefix))
+            x.ThrowIfNull();
+            prefix.ThrowIfNull(nameof(prefix));
+
+            // 必须与字符串版其它 API（以及 StringSegment 版）保持一致：按序数比较，
+            // 否则文化敏感匹配成功但按码元长度裁剪会得到错误结果。
+            if (!x.StartsWith(prefix, StringComparison.Ordinal))
             {
                 remain = null;
                 return false;
@@ -66,7 +71,10 @@ namespace JiksLib.Extensions
             string suffix,
             out string? remain)
         {
-            if (!x.EndsWith(suffix))
+            x.ThrowIfNull();
+            suffix.ThrowIfNull(nameof(suffix));
+
+            if (!x.EndsWith(suffix, StringComparison.Ordinal))
             {
                 remain = null;
                 return false;
@@ -85,7 +93,20 @@ namespace JiksLib.Extensions
             string suffix,
             out string? remain)
         {
-            if (x.StartsWith(prefix) && x.EndsWith(suffix))
+            x.ThrowIfNull();
+            prefix.ThrowIfNull(nameof(prefix));
+            suffix.ThrowIfNull(nameof(suffix));
+
+            // 前后缀在字符串上重叠时无法同时去掉，直接视为不匹配，
+            // 避免 Substring 传入负长度（与 StringSegment 版行为一致）。
+            if (prefix.Length + suffix.Length > x.Length)
+            {
+                remain = null;
+                return false;
+            }
+
+            if (x.StartsWith(prefix, StringComparison.Ordinal)
+                && x.EndsWith(suffix, StringComparison.Ordinal))
             {
                 remain = x.Substring(
                     prefix.Length,

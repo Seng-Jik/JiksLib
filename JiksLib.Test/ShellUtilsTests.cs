@@ -181,11 +181,40 @@ namespace JiksLib.Test
         }
 
         [Test]
-        public void FindExecutable_FileInCurrentDirectory_ReturnsFileInfo()
+        public void FindExecutable_AbsolutePath_ReturnsFileInfo()
         {
-            // 跳过，因为修改当前目录可能影响其他测试
-            // 使用临时目录的测试更安全
-            Assert.Pass("FindExecutable file tests require temporary directory setup");
+            // 显式路径（绝对路径/含目录分隔符）应直接命中，不经过 PATH 搜索；
+            // 当前目录本身不再被隐式搜索（避免 CWD 劫持）。
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                string fileName = "probe-exec";
+                string filePath = Path.Combine(tempDir, fileName);
+                File.WriteAllText(filePath, "");
+
+#if NET6_0_OR_GREATER
+                if (!OperatingSystem.IsWindows())
+                {
+                    // Unix 上只有带执行位的文件才算可执行
+                    File.SetUnixFileMode(
+                        filePath,
+                        UnixFileMode.UserRead |
+                        UnixFileMode.UserWrite |
+                        UnixFileMode.UserExecute);
+                }
+#endif
+
+                var result = ShellUtils.FindExecutable(filePath);
+
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result!.FullName, Is.EqualTo(filePath));
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
         }
 
         [Test]
@@ -210,6 +239,18 @@ namespace JiksLib.Test
 
                 // 创建空文件（模拟可执行文件）
                 File.WriteAllText(filePath, "");
+
+#if NET6_0_OR_GREATER
+                if (!OperatingSystem.IsWindows())
+                {
+                    // Unix 上 FindExecutable 会校验执行位，测试文件必须补上 +x
+                    File.SetUnixFileMode(
+                        filePath,
+                        UnixFileMode.UserRead |
+                        UnixFileMode.UserWrite |
+                        UnixFileMode.UserExecute);
+                }
+#endif
 
                 // 保存原始PATH并设置临时目录到PATH中
                 string originalPath = Environment.GetEnvironmentVariable("PATH") ?? "";
@@ -273,10 +314,7 @@ namespace JiksLib.Test
         {
             // 这个测试只在Windows上运行
             if (!ShellUtils.IsCurrentOSWindowsFamily)
-            {
-                Assert.Pass("Test only runs on Windows family OS");
-                return;
-            }
+                Assert.Ignore("Test only runs on Windows family OS");
 
             // Arrange & Act
             var suffixes = ShellUtils.ExecutableSuffixes;
@@ -293,10 +331,7 @@ namespace JiksLib.Test
         {
             // 这个测试只在非Windows上运行
             if (ShellUtils.IsCurrentOSWindowsFamily)
-            {
-                Assert.Pass("Test only runs on non-Windows OS");
-                return;
-            }
+                Assert.Ignore("Test only runs on non-Windows OS");
 
             // Arrange & Act
             var suffixes = ShellUtils.ExecutableSuffixes;
@@ -311,12 +346,41 @@ namespace JiksLib.Test
         #region Integration Style Tests (Require Setup)
 
         [Test]
-        public void FindExecutable_WithMockEnvironment_ReturnsCorrectFile()
+        public void FindExecutable_QuotedPathEntry_ReturnsFileInfo()
         {
-            // 这个测试需要模拟文件系统和环境变量
-            // 由于ShellUtils使用静态Environment和File方法，难以进行单元测试
-            // 考虑重构ShellUtils以支持依赖注入，或使用条件编译
-            Assert.Pass("FindExecutable integration tests require environment setup");
+            // PATH 条目带引号是 Windows 上常见的写法，查找时必须先剥掉引号
+            if (!ShellUtils.IsCurrentOSWindowsFamily)
+                Assert.Ignore("PATH 中的引号是 Windows 特有的写法");
+
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                string fileName = "probeexec.exe";
+                string filePath = Path.Combine(tempDir, fileName);
+                File.WriteAllText(filePath, "");
+
+                string originalPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+
+                try
+                {
+                    Environment.SetEnvironmentVariable("PATH", "\"" + tempDir + "\"");
+
+                    var result = ShellUtils.FindExecutable("probeexec");
+
+                    Assert.That(result, Is.Not.Null);
+                    Assert.That(result!.FullName, Is.EqualTo(filePath));
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("PATH", originalPath);
+                }
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
         }
 
         #endregion

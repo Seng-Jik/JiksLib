@@ -1,10 +1,9 @@
 using NUnit.Framework;
 using JiksLib.Control;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
 
 namespace JiksLib.Test.Control
 {
@@ -27,67 +26,22 @@ namespace JiksLib.Test.Control
     }
 
     [TestFixture]
+    [NonParallelizable]
     public class ServiceLocatorTests
     {
 
         [SetUp]
         public void SetUp()
         {
-            // Clear any leftover services between tests
-            // Note: ServiceLocator doesn't have a Clear method, so we rely on proper scoping
-            // Tests should clean up their own scopes
-
-            // Additional cleanup: Reset services that might have been left by previous tests
-            // This is needed because tests might not clean up properly or tests run in parallel
-            ResetServiceHolder<string>();
-            ResetServiceHolder<object>();
-            ResetServiceHolder<List<int>>();
-            ResetServiceHolder<Dictionary<string, int>>();
-
-            // Also clear the scopes stack in case a test didn't clean up properly
-            ResetScopesStack();
+            // ServiceLocator 是静态状态，必须每个用例前后都清空，
+            // 否则用例失败时会污染后续用例。
+            ServiceLocator.Reset();
         }
 
-        private static void ResetServiceHolder<T>() where T : class
+        [TearDown]
+        public void TearDown()
         {
-            try
-            {
-                var serviceHolderType = typeof(ServiceLocator).GetNestedType("ServiceHolder`1", BindingFlags.NonPublic);
-                if (serviceHolderType != null)
-                {
-                    var genericType = serviceHolderType.MakeGenericType(typeof(T));
-                    var serviceField = genericType.GetField("Service", BindingFlags.Public | BindingFlags.Static);
-                    if (serviceField != null)
-                    {
-                        serviceField.SetValue(null, null);
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore reflection errors in tests
-            }
-        }
-
-        private static void ResetScopesStack()
-        {
-            try
-            {
-                var scopesField = typeof(ServiceLocator).GetField("scopes", BindingFlags.NonPublic | BindingFlags.Static);
-                if (scopesField != null && scopesField.GetValue(null) is System.Collections.ICollection stack)
-                {
-                    // Clear the stack if it has a Clear method
-                    var clearMethod = stack.GetType().GetMethod("Clear");
-                    if (clearMethod != null)
-                    {
-                        clearMethod.Invoke(stack, null);
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore reflection errors
-            }
+            ServiceLocator.Reset();
         }
 
         [Test]
@@ -257,7 +211,8 @@ namespace JiksLib.Test.Control
             // Arrange
             const int threadCount = 10;
             const int iterations = 1000;
-            var exceptions = new List<Exception>();
+            // 并发写入必须使用线程安全集合，否则测试自身就会竞态
+            var exceptions = new ConcurrentBag<Exception>();
             var scope = new TestScope(s => s.RegisterService(threadCount.ToString()));
 
             using (ServiceLocator.EnterScope(scope))
@@ -372,6 +327,37 @@ namespace JiksLib.Test.Control
 
             // Second dispose should not throw
             Assert.DoesNotThrow(() => disposable.Dispose());
+
+            // 作用域栈必须已经被弹出
+            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Reset_ReleasesAllScopesAndRestoresServices()
+        {
+            // Arrange
+            var outer = new TestScope(s => s.RegisterService("outer"));
+            var inner = new TestScope(s => s.RegisterService("inner"));
+            ServiceLocator.EnterScope(outer);
+            ServiceLocator.EnterScope(inner);
+
+            Assert.That(ServiceLocator.Get<string>(), Is.EqualTo("inner"));
+
+            // Act
+            ServiceLocator.Reset();
+
+            // Assert - 所有作用域都被释放，服务回到未注册状态
+            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
+            Assert.That(
+                () => ServiceLocator.Get<string>(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void Reset_WithNoActiveScopes_IsNoOp()
+        {
+            Assert.DoesNotThrow(() => ServiceLocator.Reset());
+            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
         }
 
         [Test]
@@ -387,38 +373,11 @@ namespace JiksLib.Test.Control
                 Assert.That(retrieved, Is.EqualTo(service));
             }
 
-            // Negative test: Register should throw when called outside of OnRegisterServices
-            var testScope = new TestScope(s => { });
-
-            // Get the generic Register<T> method via reflection
-            var registerMethodGeneric = typeof(ServiceLocator.Scope).GetMethod(
-                "Register",
-                BindingFlags.NonPublic | BindingFlags.Instance,
-                null,
-                new Type[] { typeof(string) },
-                null);
-
-            // If the above fails (because it's generic), try getting the generic method definition
-            if (registerMethodGeneric == null)
-            {
-                var methods = typeof(ServiceLocator.Scope).GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
-                foreach (var method in methods)
-                {
-                    if (method.Name == "Register" && method.IsGenericMethod)
-                    {
-                        registerMethodGeneric = method.MakeGenericMethod(typeof(string));
-                        break;
-                    }
-                }
-            }
-
-            Assert.That(registerMethodGeneric, Is.Not.Null, "Register method should be found via reflection");
-
-            // Try to call Register when UnregisterActions is null (scope not entered)
-            // This should throw InvalidOperationException
-            Assert.That(() => registerMethodGeneric.Invoke(testScope, new object[] { "test" }),
-                Throws.TargetInvocationException.With.InnerException
-                    .TypeOf<InvalidOperationException>());
+            // Negative test: 作用域已退出后再调用 Register 必须抛 InvalidOperationException。
+            // 直接调用公开的 RegisterService 包装，避免通过反射触碰私有成员。
+            Assert.That(
+                () => scope.RegisterService("test"),
+                Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]

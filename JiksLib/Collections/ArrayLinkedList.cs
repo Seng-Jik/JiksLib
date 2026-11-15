@@ -82,31 +82,37 @@ namespace JiksLib.Collections
         /// <param name="collection">源集合</param>
         public ArrayLinkedList(IEnumerable<T> collection)
         {
-            // 获取元素数量
-            int count = collection.ThrowIfNull(nameof(collection)) switch
+            collection.ThrowIfNull(nameof(collection));
+
+            // 只枚举一次：数量只作为容量提示，实际长度以枚举结果为准。
+            int hint = collection switch
             {
                 ICollection<T> c => c.Count,
                 IReadOnlyCollection<T> roc => roc.Count,
                 ICollection c => c.Count,
-                var c => c.Count()
+                _ => 0,
             };
 
-            array = new Node[count];
+            array = new Node[hint];
             int index = 0;
+
             foreach (var item in collection)
             {
+                if (index == array.Length)
+                    Array.Resize(ref array, Growth((long)index + 1));
+
                 array[index].Value = item;
                 array[index].Prev = index - 1;
                 array[index].Next = index + 1;
                 index++;
             }
 
-            if (count > 0)
+            if (index > 0)
             {
                 array[0].Prev = -1;
-                array[count - 1].Next = -1;
+                array[index - 1].Next = -1;
                 FirstSlot = 0;
-                LastSlot = count - 1;
+                LastSlot = index - 1;
             }
             else
             {
@@ -114,9 +120,9 @@ namespace JiksLib.Collections
                 LastSlot = -1;
             }
 
-            arrayUsedCount = count;
+            arrayUsedCount = index;
             firstFreeNode = -1;
-            Count = count;
+            Count = index;
         }
 
         /// <summary>
@@ -343,6 +349,9 @@ namespace JiksLib.Collections
         /// 通过槽位ID移除元素
         /// </summary>
         /// <param name="slotIndex">要移除的槽位索引</param>
+        /// <param name="prevSlot">被移除槽位的前一个槽位索引，不存在时为 -1</param>
+        /// <param name="nextSlot">被移除槽位的后一个槽位索引，不存在时为 -1</param>
+        /// <returns>被移除的元素</returns>
         /// <exception cref="ArgumentOutOfRangeException">槽位索引无效</exception>
         public T RemoveBySlot(int slotIndex, out int prevSlot, out int nextSlot)
         {
@@ -422,8 +431,27 @@ namespace JiksLib.Collections
 
             if (array.Length >= capacity) return;
 
-            capacity = (capacity / 4 + 1) * 4;
+            capacity = RoundUpCapacity(capacity);
             Array.Resize(ref array, capacity);
+        }
+
+        /// <summary>
+        /// 计算扩容后的目标容量（至少容纳 <paramref name="required"/> 个元素）。
+        /// 使用 long 计算避免整数溢出。
+        /// </summary>
+        static int Growth(long required)
+        {
+            long target = Math.Max(4L, required * 2);
+            return target > int.MaxValue ? int.MaxValue : (int)target;
+        }
+
+        /// <summary>
+        /// 把容量向上取整到 4 的倍数（保持原有扩容粒度），并防止溢出。
+        /// </summary>
+        static int RoundUpCapacity(int capacity)
+        {
+            long rounded = ((long)capacity / 4 + 1) * 4;
+            return rounded > int.MaxValue ? int.MaxValue : (int)rounded;
         }
 
         /// <summary>
@@ -539,7 +567,7 @@ namespace JiksLib.Collections
             else
             {
                 if (arrayUsedCount == array.Length)
-                    EnsureCapacity(Math.Max(4, (arrayUsedCount + 1) * 2));
+                    EnsureCapacity(Growth((long)arrayUsedCount + 1));
 
                 int slotIndex = arrayUsedCount++;
                 return slotIndex;

@@ -1,3 +1,23 @@
+# 编辑器与 IDE
 /.claude
 /.vscode
+.idea/
+.vs/
+*.user
+*.suo
+*.DotSettings.user
+
+# 构建产物与日志
 /artifacts
+*.binlog
+*.log
+
+# 测试与基准工具输出
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# NuGet 包与还原目录
+*.nupkg
+*.snupkg
+packages/
+/pkg
