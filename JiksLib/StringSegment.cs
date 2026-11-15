@@ -7,7 +7,7 @@ namespace JiksLib
 {
     /// <summary>
     /// 字符串片段：对 <see cref="string"/> 的一段只读视图。
-    /// 切片、比较、查找与切分都不会复制底层字符串；只有 <see cref="ToString"/> 等
+    /// 切片、比较、查找与切分都不会复制底层字符串；只有 <see cref="ToString()"/> 等
     /// 明确返回 <see cref="string"/> 的成员才会分配。
     /// </summary>
     /// <remarks>
@@ -731,28 +731,18 @@ namespace JiksLib
             StringSegment other,
             StringComparison comparisonType)
         {
-            if (Length != other.Length)
-                return false;
-
-            if (Length == 0)
-                return true;
-
             switch (comparisonType)
             {
                 case StringComparison.Ordinal:
-                    return CompareOrdinal(this, other) == 0;
+                    return Length == other.Length && CompareOrdinal(this, other) == 0;
 
                 case StringComparison.OrdinalIgnoreCase:
-                    return CompareOrdinalIgnoreCase(this, other) == 0;
+                    return Length == other.Length && CompareOrdinalIgnoreCase(this, other) == 0;
 
                 default:
-                    return string.Compare(
-                        Source,
-                        Offset,
-                        other.Source,
-                        other.Offset,
-                        Length,
-                        comparisonType) == 0;
+                    // 文化相关比较可能忽略字符，从而把不同长度的片段视为相等，
+                    // 因此不能先用长度快速失败，必须把完整内容交给 BCL 比较。
+                    return string.Equals(ToString(), other.ToString(), comparisonType);
             }
         }
 
@@ -885,25 +875,9 @@ namespace JiksLib
                     return CompareOrdinalIgnoreCase(x, y);
 
                 default:
-                    {
-                        int minLength = Math.Min(x.Length, y.Length);
-
-                        if (minLength > 0)
-                        {
-                            int result = string.Compare(
-                                x.Source,
-                                x.Offset,
-                                y.Source,
-                                y.Offset,
-                                minLength,
-                                comparisonType);
-
-                            if (result != 0)
-                                return result;
-                        }
-
-                        return x.Length.CompareTo(y.Length);
-                    }
+                    // 文化相关比较不能用"公共前缀 + 长度"近似：BCL 会忽略某些字符，
+                    // 因此必须把完整内容交给 BCL 比较（仅在文化比较路径上分配）。
+                    return string.Compare(x.ToString(), y.ToString(), comparisonType);
             }
         }
 
@@ -1367,6 +1341,11 @@ namespace JiksLib
                 current = default;
                 hasCurrent = false;
             }
+
+            /// <summary>
+            /// 返回自身，使切分器可以直接用于 foreach（结构体按值复制，不会装箱）
+            /// </summary>
+            public Tokenizer GetEnumerator() => this;
 
             public void Dispose() { }
 

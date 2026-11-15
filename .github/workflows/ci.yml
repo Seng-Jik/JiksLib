@@ -6,9 +6,26 @@ on:
   pull_request:
     branches: [ main ]
 
+# 同一分支的新推送会取消上一次仍在运行的流水线，避免重复占用 runner
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  CI: true
+
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build-test:
+    name: build-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
 
     steps:
     - uses: actions/checkout@v4
@@ -20,23 +37,70 @@ jobs:
           10.0.x
           11.0.x
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'JiksLib.slnx') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     - name: Restore dependencies
       run: dotnet restore ./JiksLib.slnx
 
     - name: Build
       run: dotnet build ./JiksLib.slnx --configuration Release --no-restore
 
+    # 库本体要求格式整洁（测试/基准工程暂不纳入，避免一次性引入大量无关 diff）
+    - name: Format check
+      run: dotnet format whitespace ./JiksLib/JiksLib.csproj --verify-no-changes --no-restore
+
     - name: Test .NET 10.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
+      run: >
+        dotnet test ./JiksLib.Test/JiksLib.Test.csproj
+        --configuration Release --framework net10.0 --no-build
+        --collect:"XPlat Code Coverage"
+        --results-directory ./TestResults/net10.0
 
     - name: Test .NET 11.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net11.0 --no-build --verbosity normal
+      run: >
+        dotnet test ./JiksLib.Test/JiksLib.Test.csproj
+        --configuration Release --framework net11.0 --no-build
+        --collect:"XPlat Code Coverage"
+        --results-directory ./TestResults/net11.0
 
     - name: Test .NET Framework 4.8
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net48 --no-build --verbosity normal
+      if: runner.os == 'Windows'
+      run: >
+        dotnet test ./JiksLib.Test/JiksLib.Test.csproj
+        --configuration Release --framework net48 --no-build
+        --collect:"XPlat Code Coverage"
+        --results-directory ./TestResults/net48
 
-  build-linux:
+    # 同一套测试在 net10 运行时上执行 netstandard2.1 产物，覆盖 Unity 目标。
+    # 该步骤会按属性重建测试工程（不能用 --no-build），因此放在常规测试之后。
+    - name: Test netstandard2.1 asset
+      run: >
+        dotnet test ./JiksLib.Test/JiksLib.Test.csproj
+        --configuration Release --framework net10.0
+        -p:JiksLibTargetFramework=netstandard2.1
+
+    - name: Pack
+      if: runner.os == 'Linux'
+      run: dotnet pack ./JiksLib/JiksLib.csproj --configuration Release --no-build --output ./pkg
+
+    - name: Upload coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-${{ matrix.os }}
+        path: TestResults/**
+        if-no-files-found: ignore
+
+  benchmark-smoke:
+    name: benchmark smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v4
@@ -44,50 +108,19 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: |
-          10.0.x
-          11.0.x
+        dotnet-version: 10.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore ./JiksLib.slnx
-
-    - name: Build
-      run: dotnet build ./JiksLib.slnx --configuration Release --no-restore
-
-    - name: Test .NET 10.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
-
-    - name: Test .NET 11.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net11.0 --no-build --verbosity normal
-
-    - name: Build .NET Standard 2.1
-      # Note: Test project doesn't target netstandard2.1, but we can build the library for it
-      run: dotnet build ./JiksLib/JiksLib.csproj --configuration Release --framework netstandard2.1 --no-restore
-
-  build-mac:
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
       with:
-        dotnet-version: |
-          10.0.x
-          11.0.x
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-benchmark-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
-    - name: Restore dependencies
-      run: dotnet restore ./JiksLib.slnx
-
-    - name: Build
-      run: dotnet build ./JiksLib.slnx --configuration Release --no-restore
-
-    - name: Test .NET 10.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net10.0 --no-build --verbosity normal
-
-    - name: Test .NET 11.0
-      run: dotnet test ./JiksLib.Test/JiksLib.Test.csproj --configuration Release --framework net11.0 --no-build --verbosity normal
-
-    - name: Build .NET Standard 2.1
-      run: dotnet build ./JiksLib/JiksLib.csproj --configuration Release --framework netstandard2.1 --no-restore
+    # 只跑一个最小子集，确认基准工程可编译、可执行、可产出结果（不比较性能数值）
+    - name: Run benchmark smoke
+      run: >
+        dotnet run --project ./JiksLib.Benchmark/JiksLib.Benchmark.csproj
+        --configuration Release --framework net10.0 --
+        --filter "*CacheBenchmarks*" --job Dry

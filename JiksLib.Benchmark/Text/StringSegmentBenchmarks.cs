@@ -10,7 +10,7 @@ namespace JiksLib.Benchmark.Text
     /// 每个 [Benchmark] 内部循环 Iterations 次，因此报告里的 Allocated 与 Mean
     /// 是整轮的值；OperationsPerInvoke 已经把结果换算为单次操作。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class StringSegmentBenchmarks
     {

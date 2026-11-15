@@ -61,11 +61,12 @@ namespace JiksLib.Collections
         /// </summary>
         public void Add(T x)
         {
-            if (Count + 1 > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + 1) * 2));
+            if (Count == buffer.Length)
+                EnsureCapacity(Growth((long)Count + 1));
 
             buffer[rear] = x;
-            rear = (rear + 1) % buffer.Length;
+            rear++;
+            if (rear == buffer.Length) rear = 0;
             Count++;
         }
 
@@ -76,8 +77,11 @@ namespace JiksLib.Collections
         {
             items.Array.ThrowIfNull();
 
-            if (Count + items.Count > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + items.Count) * 2));
+            if (items.Count == 0)
+                return;
+
+            if ((long)Count + items.Count > buffer.Length)
+                EnsureCapacity(Growth((long)Count + items.Count));
 
             if (rear + items.Count <= buffer.Length)
             {
@@ -117,29 +121,46 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 添加一组元素到末尾
+        /// 只枚举一次源序列：即使序列只能枚举一次也不会写坏环形缓冲
         /// </summary>
         public void AddRange(IEnumerable<T> items)
         {
             items.ThrowIfNull();
 
-            int count = items switch
+            if (items is T[] array)
+            {
+                AddRange(new ArraySegment<T>(array));
+                return;
+            }
+
+            if (items is ArraySegment<T> segment)
+            {
+                AddRange(segment);
+                return;
+            }
+
+            // 已知数量时一次性预留，未知时在循环中按需扩容。
+            int knownCount = items switch
             {
                 IReadOnlyCollection<T> roc => roc.Count,
                 ICollection<T> c => c.Count,
                 ICollection c => c.Count,
-                var x => x.Count()
+                _ => -1,
             };
 
-            if (Count + count > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + count) * 2));
-
-            int i = 0;
+            if (knownCount > 0 && (long)Count + knownCount > buffer.Length)
+                EnsureCapacity(Growth((long)Count + knownCount));
 
             foreach (var item in items)
-                buffer[(rear + i++) % buffer.Length] = item;
+            {
+                if (Count == buffer.Length)
+                    EnsureCapacity(Growth((long)Count + 1));
 
-            rear = (rear + count) % buffer.Length;
-            Count += count;
+                buffer[rear] = item;
+                rear++;
+                if (rear == buffer.Length) rear = 0;
+                Count++;
+            }
         }
 
         /// <summary>
@@ -147,8 +168,8 @@ namespace JiksLib.Collections
         /// </summary>
         public void AddFront(T x)
         {
-            if (Count + 1 > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + 1) * 2));
+            if (Count == buffer.Length)
+                EnsureCapacity(Growth((long)Count + 1));
 
             front--;
             if (front < 0) front += buffer.Length;
@@ -163,8 +184,11 @@ namespace JiksLib.Collections
         {
             items.Array!.ThrowIfNull();
 
-            if (Count + items.Count > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + items.Count) * 2));
+            if (items.Count == 0)
+                return;
+
+            if ((long)Count + items.Count > buffer.Length)
+                EnsureCapacity(Growth((long)Count + items.Count));
 
             // 计算新的front位置（向前移动items.Count个位置）
             front -= items.Count;
@@ -212,32 +236,46 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 添加一组元素到开头
+        /// 只枚举一次源序列
         /// </summary>
         public void AddRangeFront(IEnumerable<T> items)
         {
             items.ThrowIfNull();
 
-            int count = items switch
+            if (items is T[] array)
             {
-                IReadOnlyCollection<T> roc => roc.Count,
-                ICollection<T> c => c.Count,
-                ICollection c => c.Count,
-                var x => x.Count()
-            };
+                AddRangeFront(new ArraySegment<T>(array));
+                return;
+            }
 
-            if (Count + count > buffer.Length)
-                EnsureCapacity(Math.Max(4, (Count + count) * 2));
+            if (items is ArraySegment<T> segment)
+            {
+                AddRangeFront(segment);
+                return;
+            }
 
-            // 计算新的front位置（向前移动count个位置）
-            front -= count;
+            // 前插需要先知道元素数量才能确定新的 front，因此物化一次。
+            AddRangeFrontCore(new List<T>(items));
+        }
+
+        /// <summary>
+        /// 从已知长度的列表前插；只用于 <see cref="AddRangeFront(IEnumerable{T})"/> 的慢路径。
+        /// </summary>
+        void AddRangeFrontCore(List<T> items)
+        {
+            if (items.Count == 0)
+                return;
+
+            if ((long)Count + items.Count > buffer.Length)
+                EnsureCapacity(Growth((long)Count + items.Count));
+
+            front -= items.Count;
             if (front < 0) front += buffer.Length;
 
-            // 复制元素到新位置
-            int i = 0;
-            foreach (var item in items)
-                buffer[(front + i++) % buffer.Length] = item;
+            for (int i = 0; i < items.Count; ++i)
+                buffer[(front + i) % buffer.Length] = items[i];
 
-            Count += count;
+            Count += items.Count;
         }
 
         /// <summary>
@@ -320,7 +358,7 @@ namespace JiksLib.Collections
 
             if (buffer.Length >= capacity) return;
 
-            capacity = (capacity / 4 + 1) * 4;
+            capacity = RoundUpCapacity(capacity);
 
             T[] newBuffer = new T[capacity];
             CopyTo(new(newBuffer));
@@ -328,6 +366,25 @@ namespace JiksLib.Collections
             buffer = newBuffer;
             front = 0;
             rear = Count;
+        }
+
+        /// <summary>
+        /// 计算扩容后的目标容量（至少容纳 <paramref name="required"/> 个元素）。
+        /// 使用 long 计算避免整数溢出，并在超过 int.MaxValue 时截断。
+        /// </summary>
+        static int Growth(long required)
+        {
+            long target = Math.Max(4L, required * 2);
+            return target > int.MaxValue ? int.MaxValue : (int)target;
+        }
+
+        /// <summary>
+        /// 把容量向上取整到 4 的倍数（保持原有扩容粒度），并防止溢出。
+        /// </summary>
+        static int RoundUpCapacity(int capacity)
+        {
+            long rounded = ((long)capacity / 4 + 1) * 4;
+            return rounded > int.MaxValue ? int.MaxValue : (int)rounded;
         }
 
         /// <summary>
@@ -363,6 +420,11 @@ namespace JiksLib.Collections
                 throw new ArgumentException(
                     "Output array is too small to hold all elements.", nameof(output));
 
+            // 空双端队列的 front/rear 可能不相等（例如 Clear 后再次前插再移除），
+            // 下面的环形分段复制假设"有元素"，因此必须先返回。
+            if (Count == 0)
+                return;
+
             if (front < rear)
             {
                 Array.Copy(buffer, front, outputArray, output.Offset, Count);
@@ -392,6 +454,8 @@ namespace JiksLib.Collections
             if (Count == 0)
             {
                 buffer = Array.Empty<T>();
+                front = 0;
+                rear = 0;
             }
             else if (Count < buffer.Length)
             {

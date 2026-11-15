@@ -9,7 +9,7 @@ namespace JiksLib.Benchmark.Control
     /// <summary>
     /// EventBus 清空 TypeChain 缓存后首次发布的成本对比。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class EventBusClearTypeChainCacheBenchmarks
     {

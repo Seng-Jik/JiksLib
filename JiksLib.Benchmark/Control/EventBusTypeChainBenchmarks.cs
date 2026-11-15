@@ -20,7 +20,7 @@ namespace JiksLib.Benchmark.Control
     /// <summary>
     /// EventBus 的接口基础类型、object 基础类型和共享 TypeChain 缓存基准。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class EventBusTypeChainBenchmarks
     {

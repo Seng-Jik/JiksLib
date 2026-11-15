@@ -38,21 +38,18 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 判断集合是否包含某个元素
+        /// 与 <see cref="HashSet{T}.Contains"/> 保持一致：元素为 null 时返回 false，而不是抛异常
         /// </summary>
-        public bool Contains(T item) => dict.ContainsKey(item.ThrowIfNull());
+        public bool Contains(T item) => item is not null && dict.ContainsKey(item);
 
         /// <summary>
         /// 判断集合中某个元素的重复次数
+        /// 元素为 null 时返回 0
         /// </summary>
         /// <param name="item">元素</param>
         /// <returns>重复次数</returns>
-        public int GetCountOf(T item)
-        {
-            if (dict.TryGetValue(item.ThrowIfNull(), out var count))
-                return count;
-
-            return 0;
-        }
+        public int GetCountOf(T item) =>
+            item is not null && dict.TryGetValue(item, out var count) ? count : 0;
 
         /// <summary>
         /// 清空集合
@@ -88,12 +85,14 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 从集合中移除一个元素
+        /// 与 <see cref="HashSet{T}.Remove"/> 保持一致：元素为 null 时返回 (false, 0)
         /// </summary>
         /// <param name="item">要移除的元素</param>
         /// <returns>是否成功移除以及移除后该元素的数量</returns>
         public (bool Success, int Count) Remove(T item)
         {
-            item.ThrowIfNull();
+            if (item is null)
+                return (false, 0);
 
             if (dict.TryGetValue(item, out var count))
             {

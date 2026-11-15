@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JiksLib.Extensions;
 
 namespace JiksLib.Control
 {
@@ -26,17 +27,17 @@ namespace JiksLib.Control
                         "Only allow call Register<T> in OnRegisterServices.");
 
                 var old = ServiceHolder<T>.Service;
-                UnregisterActions += () => ServiceHolder<T>.Service = old;
+                UnregisterActions.Add(() => ServiceHolder<T>.Service = old);
                 ServiceHolder<T>.Service = service;
             }
 
             /// <summary>
             /// 需要注册服务时，Service Locator 会调用此方法
-            /// 此方法需要将要注册的服务通过 Register<T> 方法注册
+            /// 此方法需要将要注册的服务通过 <c>Register&lt;T&gt;</c> 方法注册
             /// </summary>
             protected internal abstract void OnRegisterServices();
 
-            internal Action? UnregisterActions;
+            internal List<Action>? UnregisterActions;
         }
 
         /// <summary>
@@ -46,20 +47,24 @@ namespace JiksLib.Control
         /// 只允许在主线程上调用此函数及返回的 IDisposable，在其他线程上调用会产生未定义行为
         /// 返回的 IDisposable 对象必须按照 EnterScope 的调用顺序的逆序调用
         /// </summary>
+        /// <exception cref="ArgumentNullException">当 <paramref name="scope"/> 为 null 时抛出</exception>
         public static IDisposable EnterScope(Scope scope)
         {
-            Action unregisterActions;
+            scope.ThrowIfNull(nameof(scope));
+
+            List<Action> unregisterActions;
 
             try
             {
-                scope.UnregisterActions = static () => { };
+                scope.UnregisterActions = new();
                 scope.OnRegisterServices();
                 unregisterActions = scope.UnregisterActions;
-                scopes.Push(scope);
+                scopes.Add(new ScopeEntry(scope, unregisterActions));
             }
             catch
             {
-                scope.UnregisterActions!();
+                // 注册失败：按注册的逆序回滚已注册的服务，避免半注册状态泄漏
+                RunUnregisterActions(scope.UnregisterActions);
                 throw;
             }
             finally
@@ -69,12 +74,12 @@ namespace JiksLib.Control
 
             return Disposable.FromAction(() =>
             {
-                if (scopes.Count == 0 || scopes.Peek() != scope)
+                if (scopes.Count == 0 || scopes[scopes.Count - 1].Scope != scope)
                     throw new InvalidOperationException(
                         "Dispose service locator scope must in order.");
 
-                unregisterActions();
-                scopes.Pop();
+                RunUnregisterActions(unregisterActions);
+                scopes.RemoveAt(scopes.Count - 1);
             });
         }
 
@@ -86,7 +91,63 @@ namespace JiksLib.Control
                 ?? throw new InvalidOperationException(
                         "Service not registered.");
 
-        static readonly Stack<Scope> scopes = new();
+        /// <summary>
+        /// 当前仍处于活动状态（已 EnterScope 且尚未 Dispose）的作用域数量
+        /// </summary>
+        public static int ActiveScopeCount => scopes.Count;
+
+        /// <summary>
+        /// 释放所有仍处于活动状态的作用域，按进入顺序的逆序执行各自的注销委托。
+        /// 主要用于测试隔离与退出流程；单个注销委托抛出的异常会被收集，全部执行完后
+        /// 以 <see cref="AggregateException"/> 抛出。
+        /// </summary>
+        public static void Reset()
+        {
+            List<Exception>? exceptions = null;
+
+            for (int i = scopes.Count - 1; i >= 0; --i)
+            {
+                try
+                {
+                    RunUnregisterActions(scopes[i].UnregisterActions);
+                }
+                catch (Exception exception)
+                {
+                    (exceptions ??= new()).Add(exception);
+                }
+            }
+
+            scopes.Clear();
+
+            if (exceptions != null)
+                throw new AggregateException(exceptions);
+        }
+
+        /// <summary>
+        /// 逆序执行注销委托：后注册的服务先恢复，保证同一类型覆盖注册后能回到进入作用域前的值。
+        /// </summary>
+        static void RunUnregisterActions(List<Action>? actions)
+        {
+            if (actions == null)
+                return;
+
+            for (int i = actions.Count - 1; i >= 0; --i)
+                actions[i]();
+        }
+
+        readonly struct ScopeEntry
+        {
+            public readonly Scope Scope;
+            public readonly List<Action> UnregisterActions;
+
+            public ScopeEntry(Scope scope, List<Action> unregisterActions)
+            {
+                Scope = scope;
+                UnregisterActions = unregisterActions;
+            }
+        }
+
+        static readonly List<ScopeEntry> scopes = new();
 
         private static class ServiceHolder<T>
             where T : class

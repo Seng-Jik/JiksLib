@@ -10,7 +10,7 @@ namespace JiksLib.Benchmark.Control
     /// 对比正序删除（FIFO）与逆序删除（LIFO）的开销。
     /// IterationSetup 预置监听器，Benchmark 内只执行 Remove。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class ListenerRemovalOrderBenchmarks
     {

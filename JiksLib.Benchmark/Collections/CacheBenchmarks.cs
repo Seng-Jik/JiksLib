@@ -8,7 +8,7 @@ namespace JiksLib.Benchmark.Collections
     /// <summary>
     /// Cache 访问、普通 GetCached 与只读 GetCached 的对比。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class CacheBenchmarks
     {

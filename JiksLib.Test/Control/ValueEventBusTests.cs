@@ -688,15 +688,25 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             var innerPublishAttempted = false;
+            Exception? innerPublishException = null;
 
             eventBus.AddListener<TestValueEventA>(e =>
             {
-                // 尝试在发布过程中再次发布
-                if (!innerPublishAttempted)
+                // 尝试在发布过程中再次发布。
+                // 断言必须放在 Publish 之外：监听器里的断言失败会被 SafeEvent
+                // 当作监听器异常收集，测试仍然会通过。
+                if (innerPublishAttempted)
+                    return;
+
+                innerPublishAttempted = true;
+
+                try
                 {
-                    innerPublishAttempted = true;
-                    Assert.Throws<InvalidOperationException>(() =>
-                        publisher.Publish(new TestValueEventA("Inner", 4444), null));
+                    publisher.Publish(new TestValueEventA("Inner", 4444), null);
+                }
+                catch (Exception ex)
+                {
+                    innerPublishException = ex;
                 }
             });
 
@@ -706,6 +716,8 @@ namespace JiksLib.Test.Control
             var exceptions = new List<Exception>();
             Assert.DoesNotThrow(() => publisher.Publish(testEvent, exceptions));
             Assert.That(innerPublishAttempted, Is.True);
+            Assert.That(innerPublishException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(exceptions, Is.Empty);
         }
 
         #endregion

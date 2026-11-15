@@ -1,0 +1,33 @@
+# JiksLib 编辑器与分析器配置
+# 该文件同时服务于 IDE 格式化与 CI 的 `dotnet format --verify-no-changes`。
+
+root = true
+
+[*]
+charset = utf-8
+# 仓库中同时存在 LF 与 CRLF 文件，这里不强制换行符，避免格式化产生整文件 diff；
+# 留给 IDE 按本地约定处理。
+end_of_line = unset
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = false
+
+[*.{yml,yaml,json,md}]
+end_of_line = lf
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+
+# --- 分析器规则取舍 -------------------------------------------------------
+# 以下规则的建议依赖 .NET 7+ API 或会改变公开 API 形态，而本库还需兼容
+# net48 / netstandard2.1，因此保持关闭；其余 CA 规则仍以 warning 呈现。
+
+# CS1591 已在 csproj 中通过 NoWarn 关闭（公开成员文档后续补齐）。
+dotnet_diagnostic.CA1014.severity = none   # 程序集需标记 CLSCompliant：本库不做 CLS 承诺
+dotnet_diagnostic.CA1822.severity = none   # 成员可设为 static：部分实例方法为保持 API 对称性而保留
+dotnet_diagnostic.CA1510.severity = none   # 建议 ArgumentNullException.ThrowIfNull（.NET 7+）
+dotnet_diagnostic.CA1512.severity = none   # 建议 ArgumentOutOfRangeException.ThrowIfNegative（.NET 7+）
+dotnet_diagnostic.CA1847.severity = none   # 建议 string.Contains(char)（net48 无此重载）
+dotnet_diagnostic.CA2249.severity = none   # 同上，建议 Contains 代替 IndexOf（net48 无 char 重载）

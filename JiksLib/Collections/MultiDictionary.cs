@@ -68,13 +68,20 @@ namespace JiksLib.Collections
         /// <param name="value">值</param>
         public void Add(TKey key, TValue value)
         {
-            if (!dict.TryGetValue(key.ThrowIfNull(), out var set))
+            key.ThrowIfNull();
+
+            if (dict.TryGetValue(key, out var set))
             {
-                set = valueComparer != null ? new(valueComparer) : new();
-                dict[key] = set;
+                set.Add(value);
+                Count++;
+                return;
             }
 
+            // 先让 MultiHashSet.Add 成功，再挂到字典上：
+            // 否则 value 为 null 时会在字典里留下一个空集合。
+            set = valueComparer != null ? new(valueComparer) : new();
             set.Add(value);
+            dict.Add(key, set);
             Count++;
         }
 
@@ -133,12 +140,13 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 获取指定键所有值的只读容器
+        /// 键为 null 时返回空集合
         /// </summary>
         public IReadOnlyCollection<TValue> this[TKey key]
         {
             get
             {
-                if (dict.TryGetValue(key.ThrowIfNull(), out var set))
+                if (key is not null && dict.TryGetValue(key, out var set))
                     return set;
                 else
                     return Array.Empty<TValue>();
@@ -163,20 +171,22 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 多重字典中是否包含对应的键
+        /// 与 <see cref="Dictionary{TKey,TValue}.ContainsKey"/> 保持一致：键为 null 时返回 false
         /// </summary>
         /// <param name="key">键</param>
         /// <returns>是否包含该键</returns>
-        public bool ContainsKey(TKey key) => dict.ContainsKey(key.ThrowIfNull());
+        public bool ContainsKey(TKey key) => key is not null && dict.ContainsKey(key);
 
         /// <summary>
         /// 判断字典中是否包含某个值
-        /// O(n) 操作
+        /// O(n) 操作；值为 null 时返回 false
         /// </summary>
         /// <param name="value">要判断的值</param>
         /// <returns>是否包含</returns>
         public bool ContainsValue(TValue value)
         {
-            value.ThrowIfNull();
+            if (value is null)
+                return false;
 
             foreach (var set in dict.Values)
                 if (set.Contains(value))
@@ -187,14 +197,18 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 多重字典中是否包含对应的键值对
+        /// 键或值为 null 时返回 false
         /// </summary>
         /// <param name="key">键</param>
         /// <param name="value">值</param>
         /// <returns>是否包含该键值对</returns>
         public bool Contains(TKey key, TValue value)
         {
-            if (dict.TryGetValue(key.ThrowIfNull(), out var set))
-                return set.Contains(value.ThrowIfNull());
+            if (key is null || value is null)
+                return false;
+
+            if (dict.TryGetValue(key, out var set))
+                return set.Contains(value);
 
             return false;
         }
@@ -209,12 +223,13 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 获得指定键中值的数量
+        /// 键为 null 时返回 0
         /// </summary>
         /// <param name="key">键</param>
         /// <returns>值的数量</returns>
-        public int GetValueCountOfKey(TKey key)
+        public int GetCountOfKey(TKey key)
         {
-            if (dict.TryGetValue(key.ThrowIfNull(), out var set))
+            if (key is not null && dict.TryGetValue(key, out var set))
                 return set.Count;
 
             return 0;
@@ -222,14 +237,18 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 获得指定键值对的数量
+        /// 键或值为 null 时返回 0
         /// </summary>
         /// <param name="key">键</param>
         /// <param name="value">值</param>
         /// <returns>指定键值对的数量</returns>
         public int GetCountOfKeyValuePair(TKey key, TValue value)
         {
-            if (dict.TryGetValue(key.ThrowIfNull(), out var set))
-                return set.GetCountOf(value.ThrowIfNull());
+            if (key is null || value is null)
+                return 0;
+
+            if (dict.TryGetValue(key, out var set))
+                return set.GetCountOf(value);
 
             return 0;
         }

@@ -39,6 +39,7 @@ namespace JiksLib.Collections
 
         public SparseSet(IEnumerable<T> collection)
         {
+            collection.ThrowIfNull(nameof(collection));
             InnerBuffer = collection.ToArray();
             indexes = new(InnerBuffer.Length);
 
@@ -120,8 +121,10 @@ namespace JiksLib.Collections
         public int Count { get; private set; }
 
         /// <summary>
-        /// 最大下标
-        /// 空集合为-1
+        /// 已分配过的最大稀疏下标。
+        /// 尚未分配任何下标（新建或 <see cref="Clear"/> 之后）时为 -1；
+        /// 通过 <see cref="RemoveAt"/> / <see cref="Remove"/> 删除元素不会回收该值，
+        /// 因此"空集合"也可能返回一个大于 -1 的历史最大值。
         /// </summary>
         public int MaxIndex { get; private set; }
 
@@ -149,20 +152,7 @@ namespace JiksLib.Collections
         public int Add(T item)
         {
             if (Count >= InnerBuffer.Length)
-            {
-                int capacity;
-
-                try
-                {
-                    capacity = checked((Count + 1) * 2);
-                }
-                catch (OverflowException)
-                {
-                    capacity = int.MaxValue;
-                }
-
-                EnsureCapacity(Math.Max(4, capacity));
-            }
+                EnsureAdditionalCapacity(1);
 
             int newIndex = Count++;
             InnerBuffer[newIndex] = item;
@@ -186,8 +176,7 @@ namespace JiksLib.Collections
         /// 区间，顺序与 <paramref name="items"/> 的枚举顺序一致。
         /// 为避免分配，这里直接返回内部的反向索引表，不要写入其中；
         /// 调用 Remove/RemoveAt/Clear 后该表会被改写，返回的区间随之失效。
-        /// 另外，本方法会先取元素数量、再遍历一次，因此 <paramref name="items"/>
-        /// 必须可以重复枚举；只能枚举一次的序列请先物化。
+        /// 本方法只枚举 <paramref name="items"/> 一次，因此可以接受只能枚举一次的序列。
         /// </remarks>
         /// <param name="items">要添加的元素，不能为 null</param>
         /// <param name="outputIndexList">新元素下标所在的内部列表</param>
@@ -199,34 +188,29 @@ namespace JiksLib.Collections
             out int outputIndexListBegin,
             out int outputIndexCount)
         {
-            int count = items switch
+            items.ThrowIfNull(nameof(items));
+
+            outputIndexList = reversedIndexes;
+            outputIndexListBegin = Count;
+
+            // 已知数量时一次性预留；未知数量时边写边扩容。
+            // 不能先 Count 再枚举，否则对只能枚举一次的序列会得到错误的长度。
+            int knownCount = items switch
             {
                 IReadOnlyCollection<T> roc => roc.Count,
                 ICollection<T> c => c.Count,
                 ICollection c => c.Count,
-                var x => x.Count()
+                _ => -1,
             };
 
-            outputIndexList = reversedIndexes;
-            outputIndexListBegin = Count;
-            outputIndexCount = count;
-
-            if (count == 0) return;
-
-            if (Count + count > InnerBuffer.Length)
-            {
-                int capacity;
-
-                try { capacity = checked(Math.Max(4, (Count + count) * 2)); }
-                catch (OverflowException) { capacity = int.MaxValue; }
-
-                EnsureCapacity(capacity);
-            }
+            if (knownCount > 0)
+                EnsureAdditionalCapacity(knownCount);
 
             foreach (var item in items)
             {
-                int newIndex = Count++;
+                EnsureAdditionalCapacity(1);
 
+                int newIndex = Count++;
                 InnerBuffer[newIndex] = item;
 
                 if (newIndex > MaxIndex)
@@ -236,6 +220,8 @@ namespace JiksLib.Collections
                     MaxIndex = newIndex;
                 }
             }
+
+            outputIndexCount = Count - outputIndexListBegin;
         }
 
         /// <summary>
@@ -287,15 +273,7 @@ namespace JiksLib.Collections
 
             if (items.Count == 0) return;
 
-            if (Count + items.Count > InnerBuffer.Length)
-            {
-                int capacity;
-
-                try { capacity = checked(Math.Max(4, (Count + items.Count) * 2)); }
-                catch (OverflowException) { capacity = int.MaxValue; }
-
-                EnsureCapacity(capacity);
-            }
+            EnsureAdditionalCapacity(items.Count);
 
             Array.Copy(
                 items.Array.ThrowIfNull(nameof(items)),
@@ -329,14 +307,7 @@ namespace JiksLib.Collections
 
             if (InnerBuffer.Length >= capacity) return;
 
-            try
-            {
-                capacity = (capacity / 4 + 1) * 4;
-            }
-            catch (OverflowException)
-            {
-                capacity = int.MaxValue;
-            }
+            capacity = RoundUpCapacity(capacity);
 
             T[] newBuffer = new T[capacity];
             Array.Copy(InnerBuffer, newBuffer, Count);
@@ -346,6 +317,38 @@ namespace JiksLib.Collections
             indexes.EnsureCapacity(capacity);
             reversedIndexes.EnsureCapacity(capacity);
 #endif
+        }
+
+        /// <summary>
+        /// 确保还能再容纳 <paramref name="additional"/> 个元素。
+        /// </summary>
+        void EnsureAdditionalCapacity(int additional)
+        {
+            long required = (long)Count + additional;
+
+            if (required <= InnerBuffer.Length)
+                return;
+
+            EnsureCapacity(Growth(required));
+        }
+
+        /// <summary>
+        /// 计算扩容后的目标容量（至少容纳 <paramref name="required"/> 个元素）。
+        /// 使用 long 计算避免整数溢出。
+        /// </summary>
+        static int Growth(long required)
+        {
+            long target = Math.Max(4L, required * 2);
+            return target > int.MaxValue ? int.MaxValue : (int)target;
+        }
+
+        /// <summary>
+        /// 把容量向上取整到 4 的倍数（保持原有扩容粒度），并防止溢出。
+        /// </summary>
+        static int RoundUpCapacity(int capacity)
+        {
+            long rounded = ((long)capacity / 4 + 1) * 4;
+            return rounded > int.MaxValue ? int.MaxValue : (int)rounded;
         }
 
         /// <summary>
@@ -504,7 +507,7 @@ namespace JiksLib.Collections
             readonly object? IEnumerator.Current => Current;
             public bool MoveNext() => ++currentIndex < sparseSet.Count;
             public void Reset() => currentIndex = -1;
-            public readonly void Dispose() {}
+            public readonly void Dispose() { }
 
             readonly SparseSet<T> sparseSet;
             int currentIndex;
@@ -547,7 +550,7 @@ namespace JiksLib.Collections
             }
 
             public void Reset() => currentIndex = -1;
-            public readonly void Dispose() {}
+            public readonly void Dispose() { }
 
             readonly SparseSet<T> sparseSet;
             int currentIndex;
@@ -560,8 +563,17 @@ namespace JiksLib.Collections
         void ICollection<T>.Add(T item) => Add(item);
         void ICollection<T>.CopyTo(T[] array, int arrayIndex)
         {
-            if (arrayIndex < 0) throw new ArgumentOutOfRangeException();
-            CopyToOrdered(new(array, arrayIndex, array.Length - arrayIndex));
+            array.ThrowIfNull(nameof(array));
+
+            if (arrayIndex < 0)
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+
+            if (array.Length - arrayIndex < Count)
+                throw new ArgumentException(
+                    "Destination array is too small to hold all elements.",
+                    nameof(array));
+
+            CopyToOrdered(new ArraySegment<T>(array, arrayIndex, Count));
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();

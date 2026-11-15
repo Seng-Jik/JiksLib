@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using JiksLib.Extensions;
 
 namespace JiksLib.Collections
 {
@@ -18,17 +19,31 @@ namespace JiksLib.Collections
             this(new Dictionary<TKey, TValue>(), new())
         { }
 
+        /// <summary>
+        /// 拷贝构造：复制键值对结构，不与源字典共享内部存储
+        /// </summary>
+        /// <param name="copyFrom">要拷贝的字典</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="copyFrom"/> 为 null 时抛出</exception>
         public BidirectionalDictionary(
             BidirectionalDictionary<TKey, TValue> copyFrom) :
-            this(copyFrom.sequential, copyFrom.reversed)
+            this(CopySequential(copyFrom), CopyReversed(copyFrom))
         { }
 
+        /// <summary>
+        /// 拷贝构造：复制键值对结构并使用指定的比较器，不与源字典共享内部存储
+        /// </summary>
+        /// <param name="copyFrom">要拷贝的字典</param>
+        /// <param name="keyComparer">键比较器</param>
+        /// <param name="valueComparer">值比较器</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="copyFrom"/> 为 null 时抛出</exception>
         public BidirectionalDictionary(
             BidirectionalDictionary<TKey, TValue> copyFrom,
             IEqualityComparer<TKey> keyComparer,
             IEqualityComparer<TValue> valueComparer) :
             this(
-                new Dictionary<TKey, TValue>(copyFrom.sequential, keyComparer),
+                new Dictionary<TKey, TValue>(
+                    copyFrom.ThrowIfNull(nameof(copyFrom)).sequential,
+                    keyComparer),
                 new(copyFrom.reversed, valueComparer))
         { }
 
@@ -156,9 +171,11 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 是否包含键值对
+        /// 键按 <see cref="KeyComparer"/>、值按 <see cref="ValueComparer"/> 比较
         /// </summary>
         public bool Contains(KeyValuePair<TKey, TValue> item) =>
-            sequential.Contains(item);
+            sequential.TryGetValue(item.Key, out var value)
+            && ValueComparer.Equals(value, item.Value);
 
         /// <summary>
         /// 是否包含键
@@ -273,10 +290,29 @@ namespace JiksLib.Collections
         public IReadOnlyDictionary<TValue, TKey> Reversed => reversed;
 
         /// <summary>
-        /// 创建反向索引的副本
+        /// 创建反向索引的副本（深拷贝，不与当前字典共享内部存储）
         /// </summary>
         public BidirectionalDictionary<TValue, TKey> CopyAndReverse() =>
-            new(reversed, sequential);
+            new(
+                new Dictionary<TValue, TKey>(reversed),
+                new Dictionary<TKey, TValue>(sequential));
+
+        /// <summary>
+        /// 复制正向字典，同时完成 null 校验
+        /// </summary>
+        static Dictionary<TKey, TValue> CopySequential(
+            BidirectionalDictionary<TKey, TValue> source)
+        {
+            source.ThrowIfNull(nameof(source));
+            return new Dictionary<TKey, TValue>(source.sequential);
+        }
+
+        /// <summary>
+        /// 复制反向字典
+        /// </summary>
+        static Dictionary<TValue, TKey> CopyReversed(
+            BidirectionalDictionary<TKey, TValue> source) =>
+            new(source.reversed);
 
         #region Details
 

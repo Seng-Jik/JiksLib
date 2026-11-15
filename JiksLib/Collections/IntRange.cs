@@ -39,11 +39,12 @@ namespace JiksLib.Collections
         /// <param name="includeMin">是否包含最小值</param>
         /// <param name="max">最大值</param>
         /// <param name="includeMax">是否包含最大值</param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">当 <paramref name="min"/> 大于 <paramref name="max"/> 时抛出</exception>
         public IntRange(int min, bool includeMin, int max, bool includeMax)
         {
             if (min > max)
-                throw new ArgumentException("Min must be less than or equal to Max.");
+                throw new ArgumentException(
+                    "Min must be less than or equal to Max.", nameof(min));
 
             Min = min;
             IncludeMin = includeMin;
@@ -74,15 +75,29 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 该范围内整数的数量
+        /// 当数量超过 <see cref="int.MaxValue"/> 时抛出 <see cref="OverflowException"/>
         /// </summary>
+        /// <exception cref="OverflowException">
+        /// 范围包含的整数数量超过 <see cref="int.MaxValue"/> 时抛出
+        /// </exception>
         public readonly int Count
         {
             get
             {
-                int count = Math.Max(Max - Min - 1, 0);
+                if (Max == Min)
+                    return IncludeMin || IncludeMax ? 1 : 0;
+
+                // 用 long 计算：Max - Min - 1 在 [int.MinValue, int.MaxValue] 上会溢出
+                long count = (long)Max - Min - 1;
+
                 if (IncludeMin) count++;
-                if (IncludeMax && Max != Min) count++;
-                return count;
+                if (IncludeMax) count++;
+
+                if (count > int.MaxValue)
+                    throw new OverflowException(
+                        "The number of integers in this range exceeds Int32.MaxValue.");
+
+                return (int)count;
             }
         }
 
@@ -132,6 +147,8 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 枚举器
+        /// 内部使用 long 游标，避免 Max 为 <see cref="int.MaxValue"/> 时自增回绕导致
+        /// 从 <see cref="int.MinValue"/> 重新枚举整个整数空间。
         /// </summary>
         public struct Enumerator : IEnumerator<int>
         {
@@ -139,24 +156,24 @@ namespace JiksLib.Collections
             {
                 this.range = range;
                 current = -1;
-                started = false;
                 valid = false;
-                // 计算第一个要返回的值
-                if (range.Min == range.Max)
+                nextValue = ComputeStart(range);
+            }
+
+            /// <summary>
+            /// 计算第一个候选值；空区间返回的值会大于上限，从而第一次 MoveNext 即结束。
+            /// </summary>
+            static long ComputeStart(IntRange range)
+            {
+                if (range.Max == range.Min)
                 {
-                    // 处理相等情况
-                    if (range.IncludeMin || range.IncludeMax)
-                        nextValue = range.Min;
-                    else
-                        nextValue = range.Min + 1; // 确保无元素
+                    // 单点区间：只要任意一端包含，该点就属于范围
+                    return range.IncludeMin || range.IncludeMax
+                        ? range.Min
+                        : (long)range.Max + 1;
                 }
-                else
-                {
-                    if (range.IncludeMin)
-                        nextValue = range.Min;
-                    else
-                        nextValue = range.Min + 1;
-                }
+
+                return range.IncludeMin ? range.Min : (long)range.Min + 1;
             }
 
             public int Current
@@ -173,75 +190,33 @@ namespace JiksLib.Collections
 
             public bool MoveNext()
             {
-                if (!started)
+                long max = range.IncludeMax ? range.Max : (long)range.Max - 1;
+
+                if (nextValue > max)
                 {
-                    started = true;
+                    valid = false;
+                    current = -1;
+                    return false;
                 }
 
-                valid = false;
-
-                // 处理min == max的特殊情况
-                if (range.Min == range.Max
-                    && nextValue == range.Min
-                    && (range.IncludeMin || range.IncludeMax))
-                {
-                    current = nextValue;
-                    nextValue++;
-                    valid = true;
-                    return true;
-                }
-
-                if (nextValue < range.Max)
-                {
-                    current = nextValue;
-                    nextValue++;
-                    valid = true;
-                    return true;
-                }
-
-                if (nextValue == range.Max
-                    && range.IncludeMax
-                    && range.Min != range.Max)
-                {
-                    current = nextValue;
-                    nextValue++;
-                    valid = true;
-                    return true;
-                }
-
-                current = -1;
-                valid = false;
-                return false;
+                current = (int)nextValue;
+                nextValue++;
+                valid = true;
+                return true;
             }
 
             public void Reset()
             {
                 current = -1;
-                started = false;
                 valid = false;
-                // 重新计算nextValue
-                if (range.Min == range.Max)
-                {
-                    if (range.IncludeMin || range.IncludeMax)
-                        nextValue = range.Min;
-                    else
-                        nextValue = range.Min + 1;
-                }
-                else
-                {
-                    if (range.IncludeMin)
-                        nextValue = range.Min;
-                    else
-                        nextValue = range.Min + 1;
-                }
+                nextValue = ComputeStart(range);
             }
 
             public void Dispose() { }
 
             readonly IntRange range;
             int current;
-            int nextValue;
-            bool started;
+            long nextValue;
             bool valid;
         }
     }

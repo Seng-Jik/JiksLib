@@ -5,7 +5,7 @@ namespace JiksLib.Collections
     /// <summary>
     /// 浮点数范围
     /// </summary>
-    public readonly struct FloatRange
+    public readonly struct FloatRange : IEquatable<FloatRange>
     {
         /// <summary>
         /// 最小值
@@ -34,11 +34,20 @@ namespace JiksLib.Collections
         /// <param name="includeMin">是否包含最小值</param>
         /// <param name="max">最大值</param>
         /// <param name="includeMax">是否包含最大值</param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">
+        /// 当 <paramref name="min"/> 大于 <paramref name="max"/>，或任一值为 NaN 时抛出
+        /// </exception>
         public FloatRange(float min, bool includeMin, float max, bool includeMax)
         {
+            if (float.IsNaN(min))
+                throw new ArgumentException("Min cannot be NaN.", nameof(min));
+
+            if (float.IsNaN(max))
+                throw new ArgumentException("Max cannot be NaN.", nameof(max));
+
             if (min > max)
-                throw new ArgumentException("Min must be less than or equal to Max.");
+                throw new ArgumentException(
+                    "Min must be less than or equal to Max.", nameof(min));
 
             Min = min;
             IncludeMin = includeMin;
@@ -66,6 +75,37 @@ namespace JiksLib.Collections
             if (IncludeMax && value == Max) return true;
             return false;
         }
+
+        /// <summary>
+        /// 判断两个浮点数范围是否相等
+        /// 比较四个字段；由于构造时拒绝 NaN，这里可以直接使用 float 的相等比较
+        /// </summary>
+        public bool Equals(FloatRange other) =>
+            Min == other.Min
+            && IncludeMin == other.IncludeMin
+            && Max == other.Max
+            && IncludeMax == other.IncludeMax;
+
+        public override bool Equals(object? obj) =>
+            obj is FloatRange other && Equals(other);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                // ±0 相等但 GetHashCode 在部分 TFM 上不同，这里归一化以保证 Equals/GetHashCode 契约
+                hash = hash * 23 + (Min == 0f ? 0 : Min.GetHashCode());
+                hash = hash * 23 + IncludeMin.GetHashCode();
+                hash = hash * 23 + (Max == 0f ? 0 : Max.GetHashCode());
+                hash = hash * 23 + IncludeMax.GetHashCode();
+                return hash;
+            }
+        }
+
+        public static bool operator ==(FloatRange left, FloatRange right) => left.Equals(right);
+
+        public static bool operator !=(FloatRange left, FloatRange right) => !left.Equals(right);
 
         public override string ToString()
         {

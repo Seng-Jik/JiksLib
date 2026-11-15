@@ -434,12 +434,10 @@ namespace JiksLib.Collections
 
                 cache.Remove(key);
 
-                int count = order.Count;
-                for (int i = 0; i < count; ++i)
+                if (orderNodes.TryGetValue(key, out var node))
                 {
-                    var queuedKey = order.Dequeue();
-                    if (!EqualityComparer<TKey>.Default.Equals(queuedKey, key))
-                        order.Enqueue(queuedKey);
+                    order.Remove(node);
+                    orderNodes.Remove(key);
                 }
 
                 return true;
@@ -447,16 +445,33 @@ namespace JiksLib.Collections
 
             protected override void Put(TKey key, TValue value)
             {
-                if (cache.Count >= capacity)
+                if (cache.ContainsKey(key))
                 {
-                    var oldest = order.Dequeue();
-                    var evictedValue = cache[oldest];
-                    cache.Remove(oldest);
-                    PublishEvictedEvent(oldest, evictedValue);
+                    // 已存在：只更新值，不改变插入顺序，也不重复入队
+                    cache[key] = value;
+                    return;
+                }
+
+                bool evicted = false;
+                TKey evictedKey = default!;
+                TValue evictedValue = default!;
+
+                if (cache.Count >= capacity && order.First is { } oldestNode)
+                {
+                    evictedKey = oldestNode.Value;
+                    order.RemoveFirst();
+                    orderNodes.Remove(evictedKey);
+                    evictedValue = cache[evictedKey];
+                    cache.Remove(evictedKey);
+                    evicted = true;
                 }
 
                 cache[key] = value;
-                order.Enqueue(key);
+                orderNodes[key] = order.AddLast(key);
+
+                // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
+                if (evicted)
+                    PublishEvictedEvent(evictedKey, evictedValue);
             }
 
             protected override void RemoveAllEntries(
@@ -470,12 +485,14 @@ namespace JiksLib.Collections
 
                 cache.Clear();
                 order.Clear();
+                orderNodes.Clear();
             }
 
             public override int Count => cache.Count;
 
             readonly Dictionary<TKey, TValue> cache = new();
-            readonly Queue<TKey> order = new();
+            readonly LinkedList<TKey> order = new();
+            readonly Dictionary<TKey, LinkedListNode<TKey>> orderNodes = new();
             readonly int capacity;
         }
 
@@ -543,17 +560,35 @@ namespace JiksLib.Collections
 
             protected override void Put(TKey key, TValue value)
             {
+                if (cache.TryGetValue(key, out var existing))
+                {
+                    // 已存在：更新值并刷新为最近使用，不重复插入节点
+                    accessOrder.Remove(existing.node);
+                    accessOrder.AddLast(existing.node);
+                    cache[key] = (value, existing.node);
+                    return;
+                }
+
+                bool evicted = false;
+                TKey evictedKey = default!;
+                TValue evictedValue = default!;
+
                 if (cache.Count >= capacity)
                 {
                     var oldest = accessOrder.First!.Value;
                     accessOrder.RemoveFirst();
-                    var evictedValue = cache[oldest].value;
+                    evictedKey = oldest;
+                    evictedValue = cache[oldest].value;
                     cache.Remove(oldest);
-                    PublishEvictedEvent(oldest, evictedValue);
+                    evicted = true;
                 }
 
                 var node = accessOrder.AddLast(key);
                 cache[key] = (value, node);
+
+                // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
+                if (evicted)
+                    PublishEvictedEvent(evictedKey, evictedValue);
             }
 
             protected override void RemoveAllEntries(
@@ -670,6 +705,17 @@ namespace JiksLib.Collections
 
             protected override void Put(TKey key, TValue value)
             {
+                if (cache.TryGetValue(key, out var existing))
+                {
+                    // 已存在：只更新值，不改变访问频率与桶位置
+                    existing.value = value;
+                    return;
+                }
+
+                bool evicted = false;
+                TKey evictedKey = default!;
+                TValue evictedValue = default!;
+
                 if (cache.Count >= capacity)
                 {
                     var minList = freqLists[minFrequency];
@@ -678,9 +724,10 @@ namespace JiksLib.Collections
                     if (minList.Count == 0)
                         freqLists.Remove(minFrequency);
 
-                    var evictedValue = cache[oldest].value;
+                    evictedKey = oldest;
+                    evictedValue = cache[oldest].value;
                     cache.Remove(oldest);
-                    PublishEvictedEvent(oldest, evictedValue);
+                    evicted = true;
                 }
 
                 minFrequency = 1;
@@ -692,6 +739,10 @@ namespace JiksLib.Collections
 
                 var node = list.AddLast(key);
                 cache[key] = new LfuEntry(value, 1, node);
+
+                // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
+                if (evicted)
+                    PublishEvictedEvent(evictedKey, evictedValue);
             }
 
             protected override void RemoveAllEntries(
@@ -711,7 +762,7 @@ namespace JiksLib.Collections
 
             sealed class LfuEntry
             {
-                public readonly TValue value;
+                public TValue value;
                 public int frequency;
                 public LinkedListNode<TKey> listNode;
 

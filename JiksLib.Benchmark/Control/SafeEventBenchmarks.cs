@@ -10,7 +10,7 @@ namespace JiksLib.Benchmark.Control
     /// SafeEvent 性能基准测试。
     /// 覆盖普通发布、监听器数量以及监听器增删路径。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class SafeEventBenchmarks
     {
@@ -141,7 +141,7 @@ namespace JiksLib.Benchmark.Control
     /// SafeEvent 递归发布与发布期间增删监听器的基准测试。
     /// 这两个路径都会走延迟队列，因此单独作为一组测量。
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class SafeEventRecursiveBenchmarks
     {

@@ -14,7 +14,7 @@ namespace JiksLib.Benchmark.Collections
     /// 因此 Allocated 与 Mean 是「整轮 N 次操作」的值；要比较单次操作，请除以当前的 ElementCount。
     /// BDN 的 [Benchmark(OperationsPerInvoke = N)] 只接受编译期常量，无法随 [Params] 变化，所以这里用注释说明而不是该特性。
     /// </remarks>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class SparseSetBenchmarks
     {

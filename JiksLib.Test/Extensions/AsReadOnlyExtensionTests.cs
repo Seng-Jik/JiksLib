@@ -217,14 +217,29 @@ namespace JiksLib.Test.Extensions
         }
 
         [Test]
-        public void AsReadOnly_NullList_ThrowsArgumentNullException()
+        public void AsReadOnly_NullList_InstanceCall_ThrowsNullReferenceException()
         {
             // Arrange
             List<string>? nullList = null;
 
             // Act & Assert
-            // Extension method on null instance throws NullReferenceException
+            // 已知缺陷 P2-30：List<T> 自带的实例方法 AsReadOnly() 会遮蔽扩展方法，
+            // 因此以实例语法调用时得到的是 NullReferenceException 而不是扩展的
+            // ArgumentNullException。此用例仅记录当前行为，修复后应删除。
             Assert.That(() => nullList!.AsReadOnly(), Throws.TypeOf<NullReferenceException>());
+        }
+
+        [Test]
+        public void AsReadOnly_NullList_StaticCall_ThrowsArgumentNullException()
+        {
+            // Arrange
+            List<string>? nullList = null;
+
+            // Act & Assert
+            // 扩展方法本身的行为是正确的：显式静态调用会走 ThrowIfNull
+            Assert.That(
+                () => AsReadOnlyExtension.AsReadOnly<string>(nullList),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]

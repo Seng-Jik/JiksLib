@@ -721,5 +721,67 @@ namespace JiksLib.Test
         }
 
         #endregion
+
+        #region 端序 x 类型矩阵（补充 LittleEndian 覆盖）
+
+        /// <summary>
+        /// 同一数值在大小端下必须产出不同的字节序列，且能原样读回。
+        /// 原测试只覆盖 BigEndian，这里补齐 LittleEndian。
+        /// </summary>
+        [TestCase(0x12345678, new byte[] { 0x12, 0x34, 0x56, 0x78 }, new byte[] { 0x78, 0x56, 0x34, 0x12 })]
+        [TestCase(-1, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(1, new byte[] { 0x00, 0x00, 0x00, 0x01 }, new byte[] { 0x01, 0x00, 0x00, 0x00 })]
+        public void Int32_Endianness_ProducesExpectedBytesAndRoundTrips(
+            int value,
+            byte[] bigEndian,
+            byte[] littleEndian)
+        {
+            var buffer = new byte[4];
+
+            EndianBitConverter.BigEndian.GetBytes(value, new ArraySegment<byte>(buffer));
+            Assert.That(buffer, Is.EqualTo(bigEndian));
+
+            EndianBitConverter.LittleEndian.GetBytes(value, new ArraySegment<byte>(buffer));
+            Assert.That(buffer, Is.EqualTo(littleEndian));
+
+            Assert.That(
+                EndianBitConverter.BigEndian.ToInt32(new ArraySegment<byte>(bigEndian)),
+                Is.EqualTo(value));
+            Assert.That(
+                EndianBitConverter.LittleEndian.ToInt32(new ArraySegment<byte>(littleEndian)),
+                Is.EqualTo(value));
+        }
+
+        [Test]
+        public void Single_RoundTrip_PreservesValue()
+        {
+            const float value = 3.1415927f;
+            var buffer = new byte[4];
+
+            foreach (var converter in new[] { EndianBitConverter.LittleEndian, EndianBitConverter.BigEndian })
+            {
+                converter.GetBytes(value, new ArraySegment<byte>(buffer));
+                Assert.That(
+                    converter.ToSingle(new ArraySegment<byte>(buffer)),
+                    Is.EqualTo(value));
+            }
+        }
+
+        [Test]
+        public void Double_RoundTrip_PreservesValue()
+        {
+            const double value = -2.718281828459045;
+            var buffer = new byte[8];
+
+            foreach (var converter in new[] { EndianBitConverter.LittleEndian, EndianBitConverter.BigEndian })
+            {
+                converter.GetBytes(value, new ArraySegment<byte>(buffer));
+                Assert.That(
+                    converter.ToDouble(new ArraySegment<byte>(buffer)),
+                    Is.EqualTo(value));
+            }
+        }
+
+        #endregion
     }
 }

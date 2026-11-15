@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using JiksLib.Extensions;
 
 namespace JiksLib.Control
 {
@@ -21,22 +22,32 @@ namespace JiksLib.Control
             /// </summary>
             /// <param name="startState">初始状态</param>
             /// <param name="defaultState">当找不到Transition时跳转到此状态</param>
+            /// <exception cref="ArgumentNullException">当 <paramref name="startState"/> 为 null 时抛出</exception>
             public Builder(TState startState, TState? defaultState = null)
             {
-                this.startState = startState;
-                AddState(startState);
+                this.startState = startState.ThrowIfNull(nameof(startState));
+                AddState(this.startState);
 
                 this.defaultState = defaultState;
-                if (defaultState != null)
+
+                // startState 与 defaultState 相同是合法配置，这时只注册一次，
+                // 否则 Dictionary.Add 会因重复键抛异常。
+                if (defaultState != null && !ReferenceEquals(defaultState, this.startState))
                     AddState(defaultState);
             }
 
             /// <summary>
             /// 添加状态
+            /// 重复添加同一状态是幂等的
             /// </summary>
             /// <param name="state">状态对象</param>
-            public void AddState(TState state) =>
-                states.Add(state, null);
+            public void AddState(TState state)
+            {
+                state.ThrowIfNull(nameof(state));
+
+                if (!states.ContainsKey(state))
+                    states.Add(state, null);
+            }
 
             /// <summary>
             /// 添加状态转移
@@ -82,9 +93,40 @@ namespace JiksLib.Control
 
             /// <summary>
             /// 构建有限状态机
+            /// 构建时会复制状态表，因此之后再调用 <see cref="AddState"/> /
+            /// <see cref="AddTransition"/> / <see cref="AddAnyTimeTransition"/>
+            /// 不会影响已经构建的状态机
             /// </summary>
             public FSM<TState, TStateArg, TTransition> Build(TStateArg arg) =>
-                new(states, anyTimeTransitions, defaultState, startState, arg);
+                new(
+                    CopyStates(states),
+                    anyTimeTransitions == null
+                        ? null
+                        : new Dictionary<TTransition, TState>(anyTimeTransitions),
+                    defaultState,
+                    startState,
+                    arg);
+
+            /// <summary>
+            /// 复制状态表，避免构建后继续修改 Builder 影响到已构建的状态机。
+            /// </summary>
+            static Dictionary<TState, Dictionary<TTransition, TState>?> CopyStates(
+                Dictionary<TState, Dictionary<TTransition, TState>?> source)
+            {
+                var copy = new Dictionary<TState, Dictionary<TTransition, TState>?>(
+                    source.Count);
+
+                foreach (var pair in source)
+                {
+                    copy.Add(
+                        pair.Key,
+                        pair.Value == null
+                            ? null
+                            : new Dictionary<TTransition, TState>(pair.Value));
+                }
+
+                return copy;
+            }
 
             readonly Dictionary<TState, Dictionary<TTransition, TState>?> states = new();
             Dictionary<TTransition, TState>? anyTimeTransitions = new();
@@ -172,6 +214,7 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 当状态转移时触发该事件
+        /// 事件触发时 <see cref="CurrentState"/> 已经是新状态
         /// </summary>
         public event OnStateSwitchHandler? OnStateSwitch;
 
@@ -182,19 +225,25 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 重置状态机
+        /// 即使 OnReset 回调抛出异常，也会保证初始状态的 OnEnter 被调用
         /// </summary>
         public void Reset()
         {
             var lastState = CurrentState;
-            CurrentState.OnExit(new(), null);
+            lastState.OnExit(new(), null);
             CurrentState = startState;
 
-            foreach (var i in states.Keys)
-                i.OnReset(lastState, startState);
+            try
+            {
+                foreach (var i in states.Keys)
+                    i.OnReset(lastState, startState);
 
-            OnReset?.Invoke();
-
-            CurrentState.OnEnter(null, new());
+                OnReset?.Invoke();
+            }
+            finally
+            {
+                CurrentState.OnEnter(null, new());
+            }
         }
 
         private FSM(
@@ -209,10 +258,12 @@ namespace JiksLib.Control
             this.defaultState = defaultState;
             this.startState = startState;
 
+            // 先设置 CurrentState，保证 OnBuild 期间读取 CurrentState 得到的是初始状态而不是 null
+            CurrentState = startState;
+
             foreach (var s in this.states.Keys)
                 s.OnBuild(this, arg);
 
-            CurrentState = startState;
             CurrentState.OnEnter(null, new());
         }
 
@@ -230,13 +281,28 @@ namespace JiksLib.Control
             return false;
         }
 
+        /// <summary>
+        /// 执行一次状态切换。
+        /// 顺序为：旧状态 OnExit → 更新 CurrentState → 触发 OnStateSwitch → 新状态 OnEnter。
+        /// OnEnter 放在 finally 中，即使事件处理器抛出异常，新状态也一定会完成进入，
+        /// 避免出现"旧状态已退出、新状态未进入"的半切换状态。
+        /// </summary>
         void Switch(TTransition? transition, TState nextState)
         {
             var oldState = CurrentState;
-            CurrentState.OnExit(transition, nextState);
-            OnStateSwitch?.Invoke(CurrentState, transition, nextState);
+
+            oldState.OnExit(transition, nextState);
+
             CurrentState = nextState;
-            CurrentState.OnEnter(oldState, transition);
+
+            try
+            {
+                OnStateSwitch?.Invoke(oldState, transition, nextState);
+            }
+            finally
+            {
+                nextState.OnEnter(oldState, transition);
+            }
         }
 
         readonly Dictionary<TState, Dictionary<TTransition, TState>?> states = new();

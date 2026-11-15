@@ -94,9 +94,11 @@ namespace JiksLib.Test.Control
 
             // Act
             builder.AddState(stateB);
+            var fsm = builder.Build(default(UnitType));
 
-            // Assert - 没有异常即通过
-            Assert.Pass();
+            // Assert - 状态已注册：可以直接切换过去
+            Assert.DoesNotThrow(() => fsm.Switch(stateB));
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
         }
 
         [Test]
@@ -110,9 +112,11 @@ namespace JiksLib.Test.Control
 
             // Act
             builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            var fsm = builder.Build(default(UnitType));
 
-            // Assert - 没有异常即通过
-            Assert.Pass();
+            // Assert - 转移表已生效
+            Assert.That(fsm.Switch(TestTransition.GoToB), Is.True);
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
         }
 
         [Test]
@@ -152,9 +156,11 @@ namespace JiksLib.Test.Control
 
             // Act
             builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateA);
+            var fsm = builder.Build(default(UnitType));
 
-            // Assert - 没有异常即通过
-            Assert.Pass();
+            // Assert - 任意状态转移已生效（从初始状态 A 出发）
+            Assert.That(fsm.Switch(TestTransition.AnyTimeTransition), Is.True);
+            Assert.That(fsm.CurrentState, Is.SameAs(stateA));
         }
 
         [Test]
@@ -462,17 +468,13 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Build_WithInvalidStartState_ThrowsArgumentException()
+        public void Builder_WithNullStartState_ThrowsArgumentNullException()
         {
-            // Arrange
-            var stateA = new TestState("A");
-            var stateB = new TestState("B");
-            // 创建builder时使用stateA作为startState，stateB未添加
-            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
-            // 尝试构建，应该成功，因为startState已添加
-            // 现在无法测试无效的startState，因为startState在构造函数中已添加
-            // 此测试已过时，保留为无操作
-            Assert.Pass();
+            // 构造函数已把 startState 注册进状态表，因此"未注册的 startState"不再可能出现；
+            // 这里改为验证新增的 null 校验。
+            Assert.That(
+                () => new FSM<TestState, UnitType, TestTransition>.Builder(null!),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]
@@ -624,14 +626,15 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Builder_AddState_DuplicateState_ThrowsArgumentException()
+        public void Builder_AddState_DuplicateState_IsIdempotent()
         {
             // Arrange
             var stateA = new TestState("A");
             var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA); // 已经添加了stateA
 
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => builder.AddState(stateA));
+            // Act & Assert - 重复添加同一状态是幂等的，不应抛异常，也不应影响后续构建
+            Assert.DoesNotThrow(() => builder.AddState(stateA));
+            Assert.DoesNotThrow(() => builder.Build(default(UnitType)));
         }
 
         [Test]

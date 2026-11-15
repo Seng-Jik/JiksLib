@@ -324,7 +324,7 @@ namespace JiksLib.Control
             /// <summary>
             /// 发布事件
             /// </summary>
-            /// <param name="@event">事件对象</param>
+            /// <param name="event">事件对象</param>
             /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
             public void Publish(
                 TBaseEvent @event,

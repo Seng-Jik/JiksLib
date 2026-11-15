@@ -41,6 +41,8 @@ namespace JiksLib.Text
         {
             if (!leaveOpen)
                 csv.Dispose();
+
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

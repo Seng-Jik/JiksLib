@@ -80,7 +80,7 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.Count, Is.EqualTo(1));
             Assert.That(dict.ContainsKey("key1"), Is.True);
             Assert.That(dict.Contains("key1", 100), Is.True);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(1));
             Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(1));
         }
 
@@ -100,7 +100,7 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.ContainsKey("key1"), Is.True);
             Assert.That(dict.Contains("key1", 100), Is.True);
             Assert.That(dict.Contains("key1", 200), Is.True);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(3));
             Assert.That(dict.GetCountOfKeyValuePair("key1", 100), Is.EqualTo(2));
             Assert.That(dict.GetCountOfKeyValuePair("key1", 200), Is.EqualTo(1));
         }
@@ -120,8 +120,8 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.Count, Is.EqualTo(3));
             Assert.That(dict.ContainsKey("key1"), Is.True);
             Assert.That(dict.ContainsKey("key2"), Is.True);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(1));
-            Assert.That(dict.GetValueCountOfKey("key2"), Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKey("key2"), Is.EqualTo(2));
         }
 
         [Test]
@@ -236,14 +236,18 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Remove_NullValue_ThrowsArgumentNullException()
+        public void Remove_NullValue_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, string>();
             dict.Add("key1", "value1");
 
-            // Act & Assert
-            Assert.That(() => dict.Remove("key1", null!), Throws.ArgumentNullException);
+            // Act
+            var removed = dict.Remove("key1", null!);
+
+            // Assert - 与 MultiHashSet.Remove(null) 一致：返回 false 而不是抛异常
+            Assert.That(removed, Is.False);
+            Assert.That(dict.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -339,13 +343,16 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Indexer_NullKey_ThrowsArgumentNullException()
+        public void Indexer_NullKey_ReturnsEmpty()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
 
-            // Act & Assert
-            Assert.That(() => dict[null!], Throws.ArgumentNullException);
+            // Act
+            var values = dict[null!];
+
+            // Assert - null 键视为不存在，返回空集合
+            Assert.That(values, Is.Empty);
         }
 
         [Test]
@@ -407,13 +414,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void ContainsKey_NullKey_ThrowsArgumentNullException()
+        public void ContainsKey_NullKey_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
 
             // Act & Assert
-            Assert.That(() => dict.ContainsKey(null!), Throws.ArgumentNullException);
+            // 与 Dictionary<TKey,TValue>.ContainsKey(null) 一致：返回 false
+            Assert.That(dict.ContainsKey(null!), Is.False);
         }
 
         [Test]
@@ -441,13 +449,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void ContainsValue_NullValue_ThrowsArgumentNullException()
+        public void ContainsValue_NullValue_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, string>();
 
             // Act & Assert
-            Assert.That(() => dict.ContainsValue(null!), Throws.ArgumentNullException);
+            // 与 Dictionary.ContainsValue(null) 一致：返回 false
+            Assert.That(dict.ContainsValue(null!), Is.False);
         }
 
         [Test]
@@ -547,7 +556,7 @@ namespace JiksLib.Test.Collections
             // Act & Assert
             Assert.That(dict.ContainsKey("key"), Is.True);
             Assert.That(dict.Contains("key", 100), Is.True);
-            Assert.That(dict.GetValueCountOfKey("key"), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKey("key"), Is.EqualTo(1));
         }
 
         [Test]
@@ -622,7 +631,7 @@ namespace JiksLib.Test.Collections
             Assert.That(clone.Contains("key1", 100), Is.True);
             Assert.That(clone.Contains("key1", 200), Is.True);
             Assert.That(clone.Contains("key1", 300), Is.False);
-            Assert.That(clone.GetValueCountOfKey("key1"), Is.EqualTo(2));
+            Assert.That(clone.GetCountOfKey("key1"), Is.EqualTo(2));
         }
 
         [Test]
@@ -643,7 +652,7 @@ namespace JiksLib.Test.Collections
             Assert.That(original.Contains("key1", 100), Is.True);
             Assert.That(original.Contains("key1", 200), Is.True);
             Assert.That(original.Contains("key1", 300), Is.False);
-            Assert.That(original.GetValueCountOfKey("key1"), Is.EqualTo(2));
+            Assert.That(original.GetCountOfKey("key1"), Is.EqualTo(2));
         }
 
         [Test]
@@ -688,17 +697,17 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void GetValueCountOfKey_NonExistentKey_ReturnsZero()
+        public void GetCountOfKey_NonExistentKey_ReturnsZero()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
 
             // Act & Assert
-            Assert.That(dict.GetValueCountOfKey("nonexistent"), Is.EqualTo(0));
+            Assert.That(dict.GetCountOfKey("nonexistent"), Is.EqualTo(0));
         }
 
         [Test]
-        public void GetValueCountOfKeyValuePair_NonExistentPair_ReturnsZero()
+        public void GetCountOfKeyValuePair_NonExistentPair_ReturnsZero()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
@@ -734,7 +743,7 @@ namespace JiksLib.Test.Collections
             Assert.That(dict.ContainsKey("b"), Is.False);
             Assert.That(dict.ContainsKey("c"), Is.False);
             Assert.That(dict.ContainsKey("d"), Is.True);
-            Assert.That(dict.GetValueCountOfKey("d"), Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKey("d"), Is.EqualTo(2));
             Assert.That(dict.GetCountOfKeyValuePair("d", 6), Is.EqualTo(2));
         }
 
@@ -1068,7 +1077,7 @@ namespace JiksLib.Test.Collections
             // Assert
             Assert.That(dict.Count, Is.EqualTo(3));
             Assert.That(dict.ContainsKey("key"), Is.True);
-            Assert.That(dict.GetValueCountOfKey("KEY"), Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKey("KEY"), Is.EqualTo(3));
             Assert.That(dict.GetCountOfKeyValuePair("Key", 100), Is.EqualTo(1));
 
             // Remove using different casing
@@ -1128,7 +1137,7 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void GetValueCountOfKey_AfterRemovingValues_ReturnsUpdatedCount()
+        public void GetCountOfKey_AfterRemovingValues_ReturnsUpdatedCount()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
@@ -1137,35 +1146,35 @@ namespace JiksLib.Test.Collections
             dict.Add("key1", 300);
 
             // Act & Assert - initial count
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(3));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(3));
 
             // Remove one value
             dict.Remove("key1", 200);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(2));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(2));
 
             // Remove another value
             dict.Remove("key1", 100);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(1));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(1));
 
             // Remove last value (key should be removed)
             dict.Remove("key1", 300);
-            Assert.That(dict.GetValueCountOfKey("key1"), Is.EqualTo(0));
+            Assert.That(dict.GetCountOfKey("key1"), Is.EqualTo(0));
             Assert.That(dict.ContainsKey("key1"), Is.False);
         }
 
         [Test]
-        public void Contains_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        public void Contains_KeyValuePairOverload_WithNullKey_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
             var kvp = new KeyValuePair<string, int>(null!, 100);
 
             // Act & Assert
-            Assert.That(() => dict.Contains(kvp), Throws.ArgumentNullException);
+            Assert.That(dict.Contains(kvp), Is.False);
         }
 
         [Test]
-        public void Contains_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        public void Contains_KeyValuePairOverload_WithNullValue_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, string>();
@@ -1173,22 +1182,22 @@ namespace JiksLib.Test.Collections
             var kvp = new KeyValuePair<string, string>("key1", null!);
 
             // Act & Assert
-            Assert.That(() => dict.Contains(kvp), Throws.ArgumentNullException);
+            Assert.That(dict.Contains(kvp), Is.False);
         }
 
         [Test]
-        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullKey_ThrowsArgumentNullException()
+        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullKey_ReturnsZero()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
             var kvp = new KeyValuePair<string, int>(null!, 100);
 
             // Act & Assert
-            Assert.That(() => dict.GetCountOfKeyValuePair(kvp), Throws.ArgumentNullException);
+            Assert.That(dict.GetCountOfKeyValuePair(kvp), Is.EqualTo(0));
         }
 
         [Test]
-        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        public void GetCountOfKeyValuePair_KeyValuePairOverload_WithNullValue_ReturnsZero()
         {
             // Arrange
             var dict = new MultiDictionary<string, string>();
@@ -1196,7 +1205,7 @@ namespace JiksLib.Test.Collections
             var kvp = new KeyValuePair<string, string>("key1", null!);
 
             // Act & Assert
-            Assert.That(() => dict.GetCountOfKeyValuePair(kvp), Throws.ArgumentNullException);
+            Assert.That(dict.GetCountOfKeyValuePair(kvp), Is.EqualTo(0));
         }
 
         [Test]
@@ -1211,7 +1220,7 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void Remove_KeyValuePairOverload_WithNullValue_ThrowsArgumentNullException()
+        public void Remove_KeyValuePairOverload_WithNullValue_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, string>();
@@ -1219,7 +1228,7 @@ namespace JiksLib.Test.Collections
             var kvp = new KeyValuePair<string, string>("key1", null!);
 
             // Act & Assert
-            Assert.That(() => dict.Remove(kvp), Throws.ArgumentNullException);
+            Assert.That(dict.Remove(kvp), Is.False);
         }
 
         [Test]
@@ -1309,14 +1318,14 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void ILookup_Contains_NullKey_ThrowsArgumentNullException()
+        public void ILookup_Contains_NullKey_ReturnsFalse()
         {
             // Arrange
             var dict = new MultiDictionary<string, int>();
             var lookup = (ILookup<string, int>)dict;
 
             // Act & Assert
-            Assert.That(() => lookup.Contains(null!), Throws.ArgumentNullException);
+            Assert.That(lookup.Contains(null!), Is.False);
         }
 
         [Test]

@@ -9,7 +9,7 @@ namespace JiksLib.Benchmark.Control
     /// <summary>
     /// ValueEventBus 性能基准测试
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class ValueEventBusBenchmarks
     {

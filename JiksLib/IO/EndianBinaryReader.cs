@@ -71,11 +71,13 @@ namespace JiksLib.IO
         { }
 
         /// <summary>
-        /// 关闭该读取器及基础流
+        /// 关闭该读取器
+        /// 若 leaveOpen 为 false，则同时关闭基础流
         /// </summary>
         public void Close()
         {
-            BaseStream.Close();
+            if (!leaveOpen)
+                BaseStream.Close();
         }
 
         /// <summary>
@@ -97,14 +99,25 @@ namespace JiksLib.IO
 
         /// <summary>
         /// 读取指定数量的字节，若未能读取足够数量的字节则抛出 EndOfStreamException
+        /// 会循环读取直到读满给定片段，以兼容一次读取可能少于请求数量的流
         /// </summary>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
         public void ReadBytesExactly(ArraySegment<byte> buffer)
         {
-            var read = ReadBytes(buffer);
+            var bufferArray = buffer.Array.ThrowIfNull(nameof(buffer));
+            var offset = buffer.Offset;
+            var remaining = buffer.Count;
 
-            if (read < buffer.Count)
-                throw new EndOfStreamException();
+            while (remaining > 0)
+            {
+                var read = BaseStream.Read(bufferArray, offset, remaining);
+
+                if (read <= 0)
+                    throw new EndOfStreamException();
+
+                offset += read;
+                remaining -= read;
+            }
         }
 
         /// <summary>
@@ -192,6 +205,20 @@ namespace JiksLib.IO
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
         public ulong ReadUInt64() => ReadInt(endian.ToUInt64, 8);
+
+        /// <summary>
+        /// 读取一个单精度浮点数
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
+        public float ReadSingle() => ReadInt(endian.ToSingle, 4);
+
+        /// <summary>
+        /// 读取一个双精度浮点数
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
+        public double ReadDouble() => ReadInt(endian.ToDouble, 8);
 
         /// <summary>
         /// 以指定编码读取一个字符串，字符串的字节长度由前置的 Int32 指定

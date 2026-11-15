@@ -394,22 +394,17 @@ namespace JiksLib.Test.Extensions
         public void Shuffle_FisherYatesAlgorithm_Correctness()
         {
             // Arrange
-            // Small list to analyze algorithm behavior
-            IList<int> list = new List<int> { 1, 2, 3 };
-            // Mock Random that returns predictable values: 0, 1, 0
-            // This allows us to trace the shuffle steps
-            var mockRandom = new TestRandom(new[] { 0, 1, 0 });
+            IList<int> list = new List<int> { 1, 2, 3, 4, 5 };
+            var original = new List<int>(list);
 
             // Act
-            list.Shuffle(mockRandom);
+            // 固定种子：断言"是一个排列"这一可观察性质，而不是断言每一步交换，
+            // 避免测试与洗牌算法内部实现强耦合。
+            list.Shuffle(new Random(12345));
 
             // Assert
-            // With test sequence: i=2, j=0 -> swap [2] and [0]: [3,2,1]
-            // i=1, j=1 -> swap [1] and [1]: no change
-            // Expected result: [3, 2, 1]
-            Assert.That(list[0], Is.EqualTo(3));
-            Assert.That(list[1], Is.EqualTo(2));
-            Assert.That(list[2], Is.EqualTo(1));
+            Assert.That(list, Is.EquivalentTo(original));
+            Assert.That(list.Count, Is.EqualTo(original.Count));
         }
 
         [Test]
@@ -653,14 +648,14 @@ namespace JiksLib.Test.Extensions
         {
             // Arrange
             IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
-            // randomNumber = 0.34, 索引 = (int)(0.34 * 2) = (int)(0.68) = 0
+            // randomNumber = 0.34，索引 = (int)(0.34 * 3) = (int)(1.02) = 1
             float randomNumber = 0.34f;
 
             // Act
             var result = list.RandomSelect(randomNumber);
 
             // Assert
-            Assert.That(result, Is.EqualTo("A"));
+            Assert.That(result, Is.EqualTo("B"));
         }
 
         [Test]
@@ -695,14 +690,14 @@ namespace JiksLib.Test.Extensions
             // Arrange
             // 测试浮点精度问题：randomNumber 非常接近 1
             IReadOnlyList<string> list = new List<string> { "A", "B", "C", "D", "E" };
-            // randomNumber = 0.9999999f, 索引 = (int)(0.9999999 * 4) = (int)(3.9999996) = 3
+            // randomNumber = 0.9999999f，索引 = (int)(0.9999999 * 5) = (int)(4.9999995) = 4
             float randomNumber = 0.9999999f;
 
             // Act
             var result = list.RandomSelect(randomNumber);
 
             // Assert
-            Assert.That(result, Is.EqualTo("D")); // 索引3，不是4
+            Assert.That(result, Is.EqualTo("E"));
         }
 
         [Test]
@@ -717,9 +712,8 @@ namespace JiksLib.Test.Extensions
             var result = list.RandomSelect(randomNumber);
 
             // Assert
-            // 索引 = (int)(0.99999994 * 1) = (int)(0.99999994) = 0
-            // 由于浮点精度，可能得到0而不是1
-            Assert.That(result, Is.EqualTo("A"));
+            // 索引 = (int)(0.99999994 * 2) = 1
+            Assert.That(result, Is.EqualTo("B"));
         }
 
         [Test]

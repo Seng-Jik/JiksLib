@@ -184,6 +184,9 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="eventType">要清理的事件类型。</param>
         /// <returns>类型不存在或已成功移除时返回 true；仍有监听器时返回 false。</returns>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="eventType"/> 为 null 时抛出。
+        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// 启用 <c>autoPurgeListenerSlot</c>，或已经创建过 <c>SubPublisher</c> 时抛出。
         /// 后者的限制是永久性的：即使 SubPublisher 已被丢弃，或只创建过其他事件类型的
@@ -192,6 +195,8 @@ namespace JiksLib.Control
         /// </exception>
         public bool PurgeListenerSlot(Type eventType)
         {
+            eventType.ThrowIfNull(nameof(eventType));
+
             if (autoPurgeListenerSlot)
                 throw new InvalidOperationException(
                     "PurgeListenerSlot cannot be called when autoPurgeListenerSlot is enabled.");
@@ -256,14 +261,14 @@ namespace JiksLib.Control
 
         /// <summary>
         /// 事件发布器
-        /// 转换为 ISafeEventPublisher<TConstraint> 后若发布事件会导致事件对象装箱
+        /// 转换为 <c>ISafeEventPublisher&lt;TConstraint&gt;</c> 后若发布事件会导致事件对象装箱
         /// </summary>
         public readonly struct Publisher : ISafeEventPublisher<TConstraint>
         {
             /// <summary>
             /// 发布事件
             /// </summary>
-            /// <param name="@event">事件对象</param>
+            /// <param name="event">事件对象</param>
             /// <param name="exceptionsOutput">事件监听器产生的异常将会被写入到这个列表中，为null则静默忽略异常</param>
             public void Publish<TEvent>(
                 TEvent @event,

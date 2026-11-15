@@ -46,8 +46,9 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 获取指定键对应的值的数量
+        /// 键为 null 时返回 0
         /// </summary>
-        int GetValueCountOfKey(TKey key);
+        int GetCountOfKey(TKey key);
 
         /// <summary>
         /// 获得指定键值对的数量

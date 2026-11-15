@@ -685,7 +685,8 @@ namespace JiksLib.Test.Collections
             // Arrange
             var queue = new JiksLib.Collections.PriorityQueue<int, int>();
             int count = 1000;
-            var random = new Random();
+            // 固定种子，保证失败可复现
+            var random = new Random(12345);
 
             // Act
             for (int i = 0; i < count; i++)
@@ -815,7 +816,7 @@ namespace JiksLib.Test.Collections
             Assert.That(queue.Dequeue(), Is.EqualTo((4, 2))); // 偶数，优先级2（最低）
         }
 
-#if NETCOREAPP
+#if NETCOREAPP && !JIKS_NS21
         [Test]
         public void EnsureCapacity_IncreasesCapacityWhenNeeded()
         {

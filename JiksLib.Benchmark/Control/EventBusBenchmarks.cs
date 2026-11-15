@@ -9,7 +9,7 @@ namespace JiksLib.Benchmark.Control
     /// <summary>
     /// EventBus 性能基准测试
     /// </summary>
-    [SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1)]
+    [SimpleJob(RuntimeMoniker.Net10_0)]
     [MemoryDiagnoser]
     public class EventBusBenchmarks
     {
@@ -17,6 +17,13 @@ namespace JiksLib.Benchmark.Control
         private EventBus<TestEvent>.Publisher publisher;
         private List<JiksLib.Control.EventHandler<TestEvent>> listeners = null!;
         private List<JiksLib.Control.EventHandler<DerivedTestEvent>> derivedListeners = null!;
+
+        // 预先创建事件对象：避免把事件分配计入发布路径的 Allocated 指标
+        private readonly TestEvent testEvent = new() { Value = 42 };
+        private readonly DerivedTestEvent derivedEvent = new() { Value = 42, Message = "Test" };
+
+        // 监听器写入该字段，保证发布过程不会被 JIT 当作无副作用代码消除
+        private long invocationCount;
 
         [Params(1, 10, 100, 1000)]
         public int ListenerCount { get; set; }
@@ -30,11 +37,14 @@ namespace JiksLib.Benchmark.Control
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)
             {
-                int index = i;
-                listeners.Add(e => { /* 空操作 */ });
-                derivedListeners.Add(e => { /* 空操作 */ });
+                listeners.Add(OnEvent);
+                derivedListeners.Add(OnDerivedEvent);
             }
         }
+
+        void OnEvent(TestEvent e) => invocationCount++;
+
+        void OnDerivedEvent(DerivedTestEvent e) => invocationCount++;
 
         [IterationSetup]
         public void IterationSetup()
@@ -170,6 +180,9 @@ namespace JiksLib.Benchmark.Control
         {
             listeners.Clear();
             derivedListeners.Clear();
+
+            // 消费计数器，防止整个发布路径被 JIT 判定为无副作用
+            GC.KeepAlive(invocationCount);
         }
 
         /// <summary>
@@ -251,8 +264,7 @@ namespace JiksLib.Benchmark.Control
         [Benchmark]
         public void PublishEvent_NoListeners()
         {
-            var evt = new TestEvent { Value = 42 };
-            publisher.Publish(evt, null);
+            publisher.Publish(testEvent, null);
         }
 
         /// <summary>
@@ -263,8 +275,7 @@ namespace JiksLib.Benchmark.Control
         public void PublishEvent_WithListeners()
         {
             // 发布事件（监听器已在 IterationSetup 中添加）
-            var evt = new TestEvent { Value = 42 };
-            publisher.Publish(evt, null);
+            publisher.Publish(testEvent, null);
         }
 
         /// <summary>
@@ -275,8 +286,7 @@ namespace JiksLib.Benchmark.Control
         public void PublishDerivedEvent_WithBaseListeners()
         {
             // 发布派生类事件（监听器已在 IterationSetup 中添加）
-            var evt = new DerivedTestEvent { Value = 42, Message = "Test" };
-            publisher.Publish(evt, null);
+            publisher.Publish(derivedEvent, null);
         }
 
         /// <summary>
@@ -286,13 +296,9 @@ namespace JiksLib.Benchmark.Control
         [Benchmark]
         public void PublishEvent_MixedListeners()
         {
-            // 发布基类事件（监听器已在 IterationSetup 中添加）
-            var baseEvt = new TestEvent { Value = 42 };
-            publisher.Publish(baseEvt, null);
-
-            // 发布派生类事件（监听器已在 IterationSetup 中添加）
-            var derivedEvt = new DerivedTestEvent { Value = 42, Message = "Test" };
-            publisher.Publish(derivedEvt, null);
+            // 发布基类事件与派生类事件（监听器已在 IterationSetup 中添加）
+            publisher.Publish(testEvent, null);
+            publisher.Publish(derivedEvent, null);
         }
     }
 }

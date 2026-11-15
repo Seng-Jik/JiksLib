@@ -2,11 +2,11 @@
 
 C# / .NET 工具库，有意保持了与 Unity 2022 的兼容性，提供了在游戏开发实践中常用的工具。
 
-JiksLib 把游戏开发中反复出现的一类底层工具收敛到一处：数据结构与集合、事件分发、有限状态机、服务定位、二进制读写、CSV 读写，以及字符串和集合扩展方法。库本体不依赖任何第三方包，同一份源码同时面向 .NET 10、.NET 11、.NET Framework 4.8 与 .NET Standard 2.1（Unity 2022 可直接引用），并以 MIT 许可证发布。
+JiksLib 把游戏开发中反复出现的一类底层工具收敛到一处：数据结构与集合、事件分发、有限状态机、服务定位、二进制读写、CSV 读写，以及字符串和集合扩展方法。库本体运行时零依赖（不引用任何 NuGet 包；`net48` 目标在构建期会由 SDK 自动引入参考程序集包，不随产物分发），同一份源码同时面向 .NET 10、.NET 11、.NET Framework 4.8 与 .NET Standard 2.1（Unity 2022 可直接引用），并以 MIT 许可证发布。
 
 ## 设计取向
 
-- **零依赖**：`JiksLib` 项目不引用任何 NuGet 包，可作为源码直接放入 Unity 工程或随程序集分发。
+- **零依赖**：`JiksLib` 运行时零依赖（不引用任何 NuGet 包；`net48` 目标在构建期会由 SDK 自动引入参考程序集包，不随产物分发），可作为源码直接放入 Unity 工程或随程序集分发。
 - **少分配**：热路径尽量使用 `ArraySegment<byte>`、结构体枚举器和结构体事件发布器，减少装箱与临时对象；`ValueEventBus` 专为值类型事件设计，正是为了避免发布过程中的装箱。
 - **显式契约**：可能失败的操作提供 `Try*` 形式，参数校验统一走 `ThrowIfNull`，异常类型与消息明确。
 - **可验证**：`JiksLib.Test` 用 NUnit 覆盖各模块，`JiksLib.Benchmark` 用 BenchmarkDotNet 度量关键路径。
@@ -16,27 +16,30 @@ JiksLib 把游戏开发中反复出现的一类底层工具收敛到一处：数
 
 | 项目 | 目标框架 | 说明 |
 | --- | --- | --- |
-| `JiksLib` | `net10.0`、`net11.0`、`net48`、`netstandard2.1` | 库本体，使用 C# 9 语法，不依赖第三方包 |
-| `JiksLib.Test` | `net10.0`、`net11.0`、`net48` | NUnit 单元测试 |
-| `JiksLib.Benchmark` | `net10.0`、`net11.0`、`net48` | BenchmarkDotNet 基准测试 |
+| `JiksLib` | `net10.0`、`net11.0`、`net48`、`netstandard2.1` | 库本体，使用 C# 9 语法，运行时零依赖 |
+| `JiksLib.Test` | `net10.0`、`net11.0`、`net48` | NUnit 单元测试；传 `-p:JiksLibTargetFramework=netstandard2.1` 时，net10/net11 改为引用库的 netstandard2.1 产物，用同一套测试覆盖 Unity 目标 |
+| `JiksLib.Benchmark` | `net10.0`、`net11.0`、`net48` | BenchmarkDotNet 基准测试；多目标是为了编译验证，基准实际只在 .NET 10 上运行（`RuntimeMoniker.Net10_0`） |
 
 ## 仓库结构
 
 | 路径 | 内容 |
 | --- | --- |
 | `JiksLib/` | 库本体，按命名空间分目录 |
-| `JiksLib.Test/` | 单元测试 |
+| `JiksLib.Test/` | 单元测试（含 netstandard2.1 产物的兼容运行） |
 | `JiksLib.Benchmark/` | 性能基准 |
 | `ai-skill/` | 工作区 skill：给 AI 助手的任务规则，目前有 `performance-test/` |
 | `artifacts/` | 构建输出目录（`bin`、`obj`、`benchmark-result`），由 `Directory.Build.props` 的 `ArtifactsPath` 指定 |
 
 ## 构建与测试
 
-需要 .NET 10 / .NET 11 SDK。CI（`.github/workflows/ci.yml`）在 Windows、Linux 与 macOS 上构建并测试，其中 `net48` 目标的测试只在 Windows 上运行。
+需要 .NET 10 / .NET 11 SDK。CI（`.github/workflows/ci.yml`）在 Windows、Linux 与 macOS 上构建并测试：`net48` 目标的测试只在 Windows 上运行；netstandard2.1 产物在三个平台都会用同一套测试跑一遍；此外还包含库本体的 `dotnet format --verify-no-changes`、覆盖率采集、`dotnet pack` 校验与一个基准子集冒烟任务。
 
 ```bash
 dotnet build JiksLib.slnx
 dotnet test JiksLib.Test/JiksLib.Test.csproj --framework net10.0
+# 用同一套测试验证 netstandard2.1 产物（Unity 2022 目标）
+dotnet test JiksLib.Test/JiksLib.Test.csproj --framework net10.0 -p:JiksLibTargetFramework=netstandard2.1
+dotnet format whitespace JiksLib/JiksLib.csproj --verify-no-changes
 ```
 
 ## 性能测试
@@ -52,7 +55,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 └── ai-comparison.md    # AI 对比：与上一次运行（按目录名中的时间判定）逐项比较
 ```
 
-目录名取「运行开始的本地时间 `yyyyMMddHHmm` + 提交 ID 前 8 位」，例如 `202611140357-1a2b3c4d`。指标按重要性排序：内存分配次数与大小、分配碎片化、CPU 时间、总体内存占用，最后是 AI 从代码字面给出的分析与改进建议。碎片化与保留内存由内置探针测量：`dotnet run --project JiksLib.Benchmark -- probe <scenario>`（实现见 [FootprintProbe.cs](JiksLib.Benchmark/Probes/FootprintProbe.cs)），结果归档到 run 目录的 `probe/`。完整规则（命名、`run.json` 字段、指标口径与阈值、评价模板）见工作区 skill [ai-skill/performance-test/SKILL.md](ai-skill/performance-test/SKILL.md)。
+目录名取「运行开始的本地时间 `yyyyMMddHHmm` + 提交 ID 前 8 位」，例如 `202611140357-1a2b3c4d`。指标按重要性排序：内存分配次数与大小、分配碎片化、CPU 时间、总体内存占用，最后是 AI 从代码字面给出的分析与改进建议。碎片化与保留内存由内置探针测量：`dotnet run --project JiksLib.Benchmark -f net10.0 -- probe <scenario>`（实现见 [FootprintProbe.cs](JiksLib.Benchmark/Probes/FootprintProbe.cs)），结果归档到 run 目录的 `probe/`。完整规则（命名、`run.json` 字段、指标口径与阈值、评价模板）见工作区 skill [ai-skill/performance-test/SKILL.md](ai-skill/performance-test/SKILL.md)。
 
 ## 类索引
 
@@ -65,6 +68,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `EndianBitConverter` | 指定端序的基本类型转换器，提供 `LittleEndian`、`BigEndian`、`SystemEndian` 三个实例，读写通过 `ArraySegment<byte>` 进行以避免额外分配。 | [EndianBitConverter.cs](JiksLib/EndianBitConverter.cs) |
 | `Progress` | `IProgress<T>` 的工厂：`Null<T>()` 空实现、`Create` 委托实现、`CreateSubProgress` 把子进度映射到父进度的一段区间、`Convert` 转换进度类型。 | [Progress.cs](JiksLib/Progress.cs) |
 | `ShellUtils` | 平台与 Shell 工具：判断 Windows 家族平台、当前平台的可执行文件后缀、按 `PATH` 查找可执行文件。 | [ShellUtils.cs](JiksLib/ShellUtils.cs) |
+| `StringSegment` | 字符串片段，对 `string` 的只读视图；切片/比较/查找/切分不复制底层字符串，仅返回 `string` 的成员分配。 | [StringSegment.cs](JiksLib/StringSegment.cs) |
 
 ### `JiksLib.Collections`
 
@@ -81,6 +85,8 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `MultiHashSet<T>` / `IReadOnlyMultiSet<T>` | 允许同一元素重复出现的哈希集合，`Add` / `Remove` 返回该元素当前的数量。 | [MultiHashSet.cs](JiksLib/Collections/MultiHashSet.cs)、[IReadOnlyMultiSet.cs](JiksLib/Collections/IReadOnlyMultiSet.cs) |
 | `OnceCell<T>` | 只能赋值一次的格子，读取未赋值内容或重复赋值都会抛异常，首次赋值时触发 `OnSet`。 | [OnceCell.cs](JiksLib/Collections/OnceCell.cs) |
 | `PriorityQueue<TElement, TPriority>` | 基于二叉堆的优先级队列，支持出入队、`Try*`、`DequeueEnqueue`、批量入队、按值移除与无序枚举。 | [PriorityQueue.cs](JiksLib/Collections/PriorityQueue.cs) |
+| `ReadOnlyListSegment<T>` | 对 `IReadOnlyList` 的一段只读视图，零拷贝切片、值类型、默认值为空片段。 | [ReadOnlyListSegment.cs](JiksLib/Collections/ReadOnlyListSegment.cs) |
+| `RingBuffer<T>` | 定长环形缓存，下标 0 为最新元素，写满覆盖最旧元素，支持 `AddRange`、`TryPeekNewest/Oldest`、`CopyTo`、结构体枚举器。 | [RingBuffer.cs](JiksLib/Collections/RingBuffer.cs) |
 | `SparseSet<T>` | 稀疏集，元素紧凑存放在数组中并以稀疏下标索引；`Add` / `RemoveAt` 平均 O(1)，通过 `InnerBuffer` 与结构体枚举器支持缓存友好的高频遍历。 | [SparseSet.cs](JiksLib/Collections/SparseSet.cs) |
 
 ### `JiksLib.Control`
