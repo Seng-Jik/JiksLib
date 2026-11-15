@@ -13,6 +13,13 @@ namespace JiksLib.Collections
     /// 语义与 .NET 6 的 PriorityQueue 一致：出队的是比较器认为"最小"的元素，
     /// 即优先级数值越小越先出队；需要"大者优先"请传入反向比较器。
     /// </summary>
+    /// <remarks>
+    /// 类型名与 <c>System.Collections.Generic.PriorityQueue&lt;TElement,TPriority&gt;</c>
+    /// 相同，这是有意的：本库面向 Unity 2022（netstandard2.1）等尚未提供该类型的运行时，
+    /// 以同名同语义的实现补齐，便于代码迁移。若同一文件同时使用两个命名空间，请用
+    /// <c>using</c> 别名区分，例如
+    /// <c>using JiksPriorityQueue = JiksLib.Collections.PriorityQueue&lt;int, int&gt;;</c>。
+    /// </remarks>
     /// <typeparam name="TElement">元素类型</typeparam>
     /// <typeparam name="TPriority">优先级类型</typeparam>
     public sealed class PriorityQueue<TElement, TPriority>
@@ -212,6 +219,8 @@ namespace JiksLib.Collections
 #if NETCOREAPP
         /// <summary>
         /// 确保优先级队列至少具有指定的容量
+        /// 仅在 net10.0 / net11.0 目标提供：旧运行时（net48 / netstandard2.1）的
+        /// <see cref="List{T}"/> 没有 <c>EnsureCapacity</c>，属于运行时能力差异。
         /// </summary>
         /// <param name="capacity">要确保的最小容量</param>
         public void EnsureCapacity(int capacity) => heap.EnsureCapacity(capacity);

@@ -49,6 +49,12 @@ namespace JiksLib.Collections
 
 #if NETCOREAPP
 
+        /// <summary>
+        /// 用键值对集合构造双向字典
+        /// 仅在 net10.0 / net11.0 目标提供：旧运行时（net48 / netstandard2.1）的
+        /// <see cref="Dictionary{TKey,TValue}"/> 没有对应的 IEnumerable 构造函数，
+        /// 属于运行时能力差异，不是遗漏。
+        /// </summary>
         public BidirectionalDictionary(
             IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) :
             this(
@@ -57,6 +63,10 @@ namespace JiksLib.Collections
                     new KeyValuePair<TValue, TKey>(x.Value, x.Key))))
         { }
 
+        /// <summary>
+        /// 用键值对集合与指定比较器构造双向字典
+        /// 仅在 net10.0 / net11.0 目标提供，原因同上。
+        /// </summary>
         public BidirectionalDictionary(
             IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs,
             IEqualityComparer<TKey> keyComparer,

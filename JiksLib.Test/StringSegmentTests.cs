@@ -387,23 +387,25 @@ namespace JiksLib.Test
         }
 
         [Test]
-        public void Trim_WithEmptyChars_ReturnsSameContent()
+        public void Trim_WithEmptyChars_TrimsWhitespaceLikeBcl()
         {
             var segment = new StringSegment("  abc  ");
 
-            Assert.That(segment.Trim(Array.Empty<char>()).ToString(), Is.EqualTo("  abc  "));
-            Assert.That(segment.TrimStart(Array.Empty<char>()).ToString(), Is.EqualTo("  abc  "));
-            Assert.That(segment.TrimEnd(Array.Empty<char>()).ToString(), Is.EqualTo("  abc  "));
+            // 与 string.Trim(char[]) 一致：空数组表示去掉空白字符
+            Assert.That(segment.Trim(Array.Empty<char>()).ToString(), Is.EqualTo("abc"));
+            Assert.That(segment.TrimStart(Array.Empty<char>()).ToString(), Is.EqualTo("abc  "));
+            Assert.That(segment.TrimEnd(Array.Empty<char>()).ToString(), Is.EqualTo("  abc"));
         }
 
         [Test]
-        public void Trim_WithNullChars_Throws()
+        public void Trim_WithNullChars_TrimsWhitespaceLikeBcl()
         {
-            var segment = new StringSegment("abc");
+            var segment = new StringSegment("  abc  ");
 
-            Assert.Throws<ArgumentNullException>(() => segment.Trim(null!));
-            Assert.Throws<ArgumentNullException>(() => segment.TrimStart(null!));
-            Assert.Throws<ArgumentNullException>(() => segment.TrimEnd(null!));
+            // 与 string.Trim(null) 一致：null 表示去掉空白字符，而不是抛异常
+            Assert.That(segment.Trim(null!).ToString(), Is.EqualTo("abc"));
+            Assert.That(segment.TrimStart(null!).ToString(), Is.EqualTo("abc  "));
+            Assert.That(segment.TrimEnd(null!).ToString(), Is.EqualTo("  abc"));
         }
 
         [Test]

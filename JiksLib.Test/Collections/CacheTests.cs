@@ -1076,5 +1076,37 @@ namespace JiksLib.Test.Collections
         }
 
         #endregion
+
+        #region 接口互斥（P2-15）
+
+        [Test]
+        public void SyncCache_AccessedAsAsync_ThrowsInvalidOperationException()
+        {
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => "v" + key, 2);
+
+            var asyncCache = (IAsyncCache<int, string>)cache;
+
+            Assert.That(
+                () => asyncCache.Access(1, _ => { }, _ => { }),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void AsyncCache_AccessedAsSync_ThrowsInvalidOperationException()
+        {
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.LRU,
+                (key, onReceive, onError) => onReceive("v" + key),
+                2);
+
+            var syncCache = (ICache<int, string>)cache;
+
+            Assert.That(
+                () => syncCache.Access(1),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        #endregion
     }
 }

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using JiksLib.Extensions;
 
@@ -43,6 +42,7 @@ namespace JiksLib.Collections
         public ArrayLinkedList()
         {
             array = Array.Empty<Node>();
+            slotUsed = Array.Empty<bool>();
         }
 
         /// <summary>
@@ -57,6 +57,7 @@ namespace JiksLib.Collections
                     "Capacity cannot be negative.");
 
             array = new Node[capacity];
+            slotUsed = new bool[capacity];
         }
 
         /// <summary>
@@ -69,6 +70,8 @@ namespace JiksLib.Collections
 
             array = new Node[other.array.Length];
             Array.Copy(other.array, array, other.arrayUsedCount);
+            slotUsed = new bool[other.slotUsed.Length];
+            Array.Copy(other.slotUsed, slotUsed, other.arrayUsedCount);
             arrayUsedCount = other.arrayUsedCount;
             firstFreeNode = other.firstFreeNode;
             FirstSlot = other.FirstSlot;
@@ -123,6 +126,12 @@ namespace JiksLib.Collections
             arrayUsedCount = index;
             firstFreeNode = -1;
             Count = index;
+
+            // 从集合构造时所有槽位都是占用状态
+            slotUsed = new bool[array.Length];
+
+            for (int i = 0; i < index; i++)
+                slotUsed[i] = true;
         }
 
         /// <summary>
@@ -252,6 +261,7 @@ namespace JiksLib.Collections
         public void Clear()
         {
             Array.Clear(array, 0, arrayUsedCount);
+            Array.Clear(slotUsed, 0, arrayUsedCount);
             FirstSlot = -1;
             LastSlot = -1;
             arrayUsedCount = 0;
@@ -433,6 +443,7 @@ namespace JiksLib.Collections
 
             capacity = RoundUpCapacity(capacity);
             Array.Resize(ref array, capacity);
+            Array.Resize(ref slotUsed, capacity);
         }
 
         /// <summary>
@@ -489,6 +500,7 @@ namespace JiksLib.Collections
             if (Count == 0)
             {
                 array = Array.Empty<Node>();
+                slotUsed = Array.Empty<bool>();
                 arrayUsedCount = 0;
                 firstFreeNode = -1;
             }
@@ -515,6 +527,11 @@ namespace JiksLib.Collections
                 }
 
                 array = newArray;
+                slotUsed = new bool[Count];
+
+                for (int i = 0; i < Count; i++)
+                    slotUsed[i] = true;
+
                 arrayUsedCount = Count;
                 firstFreeNode = -1;
                 FirstSlot = Count > 0 ? 0 : -1;
@@ -524,36 +541,15 @@ namespace JiksLib.Collections
 
         #region Details
 
-        [Conditional("DEBUG")]
+        /// <summary>
+        /// 校验槽位是否仍然属于链表中的元素。
+        /// 使用 slotUsed 位图做 O(1) 判断，因此在 Release 构建中同样生效，
+        /// 避免"只在 DEBUG 生效的异常契约"。
+        /// </summary>
         void EnsureSlotUsed(int slotIndex)
         {
-            static void fail() =>
+            if ((uint)slotIndex >= (uint)arrayUsedCount || !slotUsed[slotIndex])
                 throw new ArgumentOutOfRangeException(nameof(slotIndex));
-
-            if (slotIndex < 0 || slotIndex >= arrayUsedCount)
-                fail();
-
-            int slot = firstFreeNode;
-
-            while (slot != -1)
-            {
-                if (slot == slotIndex)
-                    fail();
-
-                slot = array[slot].Next;
-            }
-
-            slot = FirstSlot;
-
-            while (slot != -1)
-            {
-                if (slot == slotIndex)
-                    return;
-
-                slot = array[slot].Next;
-            }
-
-            fail();
         }
 
         int AllocateSlot()
@@ -562,6 +558,7 @@ namespace JiksLib.Collections
             {
                 int slotIndex = firstFreeNode;
                 firstFreeNode = array[slotIndex].Next;
+                slotUsed[slotIndex] = true;
                 return slotIndex;
             }
             else
@@ -570,14 +567,14 @@ namespace JiksLib.Collections
                     EnsureCapacity(Growth((long)arrayUsedCount + 1));
 
                 int slotIndex = arrayUsedCount++;
+                slotUsed[slotIndex] = true;
                 return slotIndex;
             }
         }
 
-        // 不要再在这里做 EnsureSlotUsed 校验：唯一调用方 RemoveBySlot 已经校验过，
-        // 且调用本方法时节点已从链表解链，链表遍历校验会把合法槽位误判为无效。
         void FreeSlot(int slotIndex)
         {
+            slotUsed[slotIndex] = false;
             array[slotIndex].Next = firstFreeNode;
             firstFreeNode = slotIndex;
         }
@@ -701,6 +698,13 @@ namespace JiksLib.Collections
         }
 
         Node[] array = Array.Empty<Node>();
+
+        /// <summary>
+        /// 与 array 平行：标记对应槽位是否被链表中的元素占用。
+        /// 用于在任意构建配置下 O(1) 校验槽位有效性。
+        /// </summary>
+        bool[] slotUsed = Array.Empty<bool>();
+
         int arrayUsedCount = 0;
         int firstFreeNode = -1;
 

@@ -627,5 +627,55 @@ namespace JiksLib.Test.Collections
             Assert.That(readOnly, Is.EqualTo(new[] { 1, 2 }));
         }
 
+        #region 槽位校验（T-8：Release 构建同样生效）
+
+        [Test]
+        public void Get_NegativeSlot_ThrowsArgumentOutOfRangeException()
+        {
+            var list = new ArrayLinkedList<int>();
+            list.AddLast(1);
+
+            Assert.That(
+                () => list.Get(-1, out _, out _),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void Get_SlotBeyondUsedRange_ThrowsArgumentOutOfRangeException()
+        {
+            var list = new ArrayLinkedList<int>();
+            list.AddLast(1);
+
+            Assert.That(
+                () => list.Get(1, out _, out _),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void Get_RemovedSlot_ThrowsArgumentOutOfRangeException()
+        {
+            var list = new ArrayLinkedList<int>();
+            int slot = list.AddLast(1);
+            list.RemoveBySlot(slot, out _, out _);
+
+            Assert.That(
+                () => list.Get(slot, out _, out _),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void AddAfter_RemovedSlot_ThrowsArgumentOutOfRangeException()
+        {
+            var list = new ArrayLinkedList<int>();
+            int slot = list.AddLast(1);
+            list.RemoveBySlot(slot, out _, out _);
+
+            Assert.That(
+                () => list.AddAfter(slot, 2),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        #endregion
+
     }
 }
