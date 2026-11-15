@@ -240,6 +240,18 @@ namespace JiksLib.Test
                 // 创建空文件（模拟可执行文件）
                 File.WriteAllText(filePath, "");
 
+#if NET6_0_OR_GREATER
+                if (!OperatingSystem.IsWindows())
+                {
+                    // Unix 上 FindExecutable 会校验执行位，测试文件必须补上 +x
+                    File.SetUnixFileMode(
+                        filePath,
+                        UnixFileMode.UserRead |
+                        UnixFileMode.UserWrite |
+                        UnixFileMode.UserExecute);
+                }
+#endif
+
                 // 保存原始PATH并设置临时目录到PATH中
                 string originalPath = Environment.GetEnvironmentVariable("PATH") ?? "";
                 try
