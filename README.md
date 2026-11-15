@@ -99,7 +99,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `ValueEventBus<TConstraint>` | 面向值类型事件的事件总线，避免发布时的装箱；`SubPublisher<TEvent>` 可提前绑定单一事件类型以进一步降低开销。 | [ValueEventBus.cs](JiksLib/Control/ValueEventBus.cs) |
 | `SafeEvent<TEvent>` / `ISafeEventPublisher<TEvent>` / `EventHandler<TEvent>` | 单个事件的安全包装器：隔离监听器异常；默认拒绝发布期间增删监听器与递归发布，可配置为延迟增删和 FIFO 队列化递归发布。 | [SafeEvent.cs](JiksLib/Control/SafeEvent.cs) |
 | `EventFilter<TEventPublisher, TEvent>` | 在发布端过滤事件的装饰器，过滤函数可以修改事件，返回 `false` 则丢弃该事件。 | [EventFilter.cs](JiksLib/Control/EventFilter.cs) |
-| `FSM<TState, TStateArg, TTransition>` | 完整的有限状态机，通过 `Builder` 注册状态与转移（含任意状态转移和默认兜底状态），提供 `OnBuild`、`OnEnter`、`OnExit`、`OnReset` 生命周期与切换事件。 | [FSM.cs](JiksLib/Control/FSM.cs) |
+| `FSM<TState, TStateArg, TTransition>` | 完整的有限状态机，通过 `Builder` 注册状态与转移（含任意状态转移和默认兜底状态），提供 `OnBuild`、`OnEnter`、`OnExit`、`OnReset` 生命周期与切换事件；`Builder` 只能构建一次，构建后只读，可用复制构造函数复制出可再次构建的副本。 | [FSM.cs](JiksLib/Control/FSM.cs) |
 | `LightFSM<TState>` | 不带转移表的轻量状态机，只需实现 `IState` 的 `OnEnter` / `OnExit`，用 `Switch(nextState)` 切换。 | [LightFSM.cs](JiksLib/Control/LightFSM.cs) |
 | `ServiceLocator` | 静态服务定位器；通过 `Scope` 批量注册服务，`EnterScope` 返回需按逆序退出的 `IDisposable`。 | [ServiceLocator.cs](JiksLib/Control/ServiceLocator.cs) |
 | `UnitType` | 空结构体单元类型，用于填充泛型类或泛型方法中的“无参数”类型位。 | [UnitType.cs](JiksLib/Control/UnitType.cs) |

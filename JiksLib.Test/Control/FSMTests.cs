@@ -991,5 +991,125 @@ namespace JiksLib.Test.Control
             Assert.That(stateC.OnEnterCallCount, Is.EqualTo(1));
         }
 
+        #region Builder 单次构建与复制构造
+
+        [Test]
+        public void Build_SecondCall_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(new TestState("A"));
+            builder.Build(default(UnitType));
+
+            // Act & Assert
+            Assert.That(
+                () => builder.Build(default(UnitType)),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void AddState_AfterBuild_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(new TestState("A"));
+            builder.Build(default(UnitType));
+
+            // Act & Assert
+            Assert.That(
+                () => builder.AddState(new TestState("B")),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void AddTransition_AfterBuild_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.Build(default(UnitType));
+
+            // Act & Assert
+            Assert.That(
+                () => builder.AddTransition(stateA, TestTransition.GoToB, stateB),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void AddAnyTimeTransition_AfterBuild_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.Build(default(UnitType));
+
+            // Act & Assert
+            Assert.That(
+                () => builder.AddAnyTimeTransition(TestTransition.AnyTimeTransition, stateA),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void CopyConstructor_CreatesIndependentBuilder()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+
+            // Act - 副本上追加只在副本里存在的状态与转移
+            var copy = new FSM<TestState, UnitType, TestTransition>.Builder(builder);
+            copy.AddState(stateC);
+            copy.AddTransition(stateB, TestTransition.GoToC, stateC);
+
+            var fsm = builder.Build(default(UnitType));
+            var copiedFsm = copy.Build(default(UnitType));
+
+            // Assert - 原件没有 B->C，副本有
+            Assert.That(fsm.Switch(TestTransition.GoToB), Is.True);
+            Assert.That(fsm.Switch(TestTransition.GoToC), Is.False);
+
+            Assert.That(copiedFsm.Switch(TestTransition.GoToB), Is.True);
+            Assert.That(copiedFsm.Switch(TestTransition.GoToC), Is.True);
+            Assert.That(copiedFsm.CurrentState, Is.SameAs(stateC));
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+        }
+
+        [Test]
+        public void CopyConstructor_FromBuiltBuilder_CanBuildAgain()
+        {
+            // Arrange
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA, stateB);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+
+            var firstFsm = builder.Build(default(UnitType));
+
+            // Act - 源构造器已构建，但副本应处于未构建状态
+            var copy = new FSM<TestState, UnitType, TestTransition>.Builder(builder);
+            var secondFsm = copy.Build(default(UnitType));
+
+            // Assert
+            Assert.That(secondFsm, Is.Not.SameAs(firstFsm));
+            Assert.That(firstFsm.CurrentState, Is.SameAs(stateA));
+            Assert.That(secondFsm.Switch(TestTransition.GoToB), Is.True);
+            Assert.That(secondFsm.CurrentState, Is.SameAs(stateB));
+        }
+
+        [Test]
+        public void CopyConstructor_WithNull_ThrowsArgumentNullException()
+        {
+            Assert.That(
+                () => new FSM<TestState, UnitType, TestTransition>.Builder(
+                    (FSM<TestState, UnitType, TestTransition>.Builder)null!),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        #endregion
     }
 }

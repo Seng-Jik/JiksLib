@@ -14,6 +14,9 @@ namespace JiksLib.Control
     {
         /// <summary>
         /// 构造器
+        /// 只能构建一次状态机；构建后构造器进入只读状态，再次调用 <see cref="Build"/>
+        /// 或任何 Add* 方法都会抛 <see cref="InvalidOperationException"/>。
+        /// 需要重复构建或复用配置时，用复制构造函数复制一个副本。
         /// </summary>
         public sealed class Builder
         {
@@ -37,12 +40,34 @@ namespace JiksLib.Control
             }
 
             /// <summary>
+            /// 复制一个构造器
+            /// 副本拥有独立的状态表与转移表，可以继续修改并独立构建；
+            /// 无论源构造器是否已经构建过，副本都处于"未构建"状态。
+            /// </summary>
+            /// <param name="other">要复制的构造器</param>
+            /// <exception cref="ArgumentNullException">当 <paramref name="other"/> 为 null 时抛出</exception>
+            public Builder(Builder other)
+            {
+                other.ThrowIfNull(nameof(other));
+
+                startState = other.startState;
+                defaultState = other.defaultState;
+                states = CopyStates(other.states);
+                anyTimeTransitions = other.anyTimeTransitions == null
+                    ? null
+                    : new Dictionary<TTransition, TState>(other.anyTimeTransitions);
+            }
+
+            /// <summary>
             /// 添加状态
             /// 重复添加同一状态是幂等的
             /// </summary>
             /// <param name="state">状态对象</param>
+            /// <exception cref="InvalidOperationException">构造器已经构建过时抛出</exception>
             public void AddState(TState state)
             {
+                ThrowIfBuilt();
+
                 state.ThrowIfNull(nameof(state));
 
                 if (!states.ContainsKey(state))
@@ -57,11 +82,14 @@ namespace JiksLib.Control
             /// <param name="prevState">来源状态，必须先调用 AddState</param>
             /// <param name="transition">状态转移</param>
             /// <param name="nextState">目标状态，必须先调用 AddState</param>
+            /// <exception cref="InvalidOperationException">构造器已经构建过时抛出</exception>
             public void AddTransition(
                 TState prevState,
                 TTransition transition,
                 TState nextState)
             {
+                ThrowIfBuilt();
+
                 if (!states.ContainsKey(nextState))
                     throw new ArgumentException(
                         "State not found, call AddState first.", nameof(nextState));
@@ -80,10 +108,13 @@ namespace JiksLib.Control
             /// </summary>
             /// <param name="transition">状态转移</param>
             /// <param name="nextState">目标状态，必须先调用 AddState</param>
+            /// <exception cref="InvalidOperationException">构造器已经构建过时抛出</exception>
             public void AddAnyTimeTransition(
                 TTransition transition,
                 TState nextState)
             {
+                ThrowIfBuilt();
+
                 if (!states.ContainsKey(nextState))
                     throw new ArgumentException(
                         "State not found, call AddState first.", nameof(nextState));
@@ -93,22 +124,42 @@ namespace JiksLib.Control
 
             /// <summary>
             /// 构建有限状态机
-            /// 构建时会复制状态表，因此之后再调用 <see cref="AddState"/> /
-            /// <see cref="AddTransition"/> / <see cref="AddAnyTimeTransition"/>
-            /// 不会影响已经构建的状态机
+            /// 该操作会把状态表与转移表的所有权转移给状态机，不再复制；
+            /// 构建成功后构造器进入只读状态，再次调用 Build 或任何 Add* 方法都会抛
+            /// <see cref="InvalidOperationException"/>。需要再次构建时，
+            /// 先用复制构造函数复制一个 Builder。
             /// </summary>
-            public FSM<TState, TStateArg, TTransition> Build(TStateArg arg) =>
-                new(
-                    CopyStates(states),
-                    anyTimeTransitions == null
-                        ? null
-                        : new Dictionary<TTransition, TState>(anyTimeTransitions),
+            /// <exception cref="InvalidOperationException">当前构造器已经构建过时抛出</exception>
+            public FSM<TState, TStateArg, TTransition> Build(TStateArg arg)
+            {
+                ThrowIfBuilt();
+
+                // 直接把表交给状态机（所有权转移）。因为之后构造器会被冻结，
+                // 不存在"构建后继续修改影响已构建状态机"的问题。
+                var fsm = new FSM<TState, TStateArg, TTransition>(
+                    states,
+                    anyTimeTransitions,
                     defaultState,
                     startState,
                     arg);
 
+                built = true;
+                return fsm;
+            }
+
             /// <summary>
-            /// 复制状态表，避免构建后继续修改 Builder 影响到已构建的状态机。
+            /// 构建后禁止继续修改或再次构建
+            /// </summary>
+            void ThrowIfBuilt()
+            {
+                if (built)
+                    throw new InvalidOperationException(
+                        "Builder 已经构建过状态机，不能再次修改或构建；" +
+                        "如需重新构建，请使用复制构造函数创建一个新的 Builder。");
+            }
+
+            /// <summary>
+            /// 复制状态表，供复制构造函数使用。
             /// </summary>
             static Dictionary<TState, Dictionary<TTransition, TState>?> CopyStates(
                 Dictionary<TState, Dictionary<TTransition, TState>?> source)
@@ -132,6 +183,9 @@ namespace JiksLib.Control
             Dictionary<TTransition, TState>? anyTimeTransitions = new();
             readonly TState startState;
             readonly TState? defaultState;
+
+            /// <summary>是否已经构建过状态机；构建后构造器只读</summary>
+            bool built;
         }
 
         /// <summary>
