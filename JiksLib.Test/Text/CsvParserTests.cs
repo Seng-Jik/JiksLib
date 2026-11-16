@@ -265,14 +265,14 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
-        public void Row_IsEnumerableOfCsvField_SupportsLinq()
+        public void Row_IsEnumerableOfField_SupportsLinq()
         {
             var parser = new CsvParser("a,b,c");
             var enumerator = parser.GetEnumerator();
             Assert.That(enumerator.MoveNext(), Is.True);
 
             var row = enumerator.Current;
-            var fields = ((IEnumerable<CsvField>)row)
+            var fields = ((IEnumerable<CsvParser.Field>)row)
                 .Select(field => field.ToString())
                 .ToArray();
 
@@ -289,10 +289,10 @@ namespace JiksLib.Test.Text
             var row = enumerator.Current;
 
             Assert.That(
-                ((IEnumerable<CsvField>)row).Select(f => f.ToString()),
+                ((IEnumerable<CsvParser.Field>)row).Select(f => f.ToString()),
                 Is.EqualTo(new[] { "a", "b" }));
             Assert.That(
-                ((IEnumerable<CsvField>)row).Select(f => f.ToString()),
+                ((IEnumerable<CsvParser.Field>)row).Select(f => f.ToString()),
                 Is.EqualTo(new[] { "a", "b" }));
         }
 
@@ -412,7 +412,7 @@ namespace JiksLib.Test.Text
             Assert.That(after, Is.GreaterThan(before));
         }
 
-        static CsvField GetFirstField(CsvParser parser)
+        static CsvParser.Field GetFirstField(CsvParser parser)
         {
             var enumerator = parser.GetEnumerator();
             enumerator.MoveNext();

@@ -14,9 +14,9 @@ namespace JiksLib.Text
     /// <remarks>
     /// <para>
     /// 迭代器是结构体：<c>foreach (var row in parser)</c> 得到 <see cref="Row"/>，
-    /// <c>foreach (var field in row)</c> 得到 <see cref="CsvField"/>，全程不装箱、不分配。
+    /// <c>foreach (var field in row)</c> 得到 <see cref="Field"/>，全程不装箱、不分配。
     /// 字段保存的是底层字符串的切片（零拷贝）；解转义是惰性的，只有读取
-    /// <see cref="CsvField.Value"/> / <see cref="CsvField.ToString"/> 且字段确实含
+    /// <see cref="Field.Value"/> / <see cref="Field.ToString"/> 且字段确实含
     /// <c>""</c> 转义时才会新建一次字符串。
     /// </para>
     /// <para>
@@ -89,9 +89,66 @@ namespace JiksLib.Text
         readonly char separator;
 
         /// <summary>
+        /// CSV 字段
+        /// 保存字段的原始切片与"是否包含 <c>""</c> 转义"的标记，解转义是惰性的。
+        /// </summary>
+        /// <remarks>
+        /// 解析阶段只做切片、不分配：枚举行与字段全程零分配。
+        /// 只有读取包含转义引号的字段的 <see cref="Value"/> / <see cref="ToString"/> 时，
+        /// 才会新建一次字符串——原始内容无法用"连续切片"表示去掉转义后的值。
+        /// 不含转义的字段（绝大多数）取 <see cref="Value"/> 不会分配。
+        /// </remarks>
+        public readonly struct Field
+        {
+            internal Field(StringSegment raw, bool hasEscapedQuotes)
+            {
+                Raw = raw;
+                HasEscapedQuotes = hasEscapedQuotes;
+            }
+
+            /// <summary>
+            /// 空字段
+            /// </summary>
+            public static readonly Field Empty = new(StringSegment.Empty, false);
+
+            /// <summary>
+            /// 原始内容（保留 <c>""</c> 转义，零拷贝）
+            /// </summary>
+            public StringSegment Raw { get; }
+
+            /// <summary>
+            /// 是否包含 <c>""</c> 转义
+            /// </summary>
+            public bool HasEscapedQuotes { get; }
+
+            /// <summary>
+            /// 解转义后的值
+            /// 不含转义时直接返回 <see cref="Raw"/>（零分配）；含转义时新建一次字符串
+            /// </summary>
+            public StringSegment Value => HasEscapedQuotes ? Unescape(Raw) : Raw;
+
+            /// <summary>
+            /// 返回解转义后的字符串
+            /// </summary>
+            public override string ToString() => Value.ToString();
+
+            /// <summary>
+            /// 隐式转换为解转义后的片段
+            /// 便于沿用 <c>foreach (StringSegment field in row)</c> 的写法
+            /// </summary>
+            public static implicit operator StringSegment(Field field) => field.Value;
+
+            /// <summary>
+            /// 把字段内容中的 <c>""</c> 还原为 <c>"</c>
+            /// </summary>
+            static StringSegment Unescape(StringSegment content) =>
+                new(content.ToString().Replace("\"\"", "\""));
+        }
+
+        /// <summary>
         /// 一行记录
         /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
-        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="CsvField"/>）以支持 LINQ。
+        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="Field"/>）以支持 LINQ。
         /// </summary>
         /// <remarks>
         /// <see cref="Row"/> 是游标：<see cref="GetEnumerator"/> 返回当前游标位置的副本。
@@ -99,7 +156,7 @@ namespace JiksLib.Text
         /// 因此同一个行值可以重复 foreach；若先手动调用过 <see cref="MoveNext"/>，再 foreach 会从当前位置继续。
         /// 通过 <see cref="IEnumerable{T}"/> 遍历会装箱，热路径请使用 foreach。
         /// </remarks>
-        public struct Row : IEnumerator<CsvField>, IEnumerable<CsvField>
+        public struct Row : IEnumerator<Field>, IEnumerable<Field>
         {
             /// <summary>
             /// 用记录片段构造行枚举器
@@ -112,13 +169,13 @@ namespace JiksLib.Text
                 this.separator = separator;
                 position = 0;
                 finished = false;
-                current = CsvField.Empty;
+                current = Field.Empty;
             }
 
             /// <summary>
             /// 当前字段
             /// </summary>
-            public CsvField Current => current;
+            public Field Current => current;
 
             object? IEnumerator.Current => Current;
 
@@ -134,7 +191,7 @@ namespace JiksLib.Text
                 // 空记录（例如两个换行之间没有任何字符）按一个空字段处理
                 if (record.Length == 0)
                 {
-                    current = CsvField.Empty;
+                    current = Field.Empty;
                     finished = true;
                     return true;
                 }
@@ -142,7 +199,7 @@ namespace JiksLib.Text
                 // 上一个字段以分隔符结尾：产生末尾空字段
                 if (position == record.Length)
                 {
-                    current = CsvField.Empty;
+                    current = Field.Empty;
                     finished = true;
                     return true;
                 }
@@ -170,17 +227,17 @@ namespace JiksLib.Text
             /// <summary>
             /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
             /// </summary>
-            IEnumerator<CsvField> IEnumerable<CsvField>.GetEnumerator() => GetEnumerator();
+            IEnumerator<Field> IEnumerable<Field>.GetEnumerator() => GetEnumerator();
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             /// <summary>
             /// 解析 position 处的字段，并给出下一个字段的起始位置
-            /// 只做切片与标记，不分配；解转义推迟到 <see cref="CsvField.Value"/>
+            /// 只做切片与标记，不分配；解转义推迟到 <see cref="Field.Value"/>
             /// </summary>
             /// <param name="next">下一个字段的起始位置</param>
             /// <param name="isLast">当前字段之后没有分隔符（已到记录末尾）</param>
-            CsvField ParseField(out int next, out bool isLast)
+            Field ParseField(out int next, out bool isLast)
             {
                 int start = position;
 
@@ -226,7 +283,7 @@ namespace JiksLib.Text
 
                         var content = record.Slice(start + 1, contentEnd - start - 1);
 
-                        return new CsvField(content, hasEscapedQuote);
+                        return new Field(content, hasEscapedQuote);
                     }
 
                     throw new InvalidDataException("Unclosed double quote in field.");
@@ -240,14 +297,14 @@ namespace JiksLib.Text
                 next = end < record.Length ? end + 1 : record.Length;
                 isLast = end >= record.Length;
 
-                return new CsvField(record.Slice(start, end - start), false);
+                return new Field(record.Slice(start, end - start), false);
             }
 
             readonly StringSegment record;
             readonly char separator;
             int position;
             bool finished;
-            CsvField current;
+            Field current;
         }
 
         /// <summary>
