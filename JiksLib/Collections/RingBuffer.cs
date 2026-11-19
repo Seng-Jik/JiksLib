@@ -179,7 +179,7 @@ namespace JiksLib.Collections
         /// </exception>
         public void AddRange(IEnumerable<T> items)
         {
-            items.ThrowIfNull();
+            items.ThrowIfNull(nameof(items));
 
             if (items is T[] array)
             {
@@ -434,7 +434,7 @@ namespace JiksLib.Collections
         /// </exception>
         public void CopyTo(T[] array, int arrayIndex)
         {
-            array.ThrowIfNull();
+            array.ThrowIfNull(nameof(array));
 
             if ((uint)arrayIndex > (uint)array.Length)
                 throw new ArgumentOutOfRangeException(

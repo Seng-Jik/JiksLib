@@ -62,13 +62,13 @@ namespace JiksLib.IO
             Encoding encoding,
             bool leaveOpen = false)
         {
-            if (!stream.ThrowIfNull().CanWrite)
+            if (!stream.ThrowIfNull(nameof(stream)).CanWrite)
                 throw new ArgumentException(
                     "The stream must be writable.", nameof(stream));
 
             BaseStream = stream;
-            endian = endianBitConverter.ThrowIfNull();
-            this.encoding = encoding.ThrowIfNull();
+            endian = endianBitConverter.ThrowIfNull(nameof(endianBitConverter));
+            this.encoding = encoding.ThrowIfNull(nameof(encoding));
             this.leaveOpen = leaveOpen;
             CanSeek = stream.CanSeek;
         }

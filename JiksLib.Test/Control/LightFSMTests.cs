@@ -21,14 +21,14 @@ namespace JiksLib.Test.Control
                 Name = name;
             }
 
-            public void OnEnter(LightFSM<TestState> fsm, TestState? prevState)
+            public virtual void OnEnter(LightFSM<TestState> fsm, TestState? prevState)
             {
                 OnEnterCallCount++;
                 LastEnterFSM = fsm;
                 LastEnterPrevState = prevState;
             }
 
-            public void OnExit(LightFSM<TestState> fsm, TestState nextState)
+            public virtual void OnExit(LightFSM<TestState> fsm, TestState nextState)
             {
                 OnExitCallCount++;
                 LastExitNextState = nextState;
@@ -41,6 +41,28 @@ namespace JiksLib.Test.Control
                 LastEnterFSM = null;
                 LastEnterPrevState = null;
                 LastExitNextState = null;
+            }
+        }
+
+        // 可在回调中执行任意动作的状态，用于验证“切换期间禁止再次 Switch”
+        private sealed class ActionState : TestState
+        {
+            public ActionState(string name) : base(name) { }
+
+            public Action<LightFSM<TestState>, TestState?>? EnterAction { get; set; }
+
+            public Action<LightFSM<TestState>, TestState>? ExitAction { get; set; }
+
+            public override void OnEnter(LightFSM<TestState> fsm, TestState? prevState)
+            {
+                base.OnEnter(fsm, prevState);
+                EnterAction?.Invoke(fsm, prevState);
+            }
+
+            public override void OnExit(LightFSM<TestState> fsm, TestState nextState)
+            {
+                base.OnExit(fsm, nextState);
+                ExitAction?.Invoke(fsm, nextState);
             }
         }
 
@@ -192,7 +214,7 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Switch_EventThrowsException_DoesNotUpdateState()
+        public void Switch_EventThrowsException_StillUpdatesStateAndEntersNewState()
         {
             // Arrange
             var state1 = new TestState("State1");
@@ -203,21 +225,12 @@ namespace JiksLib.Test.Control
             state2.ResetCounters();
 
             // Act & Assert
-            // Exception should propagate, but state should still be updated
-            // According to the code: OnExit -> OnStateSwitch -> set CurrentState -> OnEnter
-            // If event throws, the exception propagates and CurrentState may not be updated?
-            // Let's examine the Switch method:
-            // CurrentState.OnExit();
-            // OnStateSwitch?.Invoke(CurrentState, nextState);
-            // CurrentState = nextState;
-            // CurrentState.OnEnter(this);
-            // If Invoke throws, CurrentState assignment and OnEnter will not execute.
-            // So we need to test that exception is thrown and state is not updated.
-            // Actually, we should test the actual behavior.
+            // 与 FSM 一致：先更新 CurrentState 再触发事件；事件异常向外传播，
+            // 但新状态的 OnEnter 在 finally 中执行，不会出现“旧状态已退出、新状态未进入”。
             Assert.Throws<InvalidOperationException>(() => fsm.Switch(state2));
-            Assert.That(fsm.CurrentState, Is.SameAs(state1));
+            Assert.That(fsm.CurrentState, Is.SameAs(state2));
             Assert.That(state1.OnExitCallCount, Is.EqualTo(1));
-            Assert.That(state2.OnEnterCallCount, Is.EqualTo(0));
+            Assert.That(state2.OnEnterCallCount, Is.EqualTo(1));
         }
 
 
@@ -248,21 +261,107 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Switch_NullState_ThrowsNullReferenceException()
+        public void Switch_NullState_ThrowsArgumentNullException()
         {
             // Arrange
             var state1 = new TestState("State1");
             var fsm = new LightFSM<TestState>(state1);
 
             // Act & Assert
-            Assert.Throws<NullReferenceException>(() => fsm.Switch(null!));
+            var ex = Assert.Throws<ArgumentNullException>(() => fsm.Switch(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("nextState"));
         }
 
         [Test]
-        public void Constructor_NullStartState_ThrowsNullReferenceException()
+        public void Constructor_NullStartState_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Assert.Throws<NullReferenceException>(() => new LightFSM<TestState>(null!));
+            var ex = Assert.Throws<ArgumentNullException>(
+                () => new LightFSM<TestState>(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("startState"));
+        }
+
+        [Test]
+        public void OnStateSwitch_EventSeesNewCurrentState()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var fsm = new LightFSM<TestState>(stateA);
+            TestState? seen = null;
+
+            fsm.OnStateSwitch += (oldState, newState) => seen = fsm.CurrentState;
+
+            fsm.Switch(stateB);
+
+            Assert.That(seen, Is.SameAs(stateB));
+        }
+
+        [Test]
+        public void Switch_FromOnStateSwitchHandler_ThrowsAndCompletesTransition()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+            var fsm = new LightFSM<TestState>(stateA);
+            stateA.ResetCounters();
+
+            fsm.OnStateSwitch += (oldState, newState) =>
+            {
+                if (newState == stateB)
+                    fsm.Switch(stateC);
+            };
+
+            Assert.Throws<InvalidOperationException>(() => fsm.Switch(stateB));
+
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Switch_FromOnEnter_ThrowsAndKeepsNewState()
+        {
+            var stateA = new TestState("A");
+            var stateC = new TestState("C");
+            var stateB = new ActionState("B");
+            var fsm = new LightFSM<TestState>(stateA);
+            stateA.ResetCounters();
+            stateB.EnterAction = (inner, _) => inner.Switch(stateC);
+
+            Assert.Throws<InvalidOperationException>(() => fsm.Switch(stateB));
+
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Switch_FromOnExit_ThrowsAndKeepsOldState()
+        {
+            var stateB = new TestState("B");
+            var stateA = new ActionState("A");
+            var fsm = new LightFSM<TestState>(stateA);
+            stateA.ResetCounters();
+            stateA.ExitAction = (inner, next) => inner.Switch(stateB);
+
+            Assert.Throws<InvalidOperationException>(() => fsm.Switch(stateB));
+
+            Assert.That(fsm.CurrentState, Is.SameAs(stateA));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Constructor_WhenOnEnterSwitches_Throws()
+        {
+            var other = new TestState("Other");
+            var start = new ActionState("Start");
+            start.EnterAction = (inner, _) => inner.Switch(other);
+
+            Assert.Throws<InvalidOperationException>(
+                () => new LightFSM<TestState>(start));
         }
     }
 }

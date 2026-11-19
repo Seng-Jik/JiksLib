@@ -55,7 +55,7 @@ namespace JiksLib
         /// <returns>可执行文件的信息</returns>
         public static FileInfo? FindExecutable(string executableName)
         {
-            executableName.ThrowIfNull();
+            executableName.ThrowIfNull(nameof(executableName));
 
             var candidates = GetNameCandidates(executableName);
 

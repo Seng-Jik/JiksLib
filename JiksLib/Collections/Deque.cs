@@ -79,7 +79,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void AddRange(ArraySegment<T> items)
         {
-            items.Array.ThrowIfNull();
+            items.Array.ThrowIfNull(nameof(items));
 
             if (items.Count == 0)
                 return;
@@ -129,7 +129,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void AddRange(IEnumerable<T> items)
         {
-            items.ThrowIfNull();
+            items.ThrowIfNull(nameof(items));
 
             if (items is T[] array)
             {
@@ -186,7 +186,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void AddRangeFront(ArraySegment<T> items)
         {
-            items.Array!.ThrowIfNull();
+            items.Array!.ThrowIfNull(nameof(items));
 
             if (items.Count == 0)
                 return;
@@ -244,7 +244,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void AddRangeFront(IEnumerable<T> items)
         {
-            items.ThrowIfNull();
+            items.ThrowIfNull(nameof(items));
 
             if (items is T[] array)
             {

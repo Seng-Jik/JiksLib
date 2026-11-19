@@ -1,3 +1,4 @@
+using System.Linq;
 using BenchmarkDotNet.Running;
 using JiksLib.Benchmark.Collections;
 using JiksLib.Benchmark.Control;
@@ -36,8 +37,8 @@ namespace JiksLib.Benchmark
                 typeof(StringSegmentBenchmarks),
             });
 
-            switcher.Run(args);
-            return 0;
+            // 没有任何基准被选中（filter 拼错、类被改名等）时返回非零，避免 CI 静默通过。
+            return switcher.Run(args).Any() ? 0 : 1;
         }
     }
 }

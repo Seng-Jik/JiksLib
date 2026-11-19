@@ -8,6 +8,17 @@ namespace JiksLib.Control
     /// <summary>
     /// 有限状态机
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 生命周期回调（<c>OnBuild</c>、<c>OnExit</c>、<c>OnStateSwitch</c>、<c>OnEnter</c>、<c>OnReset</c>）
+    /// 与 <see cref="Switch(TTransition)"/> / <see cref="Switch(TState)"/> / <see cref="Reset"/> 共用一把
+    /// "可切换"闸门：构建（含初始 OnEnter）、状态切换、重置期间调用 Switch 或 Reset 会抛出
+    /// <see cref="InvalidOperationException"/>，避免回调内重入导致 OnEnter / OnExit 配对错乱。
+    /// </para>
+    /// <para>
+    /// 回调内抛出的异常会正常向外传播；状态切换本身仍会完成（新状态的 OnEnter 在 finally 中执行）。
+    /// </para>
+    /// </remarks>
     public sealed class FSM<TState, TStateArg, TTransition>
         where TState : class, FSM<TState, TStateArg, TTransition>.IState
         where TTransition : struct
@@ -227,8 +238,13 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="transition">转移</param>
         /// <returns>指示状态转移是否成功</returns>
+        /// <exception cref="InvalidOperationException">
+        /// 当状态机正在构建、切换或重置时调用（例如在生命周期回调内）抛出。
+        /// </exception>
         public bool Switch(TTransition transition)
         {
+            EnsureSwitchAllowed();
+
             if (Switch(states[CurrentState], transition)) return true;
             if (Switch(anyTimeTransitions, transition)) return true;
 
@@ -245,9 +261,17 @@ namespace JiksLib.Control
         /// 不使用 Transition 直接进行状态转移
         /// </summary>
         /// <param name="nextState">新状态</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="nextState"/> 为 null 时抛出</exception>
+        /// <exception cref="ArgumentException">当 <paramref name="nextState"/> 未注册时抛出</exception>
+        /// <exception cref="InvalidOperationException">
+        /// 当状态机正在构建、切换或重置时调用（例如在生命周期回调内）抛出。
+        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Switch(TState nextState)
         {
+            nextState.ThrowIfNull(nameof(nextState));
+            EnsureSwitchAllowed();
+
             if (!states.ContainsKey(nextState))
                 throw new ArgumentException(
                     "State not found in FSM.", nameof(nextState));
@@ -281,22 +305,36 @@ namespace JiksLib.Control
         /// 重置状态机
         /// 即使 OnReset 回调抛出异常，也会保证初始状态的 OnEnter 被调用
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// 当状态机正在构建、切换或重置时调用（例如在生命周期回调内）抛出。
+        /// </exception>
         public void Reset()
         {
+            EnsureSwitchAllowed();
+
             var lastState = CurrentState;
-            lastState.OnExit(new(), null);
-            CurrentState = startState;
+            switchAllowed = false;
 
             try
             {
-                foreach (var i in states.Keys)
-                    i.OnReset(lastState, startState);
+                lastState.OnExit(new(), null);
+                CurrentState = startState;
 
-                OnReset?.Invoke();
+                try
+                {
+                    foreach (var i in states.Keys)
+                        i.OnReset(lastState, startState);
+
+                    OnReset?.Invoke();
+                }
+                finally
+                {
+                    CurrentState.OnEnter(null, new());
+                }
             }
             finally
             {
-                CurrentState.OnEnter(null, new());
+                switchAllowed = true;
             }
         }
 
@@ -315,10 +353,21 @@ namespace JiksLib.Control
             // 先设置 CurrentState，保证 OnBuild 期间读取 CurrentState 得到的是初始状态而不是 null
             CurrentState = startState;
 
-            foreach (var s in this.states.Keys)
-                s.OnBuild(this, arg);
+            // 构建期间（OnBuild 与初始 OnEnter）关闭“可切换”闸门：
+            // 回调内切换会抛异常，避免重复 OnEnter 或状态表与生命周期不一致。
+            switchAllowed = false;
 
-            CurrentState.OnEnter(null, new());
+            try
+            {
+                foreach (var s in this.states.Keys)
+                    s.OnBuild(this, arg);
+
+                CurrentState.OnEnter(null, new());
+            }
+            finally
+            {
+                switchAllowed = true;
+            }
         }
 
         bool Switch(
@@ -340,23 +389,48 @@ namespace JiksLib.Control
         /// 顺序为：旧状态 OnExit → 更新 CurrentState → 触发 OnStateSwitch → 新状态 OnEnter。
         /// OnEnter 放在 finally 中，即使事件处理器抛出异常，新状态也一定会完成进入，
         /// 避免出现"旧状态已退出、新状态未进入"的半切换状态。
+        /// 切换期间关闭“可切换”闸门，回调内再调用 Switch / Reset 会抛异常。
         /// </summary>
         void Switch(TTransition? transition, TState nextState)
         {
             var oldState = CurrentState;
-
-            oldState.OnExit(transition, nextState);
-
-            CurrentState = nextState;
+            switchAllowed = false;
 
             try
             {
-                OnStateSwitch?.Invoke(oldState, transition, nextState);
+                oldState.OnExit(transition, nextState);
+
+                CurrentState = nextState;
+
+                try
+                {
+                    OnStateSwitch?.Invoke(oldState, transition, nextState);
+                }
+                finally
+                {
+                    nextState.OnEnter(oldState, transition);
+                }
             }
             finally
             {
-                nextState.OnEnter(oldState, transition);
+                switchAllowed = true;
             }
+        }
+
+        /// <summary>
+        /// 当前是否允许调用 <see cref="Switch(TTransition)"/> / <see cref="Switch(TState)"/> / <see cref="Reset"/>。
+        /// 构建（含初始 OnEnter）、状态切换与重置期间为 false。
+        /// </summary>
+        bool switchAllowed;
+
+        /// <summary>
+        /// 校验当前处于允许切换的阶段，否则抛出 <see cref="InvalidOperationException"/>。
+        /// </summary>
+        void EnsureSwitchAllowed()
+        {
+            if (!switchAllowed)
+                throw new InvalidOperationException(
+                    "Switch / Reset cannot be called while the FSM is building, switching or resetting.");
         }
 
         readonly Dictionary<TState, Dictionary<TTransition, TState>?> states = new();

@@ -1111,5 +1111,182 @@ namespace JiksLib.Test.Control
         }
 
         #endregion
+
+        #region Switch 可调用窗口（P2-01 / P2-02）
+
+        private sealed class SwitchingOnBuildState : TestState
+        {
+            public SwitchingOnBuildState(string name) : base(name) { }
+
+            public override void OnBuild(
+                FSM<TestState, UnitType, TestTransition> fsm,
+                UnitType arg)
+            {
+                base.OnBuild(fsm, arg);
+
+                fsm.Switch(TestTransition.GoToB);
+            }
+        }
+
+        private sealed class SwitchInCallbackState : TestState
+        {
+            public SwitchInCallbackState(string name) : base(name) { }
+
+            public FSM<TestState, UnitType, TestTransition>? Fsm { get; private set; }
+
+            public TestTransition TransitionToSwitch { get; set; }
+
+            public bool SwitchOnEnter { get; set; }
+
+            public bool SwitchOnExit { get; set; }
+
+            public override void OnBuild(
+                FSM<TestState, UnitType, TestTransition> fsm,
+                UnitType arg)
+            {
+                base.OnBuild(fsm, arg);
+
+                Fsm = fsm;
+            }
+
+            public override void OnEnter(
+                TestState? prevState,
+                TestTransition? transition)
+            {
+                base.OnEnter(prevState, transition);
+
+                if (SwitchOnEnter && transition != null)
+                    Fsm!.Switch(TransitionToSwitch);
+            }
+
+            public override void OnExit(
+                TestTransition? transition,
+                TestState? nextState)
+            {
+                base.OnExit(transition, nextState);
+
+                if (SwitchOnExit && transition != null)
+                    Fsm!.Switch(TransitionToSwitch);
+            }
+        }
+
+        [Test]
+        public void Switch_FromOnStateSwitchHandler_ThrowsAndCompletesTransition()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            builder.AddTransition(stateB, TestTransition.GoToC, stateC);
+            var fsm = builder.Build(default(UnitType));
+
+            fsm.OnStateSwitch += (prev, transition, next) =>
+            {
+                if (next == stateB)
+                    fsm.Switch(TestTransition.GoToC);
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                fsm.Switch(TestTransition.GoToB));
+
+            // 事件内切换被拒绝，但外层切换仍完整完成
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnExitCallCount, Is.EqualTo(0));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Build_WhenOnBuildCallsSwitch_ThrowsAndDoesNotEnterStates()
+        {
+            var stateA = new SwitchingOnBuildState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                builder.Build(default(UnitType)));
+
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(0));
+            Assert.That(stateA.OnEnterCallCount, Is.EqualTo(0));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Switch_FromOnEnter_ThrowsAndKeepsNewState()
+        {
+            var stateA = new TestState("A");
+            var stateB = new SwitchInCallbackState("B")
+            {
+                SwitchOnEnter = true,
+                TransitionToSwitch = TestTransition.GoToC,
+            };
+            var stateC = new TestState("C");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            builder.AddTransition(stateB, TestTransition.GoToC, stateC);
+            var fsm = builder.Build(default(UnitType));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                fsm.Switch(TestTransition.GoToB));
+
+            Assert.That(fsm.CurrentState, Is.SameAs(stateB));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(1));
+            Assert.That(stateC.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Switch_FromOnExit_ThrowsAndKeepsOldState()
+        {
+            var stateA = new SwitchInCallbackState("A")
+            {
+                SwitchOnExit = true,
+                TransitionToSwitch = TestTransition.GoToB,
+            };
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            var fsm = builder.Build(default(UnitType));
+
+            Assert.Throws<InvalidOperationException>(() =>
+                fsm.Switch(TestTransition.GoToB));
+
+            Assert.That(fsm.CurrentState, Is.SameAs(stateA));
+            Assert.That(stateA.OnExitCallCount, Is.EqualTo(1));
+            Assert.That(stateB.OnEnterCallCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Reset_FromOnResetHandler_ThrowsButStillResets()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            var fsm = builder.Build(default(UnitType));
+            fsm.Switch(TestTransition.GoToB);
+            stateA.ResetCounters();
+            stateB.ResetCounters();
+
+            fsm.OnReset += () => fsm.Switch(TestTransition.GoToB);
+
+            Assert.Throws<InvalidOperationException>(() => fsm.Reset());
+
+            // Reset 仍完成：回到初始状态并调用初始 OnEnter
+            Assert.That(fsm.CurrentState, Is.SameAs(stateA));
+            Assert.That(stateA.OnEnterCallCount, Is.EqualTo(1));
+        }
+
+        #endregion
     }
 }

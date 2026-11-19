@@ -159,7 +159,7 @@ namespace JiksLib.Collections
         /// <param name="priority">所有元素的优先级</param>
         public void EnqueueRange(IEnumerable<TElement> elements, TPriority priority)
         {
-            elements.ThrowIfNull();
+            elements.ThrowIfNull(nameof(elements));
 
             int originalCount = heap.Count;
 
@@ -195,7 +195,7 @@ namespace JiksLib.Collections
         /// <param name="elements">要添加的元素及其优先级集合</param>
         public void EnqueueRange(IEnumerable<(TElement, TPriority)> elements)
         {
-            elements.ThrowIfNull();
+            elements.ThrowIfNull(nameof(elements));
 
             int originalCount = heap.Count;
 

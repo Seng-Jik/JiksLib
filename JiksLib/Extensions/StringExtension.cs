@@ -12,7 +12,7 @@ namespace JiksLib.Extensions
         /// <returns></returns>
         public static string[] Split0(this string s, char sep = ',')
         {
-            s.ThrowIfNull();
+            s.ThrowIfNull(nameof(s));
             if (s == "") return Array.Empty<string>();
             else return s.Split(sep);
         }
@@ -55,7 +55,7 @@ namespace JiksLib.Extensions
             string prefix,
             out string remain)
         {
-            x.ThrowIfNull();
+            x.ThrowIfNull(nameof(x));
             prefix.ThrowIfNull(nameof(prefix));
 
             // 必须与字符串版其它 API（以及 StringSegment 版）保持一致：按序数比较，
@@ -85,7 +85,7 @@ namespace JiksLib.Extensions
             string suffix,
             out string remain)
         {
-            x.ThrowIfNull();
+            x.ThrowIfNull(nameof(x));
             suffix.ThrowIfNull(nameof(suffix));
 
             if (!x.EndsWith(suffix, StringComparison.Ordinal))
@@ -115,7 +115,7 @@ namespace JiksLib.Extensions
             string suffix,
             out string remain)
         {
-            x.ThrowIfNull();
+            x.ThrowIfNull(nameof(x));
             prefix.ThrowIfNull(nameof(prefix));
             suffix.ThrowIfNull(nameof(suffix));
 

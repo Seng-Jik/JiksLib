@@ -3,9 +3,13 @@ using System;
 namespace JiksLib.Collections
 {
     /// <summary>
-    /// 可以被设置多次的非空引用类型格子
+    /// 可以被设置多次的格子
     /// 可用于强类型装箱值类型或者提供修改时事件
     /// </summary>
+    /// <remarks>
+    /// <typeparamref name="T"/> 不受约束，允许传入 null（引用类型）或值类型；
+    /// 需要"非空"语义时请由调用方自行校验。每次设置都会在写入后触发 <see cref="OnSet"/>。
+    /// </remarks>
     public sealed class Cell<T>
     {
         /// <summary>

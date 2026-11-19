@@ -23,7 +23,7 @@ namespace JiksLib.Extensions
         /// 把字典转为只读字典视图；返回原实例，不复制
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="d"/> 为 null 时抛出</exception>
-        public static IReadOnlyDictionary<T, U> AsReadOnly<T, U>(this Dictionary<T, U>? d) where T : notnull => d.ThrowIfNull();
+        public static IReadOnlyDictionary<T, U> AsReadOnly<T, U>(this Dictionary<T, U>? d) where T : notnull => d.ThrowIfNull(nameof(d));
 
         /// <summary>
         /// 把列表转为只读视图
@@ -31,24 +31,24 @@ namespace JiksLib.Extensions
         /// 实例方法；本重载只在显式静态调用时生效。
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
-        public static IReadOnlyList<T> AsReadOnly<T>(this List<T>? ls) => ls.ThrowIfNull();
+        public static IReadOnlyList<T> AsReadOnly<T>(this List<T>? ls) => ls.ThrowIfNull(nameof(ls));
 
         /// <summary>
         /// 把数组转为只读列表视图；返回原数组，不复制
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
-        public static IReadOnlyList<T> AsReadOnly<T>(this T[]? ls) => ls.ThrowIfNull();
+        public static IReadOnlyList<T> AsReadOnly<T>(this T[]? ls) => ls.ThrowIfNull(nameof(ls));
 
         /// <summary>
         /// 把哈希集合转为只读集合视图；返回原实例，不复制
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="s"/> 为 null 时抛出</exception>
-        public static IReadOnlyCollection<T> AsReadOnly<T>(this HashSet<T>? s) => s.ThrowIfNull();
+        public static IReadOnlyCollection<T> AsReadOnly<T>(this HashSet<T>? s) => s.ThrowIfNull(nameof(s));
 
         /// <summary>
         /// 把链表转为只读集合视图；返回原实例，不复制
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="s"/> 为 null 时抛出</exception>
-        public static IReadOnlyCollection<T> AsReadOnly<T>(this LinkedList<T>? s) => s.ThrowIfNull();
+        public static IReadOnlyCollection<T> AsReadOnly<T>(this LinkedList<T>? s) => s.ThrowIfNull(nameof(s));
     }
 }

@@ -44,7 +44,7 @@ namespace JiksLib
         /// <exception cref="ArgumentNullException">字符串为 null</exception>
         public StringSegment(string source)
         {
-            this.source = source.ThrowIfNull();
+            this.source = source.ThrowIfNull(nameof(source));
             Offset = 0;
             Length = source.Length;
         }
@@ -59,7 +59,7 @@ namespace JiksLib
         /// <exception cref="ArgumentOutOfRangeException">区间超出字符串范围</exception>
         public StringSegment(string source, int offset, int length)
         {
-            this.source = source.ThrowIfNull();
+            this.source = source.ThrowIfNull(nameof(source));
 
             if (offset < 0)
                 throw new ArgumentOutOfRangeException(nameof(offset));
@@ -195,7 +195,7 @@ namespace JiksLib
         /// <exception cref="ArgumentOutOfRangeException">目标区间不足</exception>
         public void CopyTo(char[] destination, int destinationIndex = 0)
         {
-            destination.ThrowIfNull();
+            destination.ThrowIfNull(nameof(destination));
 
             if (destinationIndex < 0 ||
                 destinationIndex > destination.Length - Length)
@@ -220,7 +220,7 @@ namespace JiksLib
             int destinationIndex,
             int count)
         {
-            destination.ThrowIfNull();
+            destination.ThrowIfNull(nameof(destination));
 
             if (sourceIndex < 0 || sourceIndex > Length)
                 throw new ArgumentOutOfRangeException(nameof(sourceIndex));
@@ -464,7 +464,7 @@ namespace JiksLib
             int startIndex = 0,
             StringComparison comparisonType = StringComparison.Ordinal)
         {
-            value.ThrowIfNull();
+            value.ThrowIfNull(nameof(value));
             ValidateStartIndex(startIndex);
 
             if (value.Length == 0)
@@ -588,7 +588,7 @@ namespace JiksLib
             int startIndex,
             StringComparison comparisonType = StringComparison.Ordinal)
         {
-            value.ThrowIfNull();
+            value.ThrowIfNull(nameof(value));
             return LastIndexOf(
                 new StringSegment(value),
                 startIndex,
@@ -655,7 +655,7 @@ namespace JiksLib
             string value,
             StringComparison comparisonType = StringComparison.Ordinal)
         {
-            value.ThrowIfNull();
+            value.ThrowIfNull(nameof(value));
             return StartsWith(new StringSegment(value), comparisonType);
         }
 
@@ -693,7 +693,7 @@ namespace JiksLib
             string value,
             StringComparison comparisonType = StringComparison.Ordinal)
         {
-            value.ThrowIfNull();
+            value.ThrowIfNull(nameof(value));
             return EndsWith(new StringSegment(value), comparisonType);
         }
 

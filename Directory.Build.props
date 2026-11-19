@@ -26,6 +26,12 @@
     <!-- 可重现构建；CI 下额外启用持续集成构建模式 -->
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!--
+      ContinuousIntegrationBuild 会打开确定性源码路径映射（PathMap），
+      coverlet.collector 6.x 无法把 PDB 中的映射路径还原成真实源码路径，
+      CI 上会产出空覆盖率报告；这里关闭路径映射，二进制仍保持 Deterministic。
+    -->
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
 
     <!-- 生成可移植 PDB，符号包（snupkg）才有内容可打包；embedded 时 snupkg 会因无内容报 NU5017 -->
     <DebugSymbols>true</DebugSymbols>

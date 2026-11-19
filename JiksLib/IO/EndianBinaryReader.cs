@@ -58,14 +58,14 @@ namespace JiksLib.IO
             Encoding encoding,
             bool leaveOpen = false)
         {
-            if (!stream.ThrowIfNull().CanRead)
+            if (!stream.ThrowIfNull(nameof(stream)).CanRead)
                 throw new ArgumentException(
                     "The stream must be readable.", nameof(stream));
 
             BaseStream = stream;
             CanSeek = stream.CanSeek;
-            endian = endianBitConverter.ThrowIfNull();
-            this.encoding = encoding.ThrowIfNull();
+            endian = endianBitConverter.ThrowIfNull(nameof(endianBitConverter));
+            this.encoding = encoding.ThrowIfNull(nameof(encoding));
             this.leaveOpen = leaveOpen;
         }
 
