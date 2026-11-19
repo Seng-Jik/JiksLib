@@ -22,6 +22,12 @@ namespace JiksLib.IO
         public bool CanSeek { get; private set; }
 
         /// <summary>
+        /// <see cref="ReadString"/> 允许的最大字节长度，默认 64 MiB。
+        /// 用于避免损坏或恶意的长度前缀导致超大分配。
+        /// </summary>
+        public int MaxStringLength { get; set; } = 64 * 1024 * 1024;
+
+        /// <summary>
         /// 当前流位置
         /// 可以设置该属性以移动流位置
         /// 仅当 CanSeek = true 时可用
@@ -162,70 +168,117 @@ namespace JiksLib.IO
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public char ReadChar() => ReadInt(endian.ToChar, 2);
+        public char ReadChar()
+        {
+            var buf = GetReadBuffer(2);
+            ReadBytesExactly(buf);
+            return endian.ToChar(buf);
+        }
 
         /// <summary>
         /// 读取一个 Int16
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public short ReadInt16() => ReadInt(endian.ToInt16, 2);
+        public short ReadInt16()
+        {
+            var buf = GetReadBuffer(2);
+            ReadBytesExactly(buf);
+            return endian.ToInt16(buf);
+        }
 
         /// <summary>
         /// 读取一个 UInt16
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public ushort ReadUInt16() => ReadInt(endian.ToUInt16, 2);
+        public ushort ReadUInt16()
+        {
+            var buf = GetReadBuffer(2);
+            ReadBytesExactly(buf);
+            return endian.ToUInt16(buf);
+        }
 
         /// <summary>
         /// 读取一个 Int32
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public int ReadInt32() => ReadInt(endian.ToInt32, 4);
+        public int ReadInt32()
+        {
+            var buf = GetReadBuffer(4);
+            ReadBytesExactly(buf);
+            return endian.ToInt32(buf);
+        }
 
         /// <summary>
         /// 读取一个 UInt32
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public uint ReadUInt32() => ReadInt(endian.ToUInt32, 4);
+        public uint ReadUInt32()
+        {
+            var buf = GetReadBuffer(4);
+            ReadBytesExactly(buf);
+            return endian.ToUInt32(buf);
+        }
 
         /// <summary>
         /// 读取一个 Int64
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public long ReadInt64() => ReadInt(endian.ToInt64, 8);
+        public long ReadInt64()
+        {
+            var buf = GetReadBuffer(8);
+            ReadBytesExactly(buf);
+            return endian.ToInt64(buf);
+        }
 
         /// <summary>
         /// 读取一个 UInt64
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public ulong ReadUInt64() => ReadInt(endian.ToUInt64, 8);
+        public ulong ReadUInt64()
+        {
+            var buf = GetReadBuffer(8);
+            ReadBytesExactly(buf);
+            return endian.ToUInt64(buf);
+        }
 
         /// <summary>
         /// 读取一个单精度浮点数
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public float ReadSingle() => ReadInt(endian.ToSingle, 4);
+        public float ReadSingle()
+        {
+            var buf = GetReadBuffer(4);
+            ReadBytesExactly(buf);
+            return endian.ToSingle(buf);
+        }
 
         /// <summary>
         /// 读取一个双精度浮点数
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        public double ReadDouble() => ReadInt(endian.ToDouble, 8);
+        public double ReadDouble()
+        {
+            var buf = GetReadBuffer(8);
+            ReadBytesExactly(buf);
+            return endian.ToDouble(buf);
+        }
 
         /// <summary>
         /// 以指定编码读取一个字符串，字符串的字节长度由前置的 Int32 指定
         /// </summary>
         /// <returns></returns>
         /// <exception cref="EndOfStreamException">未读取到足够数量的字节时抛出</exception>
-        /// <exception cref="InvalidDataException">字符串长度为负数时抛出</exception>
+        /// <exception cref="InvalidDataException">
+        /// 字符串长度为负数，或超过 <see cref="MaxStringLength"/> 时抛出
+        /// </exception>
         public string ReadString()
         {
             int length = ReadInt32();
@@ -233,20 +286,20 @@ namespace JiksLib.IO
             if (length < 0)
                 throw new InvalidDataException($"String length cannot be negative: {length}");
 
+            if (length > MaxStringLength)
+                throw new InvalidDataException(
+                    $"String length {length} exceeds the maximum allowed length {MaxStringLength}.");
+
             if (length == 0)
                 return string.Empty;
+
+            // 可 seek 时先确认剩余长度，避免为截断的流分配大缓冲区
+            if (CanSeek && length > BaseStream.Length - BaseStream.Position)
+                throw new EndOfStreamException();
 
             var buf = GetReadBuffer(length);
             ReadBytesExactly(buf);
             return encoding.GetString(buf.Array!, buf.Offset, buf.Count);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        T ReadInt<T>(Func<ArraySegment<byte>, T> converter, int size)
-        {
-            var buf = GetReadBuffer(size);
-            ReadBytesExactly(buf);
-            return converter(buf);
         }
 
         readonly EndianBitConverter endian;
