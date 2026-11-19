@@ -26,8 +26,12 @@ namespace JiksLib
             output.Array![output.Offset] = value ? (byte)1 : (byte)0;
         }
 
-        public byte[] GetBytes(bool value) =>
-            NormalGetBytes(1, value, GetBytes);
+        public byte[] GetBytes(bool value)
+        {
+            byte[] bytes = new byte[1];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -45,8 +49,12 @@ namespace JiksLib
             output.Array![output.Offset] = (byte)value;
         }
 
-        public byte[] GetBytes(sbyte value) =>
-            NormalGetBytes(1, value, GetBytes);
+        public byte[] GetBytes(sbyte value)
+        {
+            byte[] bytes = new byte[1];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion SByte
 
@@ -67,7 +75,12 @@ namespace JiksLib
 
         public abstract short ToInt16(ArraySegment<byte> bytes);
         public abstract void GetBytes(short value, ArraySegment<byte> output);
-        public byte[] GetBytes(short value) => NormalGetBytes(2, value, GetBytes);
+        public byte[] GetBytes(short value)
+        {
+            byte[] bytes = new byte[2];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -75,7 +88,12 @@ namespace JiksLib
 
         public abstract ushort ToUInt16(ArraySegment<byte> bytes);
         public abstract void GetBytes(ushort value, ArraySegment<byte> output);
-        public byte[] GetBytes(ushort value) => NormalGetBytes(2, value, GetBytes);
+        public byte[] GetBytes(ushort value)
+        {
+            byte[] bytes = new byte[2];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -83,14 +101,24 @@ namespace JiksLib
 
         public abstract int ToInt32(ArraySegment<byte> bytes);
         public abstract void GetBytes(int value, ArraySegment<byte> output);
-        public byte[] GetBytes(int value) => NormalGetBytes(4, value, GetBytes);
+        public byte[] GetBytes(int value)
+        {
+            byte[] bytes = new byte[4];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
         #region UInt32
         public abstract uint ToUInt32(ArraySegment<byte> bytes);
         public abstract void GetBytes(uint value, ArraySegment<byte> output);
-        public byte[] GetBytes(uint value) => NormalGetBytes(4, value, GetBytes);
+        public byte[] GetBytes(uint value)
+        {
+            byte[] bytes = new byte[4];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -98,7 +126,12 @@ namespace JiksLib
 
         public abstract long ToInt64(ArraySegment<byte> bytes);
         public abstract void GetBytes(long value, ArraySegment<byte> output);
-        public byte[] GetBytes(long value) => NormalGetBytes(8, value, GetBytes);
+        public byte[] GetBytes(long value)
+        {
+            byte[] bytes = new byte[8];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -106,7 +139,12 @@ namespace JiksLib
 
         public abstract ulong ToUInt64(ArraySegment<byte> bytes);
         public abstract void GetBytes(ulong value, ArraySegment<byte> output);
-        public byte[] GetBytes(ulong value) => NormalGetBytes(8, value, GetBytes);
+        public byte[] GetBytes(ulong value)
+        {
+            byte[] bytes = new byte[8];
+            GetBytes(value, new ArraySegment<byte>(bytes));
+            return bytes;
+        }
 
         #endregion
 
@@ -395,18 +433,6 @@ namespace JiksLib
                     $"ArraySegment length must be {size} for {typeName} conversion, " +
                     $"but was {buf.Count}.",
                     nameof(buf));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static byte[] NormalGetBytes<T>(
-            int size,
-            T arg,
-            Action<T, ArraySegment<byte>> originalFunc)
-        {
-            byte[] bytes = new byte[size];
-            ArraySegment<byte> segment = new(bytes, 0, size);
-            originalFunc(arg, segment);
-            return bytes;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -895,6 +895,52 @@ namespace JiksLib.Test.IO
 
         #endregion
 
+        #region Allocation Tests
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void Write_PrimitiveValues_DoesNotAllocate()
+        {
+            // Arrange：预分配足够容量，避免 MemoryStream 扩容本身产生分配
+            using var stream = new MemoryStream(64 * 1024);
+            using var writer = new EndianBinaryWriter(
+                EndianBitConverter.LittleEndian, stream, Encoding.UTF8, leaveOpen: true);
+
+            // 预热：JIT 与首次创建写缓冲区不计入测量
+            WritePrimitiveValues(writer);
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+
+                for (int i = 0; i < 100; i++)
+                    WritePrimitiveValues(writer);
+
+                long after = GC.GetAllocatedBytesForCurrentThread();
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0), "写入基本类型不应产生托管分配。");
+        }
+
+        static void WritePrimitiveValues(EndianBinaryWriter writer)
+        {
+            writer.Write('a');
+            writer.Write((short)1);
+            writer.Write((ushort)1);
+            writer.Write(1);
+            writer.Write(1u);
+            writer.Write(1L);
+            writer.Write(1ul);
+            writer.Write(1.5f);
+            writer.Write(1.5d);
+        }
+#endif
+
+        #endregion
+
         #region Helper Classes
 
         private class NonSeekableStream : Stream

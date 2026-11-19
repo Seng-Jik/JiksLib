@@ -204,56 +204,92 @@ namespace JiksLib.IO
         /// <summary>
         /// 写入一个字符
         /// </summary>
-        public void Write(char c) =>
-            WriteInt(c, 2, endian.GetBytes);
+        public void Write(char c)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(2);
+            endian.GetBytes(c, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个短整数
         /// </summary>
-        public void Write(short value) =>
-            WriteInt(value, 2, endian.GetBytes);
+        public void Write(short value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(2);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个无符号短整数
         /// </summary>
-        public void Write(ushort value) =>
-            WriteInt(value, 2, endian.GetBytes);
+        public void Write(ushort value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(2);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个整数
         /// </summary>
-        public void Write(int value) =>
-            WriteInt(value, 4, endian.GetBytes);
+        public void Write(int value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(4);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个无符号整数
         /// </summary>
-        public void Write(uint value) =>
-            WriteInt(value, 4, endian.GetBytes);
+        public void Write(uint value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(4);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个长整数
         /// </summary>
-        public void Write(long value) =>
-            WriteInt(value, 8, endian.GetBytes);
+        public void Write(long value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(8);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个无符号长整数
         /// </summary>
-        public void Write(ulong value) =>
-            WriteInt(value, 8, endian.GetBytes);
+        public void Write(ulong value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(8);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个单精度浮点数
         /// </summary>
-        public void Write(float value) =>
-            Write(endian.GetBytes(value));
+        public void Write(float value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(4);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个双精度浮点数
         /// </summary>
-        public void Write(double value) =>
-            Write(endian.GetBytes(value));
+        public void Write(double value)
+        {
+            ArraySegment<byte> buffer = GetWriteBuffer(8);
+            endian.GetBytes(value, buffer);
+            Write(buffer);
+        }
 
         /// <summary>
         /// 写入一个字符串
@@ -283,17 +319,6 @@ namespace JiksLib.IO
             var bytes = encoding.GetBytes(value);
             Write(bytes.Length);
             return WriteAsync(bytes, cancellationToken);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void WriteInt<T>(
-            T value,
-            int size,
-            Action<T, ArraySegment<byte>> bitConverter)
-        {
-            var buf = GetWriteBuffer(size);
-            bitConverter(value, buf);
-            Write(buf);
         }
 
         byte[]? writeBuffer = null;

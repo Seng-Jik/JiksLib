@@ -164,6 +164,16 @@ namespace JiksLib.Test.Collections
             Assert.That(range.Contains(5), Is.False);
         }
 
+        [Test]
+        public void Contains_ValueAtMinAndMaxEqualWithMinIncludedOnly_ReturnsTrue()
+        {
+            // Arrange：按 IntRange 的契约，[x, x) 属于单点区间
+            var range = new IntRange(5, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range.Contains(5), Is.True);
+        }
+
         #endregion
 
         #region Count Property Tests
@@ -226,6 +236,16 @@ namespace JiksLib.Test.Collections
 
             // Act & Assert
             Assert.That(range.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Count_RangeWithSingleValueMinIncludedOnly_ReturnsOne()
+        {
+            // Arrange
+            var range = new IntRange(5, true, 5, false);
+
+            // Act & Assert
+            Assert.That(range.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -309,6 +329,32 @@ namespace JiksLib.Test.Collections
 
             // Assert
             Assert.That(result, Is.Empty);
+        }
+
+        [Test]
+        public void GetEnumerator_RangeWithSingleValueMinIncludedOnly_IteratesSingleValue()
+        {
+            // Arrange：枚举结果必须与 Count / Contains 一致
+            var range = new IntRange(5, true, 5, false);
+
+            // Act
+            var result = range.ToArray();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(new[] { 5 }));
+        }
+
+        [Test]
+        public void GetEnumerator_SingleValueAtIntMaxValue_MinIncludedOnly_Terminates()
+        {
+            // Arrange：上界为 int.MaxValue 时不能因自增回绕而无限枚举
+            var range = new IntRange(int.MaxValue, true, int.MaxValue, false);
+
+            // Act
+            var result = range.ToArray();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(new[] { int.MaxValue }));
         }
 
         [Test]

@@ -7,6 +7,12 @@ namespace JiksLib.Collections
     /// <summary>
     /// 整数范围
     /// </summary>
+    /// <remarks>
+    /// 当 <see cref="Min"/> 与 <see cref="Max"/> 相等时，只要 <see cref="IncludeMin"/> 或
+    /// <see cref="IncludeMax"/> 任一为 true，该单点就属于范围（<c>[x, x]</c>、<c>[x, x)</c>
+    /// 与 <c>(x, x]</c> 表示同一个单点区间）；两端都不包含时为空区间。
+    /// <see cref="Count"/>、<see cref="Contains"/> 与枚举结果始终一致。
+    /// </remarks>
     public readonly struct IntRange :
         IEnumerable<int>,
         IReadOnlyCollection<int>,
@@ -190,7 +196,20 @@ namespace JiksLib.Collections
 
             public bool MoveNext()
             {
-                long max = range.IncludeMax ? range.Max : (long)range.Max - 1;
+                // Min == Max 时，只要任一端点被包含，该点就属于范围；上界必须取 Max，
+                // 否则 [x, x) 会枚举为空，而 Count / Contains 认为有 1 个元素。
+                long max;
+
+                if (range.Max == range.Min)
+                {
+                    max = range.IncludeMin || range.IncludeMax
+                        ? range.Max
+                        : (long)range.Max - 1;
+                }
+                else
+                {
+                    max = range.IncludeMax ? range.Max : (long)range.Max - 1;
+                }
 
                 if (nextValue > max)
                 {
