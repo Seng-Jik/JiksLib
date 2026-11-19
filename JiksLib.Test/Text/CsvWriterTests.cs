@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using JiksLib.Text;
+using System;
 using System.Text;
 
 namespace JiksLib.Test.Text
@@ -88,6 +89,20 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
+        public void WriteField_FieldWithSingleQuote_DoesNotWrap()
+        {
+            // Arrange
+            var writer = new CsvWriter();
+
+            // Act
+            writer.WriteField("O'Brien");
+            var result = writer.ToString().TrimEnd();
+
+            // Assert
+            Assert.That(result, Is.EqualTo("O'Brien"));
+        }
+
+        [Test]
         public void WriteField_FieldWithNewLine_WrapsInQuotes()
         {
             // Arrange
@@ -144,6 +159,36 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
+        public void WriteField_CustomSeparator_FieldWithComma_StillWraps()
+        {
+            // Arrange
+            var writer = new CsvWriter('|');
+
+            // Act
+            writer.WriteField("a,b");
+            var result = writer.ToString().TrimEnd();
+
+            // Assert
+            // P2-25 第 2 项暂不改变行为：逗号仍无条件触发包裹
+            Assert.That(result, Is.EqualTo("\"a,b\""));
+        }
+
+        [Test]
+        public void WriteField_Null_ThrowsArgumentNullExceptionWithParamName()
+        {
+            // Arrange
+            var writer = new CsvWriter();
+
+            // Act
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => writer.WriteField(null!));
+
+            // Assert
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.ParamName, Is.EqualTo("field"));
+        }
+
+        [Test]
         public void AlwaysWrap_WhenTrue_WrapsAllFields()
         {
             // Arrange
@@ -155,6 +200,20 @@ namespace JiksLib.Test.Text
 
             // Assert
             Assert.That(result, Is.EqualTo("\"simple\""));
+        }
+
+        [Test]
+        public void AlwaysWrap_FieldWithQuote_EscapesQuotes()
+        {
+            // Arrange
+            var writer = new CsvWriter { AlwaysWrap = true };
+
+            // Act
+            writer.WriteField("a\"b");
+            var result = writer.ToString().TrimEnd();
+
+            // Assert
+            Assert.That(result, Is.EqualTo("\"a\"\"b\""));
         }
 
         [Test]

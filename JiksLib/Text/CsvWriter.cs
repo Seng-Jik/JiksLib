@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using JiksLib.Extensions;
 
@@ -5,7 +6,8 @@ namespace JiksLib.Text
 {
     /// <summary>
     /// CSV 写入器
-    /// 其中 CSV 格式遵守 IETF RFC 4180 中所描述的格式，同时也允许修改分隔符以写入TSV和DSV
+    /// 引号、转义与 CRLF 记录分隔遵循 RFC 4180；分隔符可修改以写入 TSV / DSV，
+    /// 此时输出不再是严格意义的 RFC 4180（例如以制表符作为分隔符）。
     /// https://www.ietf.org/rfc/rfc4180.txt
     /// </summary>
     public class CsvWriter
@@ -17,7 +19,6 @@ namespace JiksLib.Text
         public CsvWriter(char separator = ',')
         {
             this.separator = separator;
-            separatorString = separator.ToString();
         }
 
         /// <summary>
@@ -27,29 +28,53 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 在当前记录写入字段
+        /// 字段含分隔符、双引号、CR/LF（以及逗号/制表符）时用双引号包裹，内部双引号双写
         /// </summary>
         /// <param name="field">字段值</param>
+        /// <exception cref="ArgumentNullException">字段为 null 时抛出</exception>
         public void WriteField(string field)
         {
-            field.ThrowIfNull();
+            field.ThrowIfNull(nameof(field));
 
             if (!isFirstFieldOfCurrentLine)
                 sb.Append(separator);
             isFirstFieldOfCurrentLine = false;
 
-            bool wrap =
-                AlwaysWrap ||
-                field.Contains(separatorString) ||
-                field.Contains("\r") ||
-                field.Contains("\"") ||
-                field.Contains("\'") ||
-                field.Contains("\n") ||
-                field.Contains(",") ||
-                field.Contains("\t");
+            if (!AlwaysWrap && !NeedsWrap(field))
+            {
+                sb.Append(field);
+                return;
+            }
 
-            if (wrap) sb.Append('\"');
-            sb.Append(wrap ? field.Replace("\"", "\"\"") : field);
-            if (wrap) sb.Append('\"');
+            sb.Append('"');
+
+            foreach (char c in field)
+            {
+                if (c == '"')
+                    sb.Append('"');
+
+                sb.Append(c);
+            }
+
+            sb.Append('"');
+        }
+
+        /// <summary>
+        /// 判断字段是否需要加引号
+        /// 只扫描一遍；逗号与制表符目前仍无条件触发包裹（P2-25 第 2 项暂不改变行为）
+        /// </summary>
+        bool NeedsWrap(string field)
+        {
+            foreach (char c in field)
+            {
+                if (c == separator || c == '"' || c == '\r' || c == '\n' ||
+                    c == ',' || c == '\t')
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -80,7 +105,6 @@ namespace JiksLib.Text
         }
 
         readonly char separator;
-        readonly string separatorString;
         readonly StringBuilder sb = new();
         bool isFirstFieldOfCurrentLine = true;
     }

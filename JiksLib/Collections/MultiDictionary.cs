@@ -142,6 +142,10 @@ namespace JiksLib.Collections
         /// 获取指定键所有值的只读容器
         /// 键为 null 时返回空集合
         /// </summary>
+        /// <remarks>
+        /// 返回值是内部可变集合的只读视图；禁止将其强转回 <see cref="MultiHashSet{T}"/>
+        /// 或其他可变类型进行修改，强转属于未定义行为。
+        /// </remarks>
         public IReadOnlyCollection<TValue> this[TKey key]
         {
             get
@@ -281,6 +285,8 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 转换为只读字典
+        /// 返回的是当前实例的只读视图，禁止强转回 <see cref="MultiDictionary{TKey, TValue}"/>
+        /// 或其他可变类型修改；强转属于未定义行为
         /// </summary>
         public IReadOnlyMultiDictionary<TKey, TValue> AsReadOnly() => this;
 

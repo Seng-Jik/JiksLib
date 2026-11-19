@@ -152,9 +152,9 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             // hash=100
-            // 'a'=97, hash=100*131+97=13100+97=13197
-            // 'b'=98, hash=13197*131+98=1728807+98=1728905
-            Assert.That(result, Is.EqualTo(1728905));
+            // 'a'=97, hash=100*16777619+97=1677761997
+            // 'b'=98, hash=1677761997*16777619+98=28148851558345241
+            Assert.That(result, Is.EqualTo(28148851558345241UL));
         }
 
         [Test]
@@ -230,10 +230,17 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             // hash=0
-            // 'a'=97, hash=0*131+97=97
-            // 'b'=98, hash=97*131+98=12707+98=12805
-            // 'c'=99, hash=12805*131+99=1677455+99=1677554
-            Assert.That(result, Is.EqualTo(1677554));
+            // 'a'=97, hash=0*16777619+97=97
+            // 'b'=98, hash=97*16777619+98=1627429141
+            // 'c'=99, hash=1627429141*16777619+99=27304386077195378
+            Assert.That(result, Is.EqualTo(27304386077195378UL));
+        }
+
+        [Test]
+        public void BKDRHash_CharValueDivisibleCollision_NoLongerCollides()
+        {
+            // 旧乘子 131 下："ab" 与单个字符 '\u3205'（0x3205 = 12805）哈希相同
+            Assert.That("ab".BKDRHash(), Is.Not.EqualTo("\u3205".BKDRHash()));
         }
 
         #endregion

@@ -32,6 +32,42 @@ namespace JiksLib.Control
             }
 
             /// <summary>
+            /// 注册一个在作用域结束时释放的对象，仅可在 OnRegisterServices 中调用。
+            /// 作用域结束时会按后进先出（LIFO）顺序释放；单个对象释放抛出的异常会被聚合，
+            /// 不会中断其余对象的释放。
+            /// </summary>
+            /// <param name="disposable">作用域结束时释放的对象</param>
+            /// <exception cref="InvalidOperationException">
+            /// 当方法不是从 <see cref="OnRegisterServices"/> 调用时抛出
+            /// </exception>
+            protected void DisposeOnScopeEnded(IDisposable disposable)
+            {
+                var unregisterStack = UnregisterStack
+                    ?? throw new InvalidOperationException(
+                        "Only allow call DisposeOnScopeEnded in OnRegisterServices.");
+
+                unregisterStack.Add(disposable);
+            }
+
+            /// <summary>
+            /// 注册一个在作用域结束时执行的动作，仅可在 OnRegisterServices 中调用。
+            /// 与 <see cref="DisposeOnScopeEnded"/> 共用同一个后进先出（LIFO）栈；
+            /// 单个动作抛出的异常会被聚合，不会中断其余动作的执行。
+            /// </summary>
+            /// <param name="action">作用域结束时执行的动作</param>
+            /// <exception cref="InvalidOperationException">
+            /// 当方法不是从 <see cref="OnRegisterServices"/> 调用时抛出
+            /// </exception>
+            protected void RunOnScopeEnded(Action action)
+            {
+                var unregisterStack = UnregisterStack
+                    ?? throw new InvalidOperationException(
+                        "Only allow call RunOnScopeEnded in OnRegisterServices.");
+
+                unregisterStack.Add(action);
+            }
+
+            /// <summary>
             /// 需要注册服务时，Service Locator 会调用此方法
             /// 此方法需要将要注册的服务通过 <c>Register&lt;T&gt;</c> 方法注册
             /// </summary>
@@ -110,11 +146,6 @@ namespace JiksLib.Control
             ServiceHolder<T>.Service
                 ?? throw new InvalidOperationException(
                         "Service not registered.");
-
-        /// <summary>
-        /// 当前仍处于活动状态（已 EnterScope 且尚未 Dispose）的作用域数量
-        /// </summary>
-        public static int ActiveScopeCount => scopes.Count;
 
         /// <summary>
         /// 释放所有仍处于活动状态的作用域，按进入顺序的逆序逐个注销。

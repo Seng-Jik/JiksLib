@@ -16,11 +16,20 @@ namespace JiksLib.Control
     /// 不同基类型的缓存内容不同，不能共用同一个缓存。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 发布期间增删监听器的"延迟"是<b>按事件类型独立</b>生效的：每个事件类型拥有独立的
     /// <see cref="SafeEvent{TEvent}"/> 会话。因此监听器在处理运行时类型 E 的事件时去增删
     /// 基类型 B 的监听器，由于 B 的会话尚未开始，改动会立即生效，并影响同一次发布中随后
     /// 对 B 的派发。这是"每种事件类型独立维护重入策略"的固有特性，不是缺陷；
     /// 若需要跨类型的一致性，请在发布前完成监听器增删。
+    /// </para>
+    /// <para>
+    /// 事件派发只覆盖运行时类型的实际类型链：运行时类型本身、它实现的接口、它的基类，
+    /// 以及 <typeparamref name="TBaseEvent"/>。不会为泛型变体（协变 / 逆变）额外合成派发目标：
+    /// 例如 <c>IHandler&lt;Base&gt;</c> 与 <c>IHandler&lt;Derived&gt;</c> 之间的变体转换，
+    /// 不会让注册在其中一个上的监听器收到另一个的事件。需要跨变体处理时，请把监听器注册到
+    /// 共同的 <typeparamref name="TBaseEvent"/>，或按运行时类型分别注册。
+    /// </para>
     /// </remarks>
     public sealed class EventBus<TBaseEvent>
         where TBaseEvent : class
@@ -353,9 +362,6 @@ namespace JiksLib.Control
                 foreach (var i in typeChain.TypesToPublish)
                 {
                     PublishOneShot(@event, i, exceptionsOutput);
-
-                    if (!baseEventType.IsInterface && i == baseEventType)
-                        break;
                 }
 
                 if (baseEventType != eventType)

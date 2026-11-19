@@ -857,5 +857,23 @@ namespace JiksLib.Test.Collections
             Assert.That(() => dict.RemoveByValue(null!), Throws.ArgumentNullException);
             Assert.That(() => dict["key1"] = null!, Throws.ArgumentNullException);
         }
+
+        [Test]
+        public void Reversed_IsReadOnlyView_CannotBeCastToMutableDictionary()
+        {
+            // Arrange
+            var dict = new BidirectionalDictionary<string, int>();
+            dict.Add("a", 1);
+
+            // Act
+            var reversed = dict.Reversed;
+
+            // Assert
+            Assert.That(reversed, Is.Not.InstanceOf<Dictionary<int, string>>());
+            Assert.That(reversed[1], Is.EqualTo("a"));
+            Assert.That(
+                () => ((IDictionary<int, string>)reversed).Add(2, "b"),
+                Throws.TypeOf<NotSupportedException>());
+        }
     }
 }

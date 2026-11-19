@@ -44,15 +44,32 @@ namespace JiksLib.Test.Extensions
         }
 
         [Test]
-        public void ThrowIfNull_WithNullValueAndCustomMessage_ThrowsWithCustomMessage()
+        public void ThrowIfNull_WithNullValueAndParamName_SetsParamName()
+        {
+            // Arrange
+            string? value = null;
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => value.ThrowIfNull(nameof(value)));
+
+            Assert.That(exception.ParamName, Is.EqualTo(nameof(value)));
+            Assert.That(exception.Message, Does.Contain("Value must not be null."));
+        }
+
+        [Test]
+        public void ThrowIfNull_WithNullValueAndCustomMessage_UsesCustomMessage()
         {
             // Arrange
             string? value = null;
             var customMessage = "Custom error message";
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => value.ThrowIfNull(customMessage));
-            Assert.That(exception.Message, Contains.Substring(customMessage));
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => value.ThrowIfNull("value", customMessage));
+
+            Assert.That(exception.ParamName, Is.EqualTo("value"));
+            Assert.That(exception.Message, Does.Contain(customMessage));
         }
 
         [Test]

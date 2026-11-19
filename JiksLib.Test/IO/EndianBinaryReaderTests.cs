@@ -590,6 +590,24 @@ namespace JiksLib.Test.IO
             Assert.That(() => reader.ReadString(), Throws.TypeOf<EndOfStreamException>());
         }
 
+        [Test]
+        public void ReadString_LengthExceedsMaxStringLength_ThrowsInvalidDataException()
+        {
+            // Arrange
+            using var stream = new MemoryStream();
+            var lengthBytes = BitConverter.GetBytes(5);
+            stream.Write(lengthBytes, 0, lengthBytes.Length);
+            stream.Write(new byte[5], 0, 5);
+            stream.Position = 0;
+
+            var converter = EndianBitConverter.LittleEndian;
+            using var reader = new EndianBinaryReader(converter, stream, Encoding.UTF8);
+            reader.MaxStringLength = 4;
+
+            // Act & Assert
+            Assert.That(() => reader.ReadString(), Throws.TypeOf<InvalidDataException>());
+        }
+
         #endregion
 
         #region Read Array and Buffer Tests

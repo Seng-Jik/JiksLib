@@ -9,7 +9,8 @@ namespace JiksLib.Text
     /// <summary>
     /// CSV 流式读取器
     /// 从 <see cref="Stream"/> 按 UTF-8（或指定编码）逐条读取 CSV 记录，字段以 <see cref="string"/> 返回；
-    /// 解析规则与 <see cref="CsvParser"/> 一致（RFC 4180，支持引号转义与引号内换行）。
+    /// 解析规则与 <see cref="CsvParser"/> 一致：引号、<c>""</c> 转义与引号内换行遵循 RFC 4180；
+    /// 记录分隔兼容 CRLF / LF / CR，未加引号字段中的引号按字面字符处理（比 RFC 4180 更宽松）。
     /// </summary>
     /// <remarks>
     /// <para>

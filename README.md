@@ -100,7 +100,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | --- | --- | --- |
 | `Disposable` | `IDisposable` 辅助：全局共享的 `Empty`，以及把委托包装为最多执行一次的 `IDisposable` 的 `FromAction`。 | [Disposable.cs](JiksLib/Control/Disposable.cs) |
 | `DisposableStack` | 按后进先出顺序集中释放的栈；单个对象抛异常不会中断其余对象，`Dispose` 可安全重复调用。 | [DisposableStack.cs](JiksLib/Control/DisposableStack.cs) |
-| `EventBus<TBaseEvent>` | 以类型为索引的事件总线，发布时沿运行时类型的继承链与接口链分发，监听器异常收集到输出列表中；`Publisher` 是发布端结构体。 | [EventBus.cs](JiksLib/Control/EventBus.cs) |
+| `EventBus<TBaseEvent>` | 以类型为索引的事件总线，发布时沿运行时类型的继承链与接口链分发，监听器异常收集到输出列表中；`Publisher` 是发布端结构体。不支持泛型变体（协变/逆变）派发，监听器需注册在运行时类型或共同的 `TBaseEvent` 上。 | [EventBus.cs](JiksLib/Control/EventBus.cs) |
 | `ValueEventBus<TConstraint>` | 面向值类型事件的事件总线，避免发布时的装箱；`SubPublisher<TEvent>` 可提前绑定单一事件类型以进一步降低开销。 | [ValueEventBus.cs](JiksLib/Control/ValueEventBus.cs) |
 | `SafeEvent<TEvent>` / `ISafeEventPublisher<TEvent>` / `EventHandler<TEvent>` | 单个事件的安全包装器：隔离监听器异常；默认拒绝发布期间增删监听器与递归发布，可配置为延迟增删和 FIFO 队列化递归发布。 | [SafeEvent.cs](JiksLib/Control/SafeEvent.cs) |
 | `EventFilter<TEventPublisher, TEvent>` | 在发布端过滤事件的装饰器，过滤函数可以修改事件，返回 `false` 则丢弃该事件。 | [EventFilter.cs](JiksLib/Control/EventFilter.cs) |
@@ -137,4 +137,4 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | --- | --- | --- |
 | `CsvParser` | 解析内存中 `string` / `StringSegment` 形式的 CSV；嵌套的 `CsvParser.Field` 保存原始切片 `Raw` 与 `HasEscapedQuotes`，`Value` / `ToString()` 才解转义。**枚举全程零分配**，只有读取含 `""` 转义的字段值时才新建一次字符串。`CsvParser` 实现 `IEnumerable<CsvParser.Row>`，`Row` 实现 `IEnumerable<CsvParser.Field>`（枚举器是嵌套的 `Row.Enumerator`，可直接用 LINQ）；`foreach` 走结构体枚举器，零装箱。 | [CsvParser.cs](JiksLib/Text/CsvParser.cs) |
 | `CsvReader` | 从 `Stream` 按需流式读取 CSV：`MoveNext` 只准备行，字段在枚举 `Row` 时才逐个解析并物化；跳过整行或未读字段时只扫描、不分配。行类型 `CsvReader.Row` 是单遍视图（枚举器是嵌套的 `Row.Enumerator`），推进到下一行后失效。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
-| `CsvWriter` | 按 RFC 4180 生成 CSV 的写入器，可修改分隔符以输出 TSV / DSV，并支持强制给所有字段加引号。 | [CsvWriter.cs](JiksLib/Text/CsvWriter.cs) |
+| `CsvWriter` | 按 RFC 4180 的引号/转义规则生成 CSV，记录分隔固定 CRLF；分隔符可配置以输出 TSV / DSV（此时不再是严格 RFC 4180），并支持强制给所有字段加引号。 | [CsvWriter.cs](JiksLib/Text/CsvWriter.cs) |

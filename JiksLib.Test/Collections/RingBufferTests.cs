@@ -1450,141 +1450,141 @@ namespace JiksLib.Test.Collections
                 switch (random.Next(9))
                 {
                     case 0:
-                    {
-                        int value = random.Next(20);
-                        ring.Add(value);
-                        model.Insert(0, value);
-                        if (model.Count > Capacity) model.RemoveAt(model.Count - 1);
-                        break;
-                    }
-                    case 1:
-                    {
-                        int value = random.Next(20);
-                        bool expectedEvicted = model.Count == Capacity;
-                        int expectedEvictedValue = expectedEvicted
-                            ? model[model.Count - 1]
-                            : 0;
-
-                        bool evicted = ring.Add(value, out var evictedValue);
-
-                        Assert.That(evicted, Is.EqualTo(expectedEvicted), $"step {step}");
-                        Assert.That(
-                            evictedValue,
-                            Is.EqualTo(expectedEvictedValue),
-                            $"step {step}");
-
-                        model.Insert(0, value);
-                        if (model.Count > Capacity) model.RemoveAt(model.Count - 1);
-                        break;
-                    }
-                    case 2:
-                    {
-                        bool removed = ring.TryRemoveNewest(out var value);
-                        Assert.That(removed, Is.EqualTo(model.Count > 0), $"step {step}");
-
-                        if (removed)
                         {
-                            Assert.That(value, Is.EqualTo(model[0]), $"step {step}");
-                            model.RemoveAt(0);
-                        }
-                        else
-                        {
-                            Assert.That(value, Is.EqualTo(0), $"step {step}");
-                        }
-
-                        break;
-                    }
-                    case 3:
-                    {
-                        bool removed = ring.TryRemoveOldest(out var value);
-                        Assert.That(removed, Is.EqualTo(model.Count > 0), $"step {step}");
-
-                        if (removed)
-                        {
-                            Assert.That(
-                                value,
-                                Is.EqualTo(model[model.Count - 1]),
-                                $"step {step}");
-                            model.RemoveAt(model.Count - 1);
-                        }
-                        else
-                        {
-                            Assert.That(value, Is.EqualTo(0), $"step {step}");
-                        }
-
-                        break;
-                    }
-                    case 4:
-                    {
-                        if (model.Count > 0)
-                        {
-                            int index = random.Next(model.Count);
-                            Assert.That(
-                                ring.TryIndex(index, out var value),
-                                Is.True,
-                                $"step {step}");
-                            Assert.That(value, Is.EqualTo(model[index]), $"step {step}");
-
-                            int newValue = random.Next(20);
-                            ring[index] = newValue;
-                            model[index] = newValue;
-                        }
-
-                        break;
-                    }
-                    case 5:
-                    {
-                        int count = random.Next(rangeBuffer.Length + 1);
-                        for (int i = 0; i < count; i++)
-                            rangeBuffer[i] = random.Next(20);
-
-                        ring.AddRange(new ArraySegment<int>(rangeBuffer, 0, count));
-
-                        for (int i = 0; i < count; i++)
-                        {
-                            model.Insert(0, rangeBuffer[i]);
+                            int value = random.Next(20);
+                            ring.Add(value);
+                            model.Insert(0, value);
                             if (model.Count > Capacity) model.RemoveAt(model.Count - 1);
+                            break;
                         }
+                    case 1:
+                        {
+                            int value = random.Next(20);
+                            bool expectedEvicted = model.Count == Capacity;
+                            int expectedEvictedValue = expectedEvicted
+                                ? model[model.Count - 1]
+                                : 0;
 
-                        break;
-                    }
+                            bool evicted = ring.Add(value, out var evictedValue);
+
+                            Assert.That(evicted, Is.EqualTo(expectedEvicted), $"step {step}");
+                            Assert.That(
+                                evictedValue,
+                                Is.EqualTo(expectedEvictedValue),
+                                $"step {step}");
+
+                            model.Insert(0, value);
+                            if (model.Count > Capacity) model.RemoveAt(model.Count - 1);
+                            break;
+                        }
+                    case 2:
+                        {
+                            bool removed = ring.TryRemoveNewest(out var value);
+                            Assert.That(removed, Is.EqualTo(model.Count > 0), $"step {step}");
+
+                            if (removed)
+                            {
+                                Assert.That(value, Is.EqualTo(model[0]), $"step {step}");
+                                model.RemoveAt(0);
+                            }
+                            else
+                            {
+                                Assert.That(value, Is.EqualTo(0), $"step {step}");
+                            }
+
+                            break;
+                        }
+                    case 3:
+                        {
+                            bool removed = ring.TryRemoveOldest(out var value);
+                            Assert.That(removed, Is.EqualTo(model.Count > 0), $"step {step}");
+
+                            if (removed)
+                            {
+                                Assert.That(
+                                    value,
+                                    Is.EqualTo(model[model.Count - 1]),
+                                    $"step {step}");
+                                model.RemoveAt(model.Count - 1);
+                            }
+                            else
+                            {
+                                Assert.That(value, Is.EqualTo(0), $"step {step}");
+                            }
+
+                            break;
+                        }
+                    case 4:
+                        {
+                            if (model.Count > 0)
+                            {
+                                int index = random.Next(model.Count);
+                                Assert.That(
+                                    ring.TryIndex(index, out var value),
+                                    Is.True,
+                                    $"step {step}");
+                                Assert.That(value, Is.EqualTo(model[index]), $"step {step}");
+
+                                int newValue = random.Next(20);
+                                ring[index] = newValue;
+                                model[index] = newValue;
+                            }
+
+                            break;
+                        }
+                    case 5:
+                        {
+                            int count = random.Next(rangeBuffer.Length + 1);
+                            for (int i = 0; i < count; i++)
+                                rangeBuffer[i] = random.Next(20);
+
+                            ring.AddRange(new ArraySegment<int>(rangeBuffer, 0, count));
+
+                            for (int i = 0; i < count; i++)
+                            {
+                                model.Insert(0, rangeBuffer[i]);
+                                if (model.Count > Capacity) model.RemoveAt(model.Count - 1);
+                            }
+
+                            break;
+                        }
                     case 6:
-                    {
-                        int value = random.Next(20);
-                        int expectedIndex = model.IndexOf(value);
-                        bool removed = ring.Remove(value);
+                        {
+                            int value = random.Next(20);
+                            int expectedIndex = model.IndexOf(value);
+                            bool removed = ring.Remove(value);
 
-                        Assert.That(
-                            removed,
-                            Is.EqualTo(expectedIndex >= 0),
-                            $"step {step}");
+                            Assert.That(
+                                removed,
+                                Is.EqualTo(expectedIndex >= 0),
+                                $"step {step}");
 
-                        if (expectedIndex >= 0)
-                            model.RemoveAt(expectedIndex);
+                            if (expectedIndex >= 0)
+                                model.RemoveAt(expectedIndex);
 
-                        break;
-                    }
+                            break;
+                        }
                     case 7:
-                    {
-                        if (model.Count > 0)
                         {
-                            int index = random.Next(model.Count);
-                            ring.RemoveAt(index);
-                            model.RemoveAt(index);
-                        }
+                            if (model.Count > 0)
+                            {
+                                int index = random.Next(model.Count);
+                                ring.RemoveAt(index);
+                                model.RemoveAt(index);
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     default:
-                    {
-                        if (random.Next(5) == 0)
                         {
-                            ring.Clear();
-                            model.Clear();
-                        }
+                            if (random.Next(5) == 0)
+                            {
+                                ring.Clear();
+                                model.Clear();
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                 }
 
                 Assert.That(ring.Count, Is.EqualTo(model.Count), $"step {step}");

@@ -1,6 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+#if NET6_0_OR_GREATER
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+#endif
 using JiksLib.Extensions;
 
 namespace JiksLib.Collections
@@ -69,6 +73,24 @@ namespace JiksLib.Collections
         {
             item.ThrowIfNull();
 
+#if NET6_0_OR_GREATER
+            // 单次哈希：取引用后原地更新（netstandard2.1 / net48 没有 CollectionsMarshal）
+            ref int count = ref CollectionsMarshal.GetValueRefOrAddDefault(
+                dict,
+                item,
+                out bool exists);
+
+            if (exists)
+            {
+                count++;
+                Count++;
+                return count;
+            }
+
+            count = 1;
+            Count++;
+            return 1;
+#else
             if (dict.TryGetValue(item, out var count))
             {
                 dict[item] = count + 1;
@@ -81,6 +103,7 @@ namespace JiksLib.Collections
                 Count++;
                 return 1;
             }
+#endif
         }
 
         /// <summary>
@@ -94,6 +117,24 @@ namespace JiksLib.Collections
             if (item == null)
                 return (false, 0);
 
+#if NET6_0_OR_GREATER
+            // 单次哈希：取引用后原地更新或删除
+            ref int count = ref CollectionsMarshal.GetValueRefOrNullRef(dict, item);
+
+            if (Unsafe.IsNullRef(ref count))
+                return (false, 0);
+
+            if (count > 1)
+            {
+                count--;
+                Count--;
+                return (true, count);
+            }
+
+            dict.Remove(item);
+            Count--;
+            return (true, 0);
+#else
             if (dict.TryGetValue(item, out var count))
             {
                 if (count > 1)
@@ -113,6 +154,7 @@ namespace JiksLib.Collections
             {
                 return (false, 0);
             }
+#endif
         }
 
         /// <summary>
@@ -123,6 +165,7 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 转换为只读集合
+        /// 返回的是当前实例的只读视图，禁止强转回 <see cref="MultiHashSet{T}"/> 修改；强转属于未定义行为
         /// </summary>
         public IReadOnlyMultiSet<T> AsReadOnly() => this;
 

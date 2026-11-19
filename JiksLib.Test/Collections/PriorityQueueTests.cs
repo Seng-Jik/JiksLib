@@ -751,7 +751,7 @@ namespace JiksLib.Test.Collections
             Assert.That(priority, Is.EqualTo(5));
 
             // 验证出队顺序
-            Assert.That(queue.Dequeue(), Is.EqualTo(( "not null", 5)));
+            Assert.That(queue.Dequeue(), Is.EqualTo(("not null", 5)));
             Assert.That(queue.Dequeue(), Is.EqualTo(((string?)null, 10)));
             Assert.That(queue.Dequeue(), Is.EqualTo(((string?)null, 15)));
         }

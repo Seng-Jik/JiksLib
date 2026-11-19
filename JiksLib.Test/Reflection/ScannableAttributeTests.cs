@@ -53,6 +53,25 @@ namespace JiksLib.Test.Reflection
     [TestScannableAttribute1("Interface")]
     public interface ITestInterface { }
 
+    // 继承测试：基类标记，派生类未显式标记
+    [TestScannableAttribute1("Base")]
+    public class AttributedBaseClass { }
+
+    public class DerivedFromAttributedClass : AttributedBaseClass { }
+
+    /// <summary>
+    /// 模拟 GetTypes 抛 ReflectionTypeLoadException 的程序集
+    /// </summary>
+    internal sealed class ThrowingAssembly : Assembly
+    {
+        public override Type[] GetTypes() =>
+            throw new ReflectionTypeLoadException(
+                new Type[] { typeof(TestClassA), null! },
+                Array.Empty<Exception>());
+
+        public override AssemblyName GetName() => new("ThrowingAssembly");
+    }
+
     [TestFixture]
     public class ScannableAttributeTests
     {
@@ -79,7 +98,7 @@ namespace JiksLib.Test.Reflection
             var typesWithAttr2 = result.GetTypesByAttribute<TestScannableAttribute2>().ToList();
 
             // 应该找到标记了 TestScannableAttribute1 的类
-            Assert.That(typesWithAttr1.Count, Is.EqualTo(4));
+            Assert.That(typesWithAttr1.Count, Is.EqualTo(5));
             Assert.That(typesWithAttr1.Any(t => t.Type == typeof(TestClassA)), Is.True);
             Assert.That(typesWithAttr1.Any(t => t.Type == typeof(TestClassB)), Is.True);
 
@@ -269,6 +288,67 @@ namespace JiksLib.Test.Reflection
 
             // 应该包含接口
             Assert.That(typesWithAttr1.Any(t => t.Type == typeof(ITestInterface)), Is.True);
+        }
+
+        [Test]
+        public void AttributeUsage_DisallowsInheritance()
+        {
+            var usage = typeof(TestScannableAttribute1)
+                .GetCustomAttribute<AttributeUsageAttribute>(inherit: true);
+
+            Assert.That(usage, Is.Not.Null);
+            Assert.That(usage!.Inherited, Is.False);
+            Assert.That(usage.AllowMultiple, Is.False);
+        }
+
+        [Test]
+        public void ScanAssemblies_DoesNotIncludeInheritedAttributes()
+        {
+            // Arrange
+            var result = ScannableAttribute.ScanAssemblies(new[] { _testAssembly });
+
+            // Act
+            var types = result.GetTypesByAttribute<TestScannableAttribute1>().ToList();
+
+            // Assert
+            Assert.That(types.Any(t => t.Type == typeof(AttributedBaseClass)), Is.True);
+            Assert.That(types.Any(t => t.Type == typeof(DerivedFromAttributedClass)), Is.False);
+        }
+
+        [Test]
+        public void ScanAssemblies_WithNullAssemblies_ThrowsArgumentNullException()
+        {
+            Assert.That(
+                () => ScannableAttribute.ScanAssemblies(null!),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void ScanAssemblies_WithNullAssemblyElement_IsIgnored()
+        {
+            var result = ScannableAttribute.ScanAssemblies(
+                new[] { null!, _testAssembly });
+
+            Assert.That(
+                result.GetTypesByAttribute<TestScannableAttribute1>()
+                    .Any(t => t.Type == typeof(TestClassA)),
+                Is.True);
+        }
+
+        [Test]
+        public void ScanAssemblies_WithPartiallyLoadableAssembly_ScansLoadableTypes()
+        {
+            // Arrange
+            var assemblies = new[] { new ThrowingAssembly() };
+
+            // Act
+            var result = ScannableAttribute.ScanAssemblies(assemblies);
+
+            // Assert
+            Assert.That(
+                result.GetTypesByAttribute<TestScannableAttribute1>()
+                    .Any(t => t.Type == typeof(TestClassA)),
+                Is.True);
         }
     }
 }

@@ -6,6 +6,10 @@ namespace JiksLib.Collections
     /// <summary>
     /// 只读多重字典
     /// </summary>
+    /// <remarks>
+    /// 该接口是对可变实现的只读视图，不保证可以强转回可写类型。
+    /// 调用方不得通过强制转换绕过只读约束，强转属于未定义行为。
+    /// </remarks>
     /// <typeparam name="TKey">键的类型</typeparam>
     /// <typeparam name="TValue">值的类型</typeparam>
     public interface IReadOnlyMultiDictionary<TKey, TValue> :
