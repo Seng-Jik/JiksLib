@@ -119,36 +119,151 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
-        /// 随机抽取一个元素的下标
+        /// 按权重随机抽取一个元素的下标
         /// </summary>
+        /// <remarks>
+        /// 权重函数会被调用两次（一次求和、一次选择），因此必须是纯函数；
+        /// 需要只求值一次时，请使用接收预计算权重的重载。
+        /// </remarks>
         /// <typeparam name="T">元素类型</typeparam>
         /// <param name="ls">要抽取元素的列表</param>
-        /// <param name="randomNumber">随机数，范围为[0,1]</param>
-        /// <param name="getWeight">获取元素权重的函数</param>
+        /// <param name="randomNumber">随机数，必须在 [0, 1] 范围内</param>
+        /// <param name="getWeight">获取元素权重的函数，返回值必须是非负有限数</param>
         /// <returns>随机抽取的元素的下标</returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="ArgumentNullException">参数为 null 时抛出</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 随机数越界 / 为 NaN 或无穷大，或权重为负数 / NaN / 无穷大时抛出
+        /// </exception>
+        /// <exception cref="InvalidOperationException">列表为空或总权重不大于 0 时抛出</exception>
         public static int RandomSelectIndex<T>(
             this IReadOnlyList<T> ls,
             float randomNumber,
             Func<T, float> getWeight)
         {
+            ls.ThrowIfNull(nameof(ls));
+            getWeight.ThrowIfNull(nameof(getWeight));
+
             if (ls.Count == 0)
                 throw new InvalidOperationException(
                     "Cannot random select on a zero length list.");
 
-            if (ls.Count == 1) return 0;
+            ValidateRandomNumber(randomNumber);
 
-            float allWeight = ls.Sum(getWeight);
-            float selectedWeight = allWeight * randomNumber;
+            float allWeight = 0f;
 
-            for (int i = 0; i < ls.Count; ++i)
+            for (int i = 0; i < ls.Count; i++)
             {
-                var p = getWeight(ls[i]);
-                if (selectedWeight <= p) return i;
-                selectedWeight -= p;
+                float weight = getWeight(ls[i]);
+                ValidateWeight(weight, nameof(getWeight));
+                allWeight += weight;
             }
 
-            return ls.Count - 1;
+            if (!(allWeight > 0f))
+                throw new InvalidOperationException(
+                    "Total weight must be greater than zero.");
+
+            float selectedWeight = allWeight * randomNumber;
+
+            for (int i = 0; i < ls.Count; i++)
+            {
+                float weight = getWeight(ls[i]);
+                if (weight > 0f && selectedWeight <= weight) return i;
+                selectedWeight -= weight;
+            }
+
+            // 浮点误差兜底：返回最后一个正权重项
+            for (int i = ls.Count - 1; i >= 0; i--)
+            {
+                if (getWeight(ls[i]) > 0f) return i;
+            }
+
+            throw new InvalidOperationException(
+                "Total weight must be greater than zero.");
+        }
+
+        /// <summary>
+        /// 按预计算权重随机抽取一个元素的下标
+        /// 权重只读取一次，适合权重计算有成本或不能重复求值的场景
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="ls">要抽取元素的列表</param>
+        /// <param name="randomNumber">随机数，必须在 [0, 1] 范围内</param>
+        /// <param name="weights">与列表一一对应的权重，必须是非负有限数</param>
+        /// <returns>随机抽取的元素的下标</returns>
+        /// <exception cref="ArgumentNullException">参数为 null 时抛出</exception>
+        /// <exception cref="ArgumentException">权重数量与列表长度不一致时抛出</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 随机数越界 / 为 NaN 或无穷大，或权重为负数 / NaN / 无穷大时抛出
+        /// </exception>
+        /// <exception cref="InvalidOperationException">列表为空或总权重不大于 0 时抛出</exception>
+        public static int RandomSelectIndex<T>(
+            this IReadOnlyList<T> ls,
+            float randomNumber,
+            IReadOnlyList<float> weights)
+        {
+            ls.ThrowIfNull(nameof(ls));
+            weights.ThrowIfNull(nameof(weights));
+
+            if (ls.Count == 0)
+                throw new InvalidOperationException(
+                    "Cannot random select on a zero length list.");
+
+            if (weights.Count != ls.Count)
+                throw new ArgumentException(
+                    "Weights count must match the list count.",
+                    nameof(weights));
+
+            ValidateRandomNumber(randomNumber);
+
+            float allWeight = 0f;
+
+            for (int i = 0; i < weights.Count; i++)
+            {
+                ValidateWeight(weights[i], nameof(weights));
+                allWeight += weights[i];
+            }
+
+            if (!(allWeight > 0f))
+                throw new InvalidOperationException(
+                    "Total weight must be greater than zero.");
+
+            float selectedWeight = allWeight * randomNumber;
+
+            for (int i = 0; i < weights.Count; i++)
+            {
+                float weight = weights[i];
+                if (weight > 0f && selectedWeight <= weight) return i;
+                selectedWeight -= weight;
+            }
+
+            for (int i = weights.Count - 1; i >= 0; i--)
+            {
+                if (weights[i] > 0f) return i;
+            }
+
+            throw new InvalidOperationException(
+                "Total weight must be greater than zero.");
+        }
+
+        static void ValidateRandomNumber(float randomNumber)
+        {
+            if (float.IsNaN(randomNumber) || float.IsInfinity(randomNumber) ||
+                randomNumber < 0f || randomNumber > 1f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(randomNumber),
+                    "Random number must be within [0, 1].");
+            }
+        }
+
+        static void ValidateWeight(float weight, string paramName)
+        {
+            if (float.IsNaN(weight) || float.IsInfinity(weight) || weight < 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    paramName,
+                    "Weight must be a finite non-negative number.");
+            }
         }
     }
 }

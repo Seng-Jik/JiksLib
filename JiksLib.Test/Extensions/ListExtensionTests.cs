@@ -858,20 +858,33 @@ namespace JiksLib.Test.Extensions
         }
 
         [Test]
-        public void RandomSelectIndex_WithAllZeroWeights_ReturnsZero()
+        public void RandomSelectIndex_WithAllZeroWeights_ThrowsInvalidOperationException()
         {
             // Arrange
             IReadOnlyList<int> list = new List<int> { 10, 20, 30 };
-            float randomNumber = 0.5f;
             Func<int, float> getWeight = x => 0f;
 
-            // Act
-            var result = list.RandomSelectIndex(randomNumber, getWeight);
+            // Act & Assert
+            Assert.That(
+                () => list.RandomSelectIndex(0.5f, getWeight),
+                Throws.TypeOf<InvalidOperationException>());
+        }
 
-            // Assert
-            // When all weights are zero, totalWeight = 0, selectedWeight = 0
-            // First element satisfies selectedWeight <= p (0 <= 0)
-            Assert.That(result, Is.EqualTo(0));
+        [TestCase(-0.5f)]
+        [TestCase(1.5f)]
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        public void RandomSelectIndex_WithInvalidRandomNumber_ThrowsArgumentOutOfRange(
+            float randomNumber)
+        {
+            // Arrange
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            Func<string, float> getWeight = x => 1f;
+
+            // Act & Assert
+            Assert.That(
+                () => list.RandomSelectIndex(randomNumber, getWeight),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 
         [Test]
@@ -879,57 +892,100 @@ namespace JiksLib.Test.Extensions
         {
             // Arrange
             IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
-            // Weights: 1, 1, 1
             Func<string, float> getWeight = x => 1f;
-            // randomNumber very close to 1 but not exactly 1
-            float randomNumber = 0.9999999f; // totalWeight=3, selectedWeight=2.9999997
-            // Loop: i=0, p=1, 2.9999997 <=1 false, selectedWeight=1.9999997
-            // i=1, p=1, 1.9999997 <=1 false, selectedWeight=0.9999997
-            // i=2, p=1, 0.9999997 <=1 true, return 2
 
             // Act
-            var result = list.RandomSelectIndex(randomNumber, getWeight);
+            var result = list.RandomSelectIndex(0.9999999f, getWeight);
 
             // Assert
             Assert.That(result, Is.EqualTo(2));
         }
 
         [Test]
-        public void RandomSelectIndex_WithRandomNumberNegative_MayReturnLastIndex()
+        public void RandomSelectIndex_WithNullList_ThrowsArgumentNullException()
         {
-            // Arrange
-            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
-            float randomNumber = -0.5f;
-            Func<string, float> getWeight = x => 1f;
+            IReadOnlyList<int>? list = null;
 
-            // Act
-            var result = list.RandomSelectIndex(randomNumber, getWeight);
-
-            // Assert
-            // selectedWeight = totalWeight * (-0.5) = 3 * -0.5 = -1.5
-            // Loop: i=0, p=1, -1.5 <=1 true, returns 0
-            // Actually, selectedWeight is negative, so condition selectedWeight <= p is true for first element
-            Assert.That(result, Is.EqualTo(0));
+            Assert.That(
+                () => list!.RandomSelectIndex(0.5f, x => 1f),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]
-        public void RandomSelectIndex_WithRandomNumberGreaterThanOne_MayReturnLastIndex()
+        public void RandomSelectIndex_WithNullWeightFunction_ThrowsArgumentNullException()
         {
-            // Arrange
+            IReadOnlyList<int> list = new List<int> { 1 };
+
+            Assert.That(
+                () => list.RandomSelectIndex(0.5f, (Func<int, float>)null!),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        [TestCase(-1f)]
+        public void RandomSelectIndex_WithInvalidWeight_ThrowsArgumentOutOfRange(
+            float weight)
+        {
+            IReadOnlyList<int> list = new List<int> { 1, 2 };
+
+            Assert.That(
+                () => list.RandomSelectIndex(0.5f, _ => weight),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
+
+        [Test]
+        public void RandomSelectIndex_SkipsZeroWeightElement()
+        {
+            IReadOnlyList<string> list = new List<string> { "zero", "one" };
+
+            var result = list.RandomSelectIndex(0f, x => x == "zero" ? 0f : 1f);
+
+            Assert.That(result, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WeightFunctionCalledTwicePerElement()
+        {
             IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
-            float randomNumber = 1.5f;
-            Func<string, float> getWeight = x => 1f;
+            int calls = 0;
+            Func<string, float> getWeight = _ => { calls++; return 1f; };
 
-            // Act
-            var result = list.RandomSelectIndex(randomNumber, getWeight);
+            var result = list.RandomSelectIndex(0.999f, getWeight);
 
-            // Assert
-            // selectedWeight = totalWeight * 1.5 = 3 * 1.5 = 4.5
-            // Loop: i=0, p=1, 4.5 <=1 false, selectedWeight=3.5
-            // i=1, p=1, 3.5 <=1 false, selectedWeight=2.5
-            // i=2, p=1, 2.5 <=1 false, selectedWeight=1.5
-            // Loop ends, returns last index (2)
             Assert.That(result, Is.EqualTo(2));
+            Assert.That(calls, Is.EqualTo(list.Count * 2));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithPrecomputedWeights_ReturnsSameResult()
+        {
+            IReadOnlyList<string> list = new List<string> { "A", "B", "C" };
+            IReadOnlyList<float> weights = new List<float> { 1f, 2f, 3f };
+
+            var viaFunc = list.RandomSelectIndex(
+                0.5f,
+                x => x switch
+                {
+                    "A" => 1f,
+                    "B" => 2f,
+                    _ => 3f,
+                });
+
+            var viaWeights = list.RandomSelectIndex(0.5f, weights);
+
+            Assert.That(viaWeights, Is.EqualTo(viaFunc));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithWeightsCountMismatch_ThrowsArgumentException()
+        {
+            IReadOnlyList<string> list = new List<string> { "A", "B" };
+            IReadOnlyList<float> weights = new List<float> { 1f };
+
+            Assert.That(
+                () => list.RandomSelectIndex(0.5f, weights),
+                Throws.TypeOf<ArgumentException>());
         }
 
         [Test]
