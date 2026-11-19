@@ -298,6 +298,17 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
+        public void Field_Default_IsEmptyField()
+        {
+            var field = default(CsvParser.Field);
+
+            Assert.That(field.Raw.Length, Is.EqualTo(0));
+            Assert.That(field.HasEscapedQuotes, Is.False);
+            Assert.That(field.Value.Length, Is.EqualTo(0));
+            Assert.That(field.ToString(), Is.Empty);
+        }
+
+        [Test]
         public void Field_ExposesRawContentAndLazyValue()
         {
             var parser = new CsvParser("\"a\"\"b\",c");

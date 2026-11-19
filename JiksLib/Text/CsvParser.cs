@@ -91,6 +91,7 @@ namespace JiksLib.Text
         /// <summary>
         /// CSV 字段
         /// 保存字段的原始切片与"是否包含 <c>""</c> 转义"的标记，解转义是惰性的。
+        /// 默认值（<c>default</c>）表示空字段：<see cref="Raw"/> 为默认 <see cref="StringSegment"/>，长度为 0。
         /// </summary>
         /// <remarks>
         /// 解析阶段只做切片、不分配：枚举行与字段全程零分配。
@@ -105,11 +106,6 @@ namespace JiksLib.Text
                 Raw = raw;
                 HasEscapedQuotes = hasEscapedQuotes;
             }
-
-            /// <summary>
-            /// 空字段
-            /// </summary>
-            public static readonly Field Empty = new(StringSegment.Empty, false);
 
             /// <summary>
             /// 原始内容（保留 <c>""</c> 转义，零拷贝）
@@ -192,7 +188,7 @@ namespace JiksLib.Text
                     this.separator = separator;
                     position = 0;
                     finished = false;
-                    current = Field.Empty;
+                    current = default;
                 }
 
                 /// <summary>
@@ -214,7 +210,7 @@ namespace JiksLib.Text
                     // 空记录（例如两个换行之间没有任何字符）按一个空字段处理
                     if (record.Length == 0)
                     {
-                        current = Field.Empty;
+                        current = default;
                         finished = true;
                         return true;
                     }
@@ -222,7 +218,7 @@ namespace JiksLib.Text
                     // 上一个字段以分隔符结尾：产生末尾空字段
                     if (position == record.Length)
                     {
-                        current = Field.Empty;
+                        current = default;
                         finished = true;
                         return true;
                     }
