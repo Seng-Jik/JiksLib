@@ -77,6 +77,11 @@ jobs:
         --collect:"XPlat Code Coverage"
         --results-directory ./TestResults/net48
 
+    # 覆盖率门禁：net10 的 cobertura 报告必须达到阈值；缺报告直接失败。
+    - name: Coverage gate
+      if: runner.os == 'Linux'
+      run: python3 .github/scripts/check_coverage.py ./TestResults/net10.0 90
+
     # 同一套测试在 net10 运行时上执行 netstandard2.1 产物，覆盖 Unity 目标。
     # 该步骤会按属性重建测试工程（不能用 --no-build），因此放在常规测试之后。
     - name: Test netstandard2.1 asset
@@ -95,7 +100,7 @@ jobs:
       with:
         name: coverage-${{ matrix.os }}
         path: TestResults/**
-        if-no-files-found: ignore
+        if-no-files-found: warn
 
   benchmark-smoke:
     name: benchmark smoke

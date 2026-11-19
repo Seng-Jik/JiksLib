@@ -5,6 +5,11 @@ namespace JiksLib.Collections
     /// <summary>
     /// 可以被设置一次的格子
     /// </summary>
+    /// <remarks>
+    /// <typeparamref name="T"/> 不受约束，允许传入 null（引用类型）或值类型；
+    /// 需要"非空"语义时请由调用方自行校验。读取尚未设置的值会抛
+    /// <see cref="InvalidOperationException"/>，重复设置同样抛异常。
+    /// </remarks>
     public sealed class OnceCell<T>
     {
         /// <summary>

@@ -182,10 +182,11 @@ namespace JiksLib.Collections
         /// 调用 Remove/RemoveAt/Clear 后该表会被改写，返回的区间随之失效。
         /// 本方法只枚举 <paramref name="items"/> 一次，因此可以接受只能枚举一次的序列。
         /// </remarks>
-        /// <param name="items">要添加的元素，不能为 null</param>
+        /// <param name="items">要添加的元素，不能为 null，也不能是当前实例自身</param>
         /// <param name="outputIndexList">新元素下标所在的内部列表</param>
         /// <param name="outputIndexListBegin">新元素下标区间的起始位置</param>
         /// <param name="outputIndexCount">新元素下标区间的长度</param>
+        /// <exception cref="ArgumentException">当 <paramref name="items"/> 是当前实例自身时抛出</exception>
         public void AddRange(
             IEnumerable<T> items,
             out IReadOnlyList<int> outputIndexList,
@@ -193,6 +194,11 @@ namespace JiksLib.Collections
             out int outputIndexCount)
         {
             items.ThrowIfNull(nameof(items));
+
+            // 自身枚举器读取实时的 Count，而循环体又不断 Count++，会永不结束。
+            if (ReferenceEquals(items, this))
+                throw new ArgumentException(
+                    "Cannot add a SparseSet to itself.", nameof(items));
 
             outputIndexList = reversedIndexes;
             outputIndexListBegin = Count;
@@ -433,7 +439,7 @@ namespace JiksLib.Collections
         /// </summary>
         public void CopyToOrdered(ArraySegment<T> target)
         {
-            var array = target.Array.ThrowIfNull();
+            var array = target.Array.ThrowIfNull(nameof(target));
 
             int writeIndex = 0;
             var buffer = InnerBuffer;
@@ -457,7 +463,7 @@ namespace JiksLib.Collections
             Array.Copy(
                 sourceArray: InnerBuffer,
                 sourceIndex: 0,
-                destinationArray: target.Array.ThrowIfNull(),
+                destinationArray: target.Array.ThrowIfNull(nameof(target)),
                 destinationIndex: target.Offset,
                 length: Math.Min(Count, target.Count));
 

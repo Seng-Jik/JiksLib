@@ -35,7 +35,7 @@ namespace JiksLib.Collections
         /// <param name="comparer">比较器</param>
         public MultiHashSet(IEqualityComparer<T> comparer)
         {
-            dict = new(comparer.ThrowIfNull());
+            dict = new(comparer.ThrowIfNull(nameof(comparer)));
             Count = 0;
         }
 
@@ -75,7 +75,7 @@ namespace JiksLib.Collections
         /// <returns>添加后该元素的数量</returns>
         public int Add(T item)
         {
-            item.ThrowIfNull();
+            item.ThrowIfNull(nameof(item));
 
 #if NET6_0_OR_GREATER
             // 单次哈希：取引用后原地更新（netstandard2.1 / net48 没有 CollectionsMarshal）

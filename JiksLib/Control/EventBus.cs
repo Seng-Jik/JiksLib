@@ -351,7 +351,7 @@ namespace JiksLib.Control
                 ICollection<Exception>? exceptionsOutput)
             {
                 var baseEventType = typeof(TBaseEvent);
-                var eventType = @event.ThrowIfNull().GetType();
+                var eventType = @event.ThrowIfNull(nameof(@event)).GetType();
 
                 var typeChain = bus
                     .typeChainCache

@@ -157,7 +157,7 @@ namespace JiksLib.Collections
         /// <exception cref="ArgumentOutOfRangeException">目标区间不足</exception>
         public void CopyTo(T[] destination, int destinationIndex)
         {
-            destination.ThrowIfNull();
+            destination.ThrowIfNull(nameof(destination));
 
             if (destinationIndex < 0 ||
                 destinationIndex > destination.Length - Count)

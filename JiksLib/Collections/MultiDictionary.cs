@@ -33,7 +33,7 @@ namespace JiksLib.Collections
         /// </summary>
         public MultiDictionary(IEqualityComparer<TKey> keyComparer)
         {
-            dict = new(keyComparer.ThrowIfNull());
+            dict = new(keyComparer.ThrowIfNull(nameof(keyComparer)));
             Count = 0;
             valueComparer = null;
         }
@@ -47,9 +47,9 @@ namespace JiksLib.Collections
             IEqualityComparer<TKey> keyComparer,
             IEqualityComparer<TValue> valueComparer)
         {
-            dict = new(keyComparer.ThrowIfNull());
+            dict = new(keyComparer.ThrowIfNull(nameof(keyComparer)));
             Count = 0;
-            this.valueComparer = valueComparer.ThrowIfNull();
+            this.valueComparer = valueComparer.ThrowIfNull(nameof(valueComparer));
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace JiksLib.Collections
         /// <param name="value">值</param>
         public void Add(TKey key, TValue value)
         {
-            key.ThrowIfNull();
+            key.ThrowIfNull(nameof(key));
 
             if (dict.TryGetValue(key, out var set))
             {
@@ -100,7 +100,7 @@ namespace JiksLib.Collections
         /// <returns>是否成功移除</returns>
         public bool Remove(TKey key, TValue value)
         {
-            if (!dict.TryGetValue(key.ThrowIfNull(), out var set))
+            if (!dict.TryGetValue(key.ThrowIfNull(nameof(key)), out var set))
                 return false;
 
             bool success = set.Remove(value).Success;
@@ -130,7 +130,7 @@ namespace JiksLib.Collections
         /// <returns>移除的元素数量</returns>
         public int Remove(TKey key)
         {
-            if (!dict.TryGetValue(key.ThrowIfNull(), out var set))
+            if (!dict.TryGetValue(key.ThrowIfNull(nameof(key)), out var set))
                 return 0;
 
             dict.Remove(key);

@@ -22,7 +22,7 @@ namespace JiksLib
         /// <param name="onProgressReported">当进度被报告时</param>
         /// <returns>进度报告器</returns>
         public static IProgress<T> Create<T>(Action<T> onProgressReported) =>
-            new ActionProgressImpl<T>(onProgressReported.ThrowIfNull());
+            new ActionProgressImpl<T>(onProgressReported.ThrowIfNull(nameof(onProgressReported)));
 
         /// <summary>
         /// 创建子进度报告器
@@ -50,7 +50,7 @@ namespace JiksLib
             float startProgress,
             float endProgress)
         {
-            parentProgress.ThrowIfNull();
+            parentProgress.ThrowIfNull(nameof(parentProgress));
 
             if (float.IsNaN(startProgress) || float.IsInfinity(startProgress))
                 throw new ArgumentOutOfRangeException(
@@ -92,8 +92,8 @@ namespace JiksLib
             this IProgress<T> source,
             Func<U, T> converter)
         {
-            source.ThrowIfNull();
-            converter.ThrowIfNull();
+            source.ThrowIfNull(nameof(source));
+            converter.ThrowIfNull(nameof(converter));
 
             if (source is NullProgressImpl<T>)
                 return NullProgressImpl<U>.Instance;

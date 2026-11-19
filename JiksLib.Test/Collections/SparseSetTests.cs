@@ -1512,6 +1512,21 @@ namespace JiksLib.Test.Collections
                 Assert.That(set[indexList[begin + i]], Is.EqualTo(items[i]));
         }
 
+        [Test]
+        public void AddRange_WithSelf_ThrowsArgumentException()
+        {
+            // 传入自身会边枚举边增长，永远无法结束
+            var set = new SparseSet<int>();
+            set.Add(1);
+            set.Add(2);
+
+            var ex = Assert.Throws<ArgumentException>(() =>
+                set.AddRange(set, out _, out _, out _));
+
+            Assert.That(ex!.ParamName, Is.EqualTo("items"));
+            Assert.That(set.Count, Is.EqualTo(2));
+        }
+
         #endregion
 
         #region ICollection<T> Interface Tests

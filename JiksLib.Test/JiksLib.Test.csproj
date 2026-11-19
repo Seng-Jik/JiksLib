@@ -15,7 +15,7 @@
       独有 API 的用例由 JIKS_NS21 符号排除。
     -->
     <JiksLibTargetFramework Condition="'$(JiksLibTargetFramework)' == ''">$(TargetFramework)</JiksLibTargetFramework>
-    <DefineConstants Condition="'$(JiksLibTargetFramework)' == 'netstandard2.1'">$(DefineConstants);JIKS_NS21</DefineConstants>
+    <DefineConstants Condition="'$(JiksLibTargetFramework)' == 'netstandard2.1' and '$(TargetFramework)' != 'net48'">$(DefineConstants);JIKS_NS21</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
