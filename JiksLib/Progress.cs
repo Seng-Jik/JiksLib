@@ -29,9 +29,21 @@ namespace JiksLib
         /// 子进度是父进度的一部分，当子进度被报告时，父进度将报告对应的部分的进度
         /// </summary>
         /// <param name="parentProgress">父进度报告器</param>
-        /// <param name="startProgress">子进度开始部分</param>
-        /// <param name="endProgress">子进度结束部分</param>
+        /// <param name="startProgress">
+        /// 子进度开始部分。允许任意有限值；不做 [0,1] 限制，越界值会按线性映射外推给父进度。
+        /// </param>
+        /// <param name="endProgress">
+        /// 子进度结束部分。允许任意有限值，且可以小于 <paramref name="startProgress"/>
+        /// （反向映射，可用于倒计时进度）。
+        /// </param>
         /// <returns>子进度报告器</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 当 <paramref name="startProgress"/> 或 <paramref name="endProgress"/> 为 NaN / 无穷大时抛出
+        /// </exception>
+        /// <remarks>
+        /// 映射公式为 <c>start * (1 - x) + end * x</c>，在 x=0 / x=1 处精确命中两端点；
+        /// 不校验 [0,1] 区间与 start &lt;= end，这是有意保留的线性外推与反向映射能力。
+        /// </remarks>
         public static IProgress<float> CreateSubProgress(
             this IProgress<float> parentProgress,
             float startProgress,
@@ -54,7 +66,7 @@ namespace JiksLib
 
             return new ActionProgressImpl<float>(x =>
                 parentProgress.Report(
-                    startProgress + x * (endProgress - startProgress)));
+                    startProgress * (1f - x) + endProgress * x));
         }
 
         /// <summary>

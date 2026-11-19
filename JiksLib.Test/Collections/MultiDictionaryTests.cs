@@ -1532,6 +1532,23 @@ namespace JiksLib.Test.Collections
             Assert.That(values.Contains(200), Is.True);
         }
 
+        [Test]
+        public void Indexer_ResultIsReadOnlyView_CannotBeCastToMultiHashSet()
+        {
+            // Arrange
+            var dict = new MultiDictionary<string, int>();
+            dict.Add("key1", 100);
+
+            // Act
+            var values = dict["key1"];
+
+            // Assert
+            Assert.That(values, Is.Not.InstanceOf<MultiHashSet<int>>());
+            Assert.That(
+                () => (MultiHashSet<int>)values,
+                Throws.TypeOf<InvalidCastException>());
+        }
+
         #endregion
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using JiksLib.Extensions;
@@ -297,7 +298,8 @@ namespace JiksLib.Collections
         /// <summary>
         /// 获取反向字典只读引用
         /// </summary>
-        public IReadOnlyDictionary<TValue, TKey> Reversed => reversed;
+        public IReadOnlyDictionary<TValue, TKey> Reversed =>
+            reversedView ??= new(reversed);
 
         /// <summary>
         /// 创建反向索引的副本（深拷贝，不与当前字典共享内部存储）
@@ -348,6 +350,11 @@ namespace JiksLib.Collections
 
         readonly Dictionary<TKey, TValue> sequential;
         readonly Dictionary<TValue, TKey> reversed;
+
+        /// <summary>
+        /// 反向字典的只读包装；懒创建并缓存，避免每次访问都分配
+        /// </summary>
+        ReadOnlyDictionary<TValue, TKey>? reversedView;
 
         #endregion
     }

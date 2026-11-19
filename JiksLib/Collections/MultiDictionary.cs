@@ -147,7 +147,7 @@ namespace JiksLib.Collections
             get
             {
                 if (key != null && dict.TryGetValue(key, out var set))
-                    return set;
+                    return set.GetReadOnlyView();
                 else
                     return Array.Empty<TValue>();
             }

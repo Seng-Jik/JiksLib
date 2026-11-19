@@ -353,9 +353,6 @@ namespace JiksLib.Control
                 foreach (var i in typeChain.TypesToPublish)
                 {
                     PublishOneShot(@event, i, exceptionsOutput);
-
-                    if (!baseEventType.IsInterface && i == baseEventType)
-                        break;
                 }
 
                 if (baseEventType != eventType)
