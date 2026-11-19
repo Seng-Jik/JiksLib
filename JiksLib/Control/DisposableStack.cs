@@ -9,7 +9,8 @@ namespace JiksLib.Control
     /// 调用 Dispose 时会按照添加顺序的逆序（后进先出）依次释放其中的所有对象
     /// 即使其中某个对象在释放时抛出异常，剩余对象仍会被释放，全部释放完成后才重新抛出异常
     /// Dispose 可安全地重复调用，栈为空时不会做任何事情
-    /// Dispose 后 DisposableStack 会被清空，但仍可继续作为空栈使用，之后添加的对象会在下一次 Dispose 时释放
+    /// Dispose 执行期间禁止调用 <see cref="Add(IDisposable)"/> / <see cref="Add(Action)"/>，
+    /// 否则抛 <see cref="InvalidOperationException"/>；Dispose 返回后可以继续作为空栈使用
     /// 此类不是线程安全的，只应在同一个线程上使用
     /// </summary>
     public sealed class DisposableStack : IDisposable
@@ -40,6 +41,7 @@ namespace JiksLib.Control
         /// <exception cref="ArgumentNullException">disposable 为 null</exception>
         public void Add(IDisposable disposable)
         {
+            ThrowIfDisposing();
             stack.Push(new(disposable.ThrowIfNull(nameof(disposable))));
         }
 
@@ -51,6 +53,7 @@ namespace JiksLib.Control
         /// <exception cref="ArgumentNullException">disposeAction 为 null</exception>
         public void Add(Action disposeAction)
         {
+            ThrowIfDisposing();
             stack.Push(new(disposeAction.ThrowIfNull(nameof(disposeAction))));
         }
 
@@ -67,37 +70,64 @@ namespace JiksLib.Control
         /// </summary>
         public void Dispose()
         {
-            List<Exception>? exceptions = null;
-
-            while (stack.Count > 0)
-            {
-                var node = stack.Pop();
-
-                try
-                {
-                    if (node.Disposable != null)
-                        node.Disposable.Dispose();
-                    else
-                        node.DisposeAction?.Invoke();
-                }
-                catch (Exception exception)
-                {
-                    (exceptions ??= new()).Add(exception);
-                }
-            }
-
-            if (exceptions == null)
+            // 释放过程中的重入 Dispose 直接忽略，避免把"正在释放的项"与"新加入的项"混在一起。
+            if (disposing)
                 return;
 
-            if (exceptions.Count == 1)
-                throw exceptions[0];
+            disposing = true;
 
-            throw new AggregateException(exceptions);
+            try
+            {
+                List<Exception>? exceptions = null;
+
+                while (stack.Count > 0)
+                {
+                    var node = stack.Pop();
+
+                    try
+                    {
+                        if (node.Disposable != null)
+                            node.Disposable.Dispose();
+                        else
+                            node.DisposeAction?.Invoke();
+                    }
+                    catch (Exception exception)
+                    {
+                        (exceptions ??= new()).Add(exception);
+                    }
+                }
+
+                if (exceptions == null)
+                    return;
+
+                if (exceptions.Count == 1)
+                    throw exceptions[0];
+
+                throw new AggregateException(exceptions);
+            }
+            finally
+            {
+                disposing = false;
+            }
+        }
+
+        /// <summary>
+        /// 释放期间禁止添加：否则新加入的项会被本次 Dispose 一并释放，
+        /// 与"Dispose 后仍可作为空栈使用"的语义冲突。
+        /// </summary>
+        void ThrowIfDisposing()
+        {
+            if (disposing)
+                throw new InvalidOperationException(
+                    "Cannot add items to a DisposableStack while it is being disposed.");
         }
 
         #region Details
 
         readonly Stack<Node> stack;
+
+        /// <summary>是否正在执行 Dispose</summary>
+        bool disposing;
 
         private readonly struct Node
         {

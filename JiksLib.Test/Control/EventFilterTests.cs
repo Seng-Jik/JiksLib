@@ -55,6 +55,27 @@ namespace JiksLib.Test.Control
             });
         }
 
+        [Test]
+        public void Constructor_WithNullFilter_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var publisher = new MockPublisher();
+
+            // Act & Assert
+            Assert.That(
+                () => new EventFilter<MockPublisher, int>(publisher, null!),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void Constructor_WithNullPublisher_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.That(
+                () => new EventFilter<MockPublisher, int>(null!, static (ref int e) => true),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
         #endregion
 
         #region Publish - 过滤器返回 true

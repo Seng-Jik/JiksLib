@@ -5,9 +5,15 @@ using JiksLib.Extensions;
 namespace JiksLib.Collections
 {
     /// <summary>
-    /// 异步缓存
-    /// 值会通过Callback传回
+    /// 同步缓存
+    /// 值在 <see cref="Access"/> 中同步创建并返回
     /// </summary>
+    /// <remarks>
+    /// <see cref="Cache.Make{TKey,TValue}"/> 返回的实例<b>只应作为 ICache 使用</b>。
+    /// 实现类虽然同时实现了 <see cref="IAsyncCache{TKey,TValue}"/>（为了复用淘汰逻辑），
+    /// 但通过异步接口调用会抛 <see cref="InvalidOperationException"/>；
+    /// 这是两种创建方式互斥的固有特性，不是缺陷。
+    /// </remarks>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
     public interface ICache<TKey, TValue>
@@ -79,6 +85,12 @@ namespace JiksLib.Collections
     /// 异步缓存
     /// 值会通过Callback传回
     /// </summary>
+    /// <remarks>
+    /// <see cref="Cache.MakeAsync{TKey,TValue}"/> 返回的实例<b>只应作为 IAsyncCache 使用</b>。
+    /// 实现类虽然同时实现了 <see cref="ICache{TKey,TValue}"/>（为了复用淘汰逻辑），
+    /// 但通过同步接口调用会抛 <see cref="InvalidOperationException"/>；
+    /// 这是两种创建方式互斥的固有特性，不是缺陷。
+    /// </remarks>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
     public interface IAsyncCache<TKey, TValue>
@@ -256,10 +268,14 @@ namespace JiksLib.Collections
 
             TValue ICache<TKey, TValue>.Access(TKey key)
             {
+                if (factory == null)
+                    throw new InvalidOperationException(
+                        "This cache instance was created by Cache.MakeAsync; use IAsyncCache.Access instead.");
+
                 if (TryGetCache(key, out TValue? value))
                     return value!;
 
-                value = factory!(key);
+                value = factory(key);
                 Put(key, value);
                 return value;
             }
@@ -269,13 +285,17 @@ namespace JiksLib.Collections
                 Action<TValue> onReceiveValue,
                 Action<Exception> onException)
             {
+                if (asyncFactory == null)
+                    throw new InvalidOperationException(
+                        "This cache instance was created by Cache.Make; use ICache.Access instead.");
+
                 if (TryGetCache(key, out TValue? value))
                 {
                     onReceiveValue(value!);
                     return;
                 }
 
-                asyncFactory!(
+                asyncFactory(
                     key,
                     value =>
                     {

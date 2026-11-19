@@ -11,7 +11,9 @@ namespace JiksLib
     /// 明确返回 <see cref="string"/> 的成员才会分配。
     /// </summary>
     /// <remarks>
-    /// 该类型是值类型，默认值表示空片段。底层字符串为 null 时，所有成员都按空片段处理。
+    /// 该类型是值类型，默认值表示空片段。底层字符串为 null 时（即 default 值），
+    /// 所有成员都按空片段处理；但通过构造函数或隐式转换显式传入 null 字符串会抛
+    /// <see cref="ArgumentNullException"/>，这是有意的：构造失败应当显式暴露，而不是静默产生空片段。
     /// </remarks>
     public readonly struct StringSegment :
         IEquatable<StringSegment>,
@@ -73,6 +75,8 @@ namespace JiksLib
 
         /// <summary>
         /// 从字符串隐式构造片段
+        /// 注意：与显式构造函数一致，null 字符串会抛 <see cref="ArgumentNullException"/>；
+        /// 需要"null 视为空片段"的语义时请改用 <see cref="Empty"/> 或先判空。
         /// </summary>
         /// <param name="value">字符串</param>
         /// <exception cref="ArgumentNullException">字符串为 null</exception>
@@ -272,15 +276,13 @@ namespace JiksLib
 
         /// <summary>
         /// 去除片段首尾的指定字符集合
+        /// 与 <see cref="string.Trim(char[])"/> 一致：<paramref name="trimChars"/> 为 null 或空数组时去除空白字符
         /// </summary>
-        /// <param name="trimChars">要删除的字符集合</param>
-        /// <exception cref="ArgumentNullException">字符集合为 null</exception>
-        public StringSegment Trim(params char[] trimChars)
+        /// <param name="trimChars">要删除的字符集合；null 或空数组表示空白字符</param>
+        public StringSegment Trim(params char[]? trimChars)
         {
-            trimChars.ThrowIfNull();
-
-            if (trimChars.Length == 0)
-                return this;
+            if (trimChars == null || trimChars.Length == 0)
+                return Trim();
 
             int start = 0;
             int end = Length;
@@ -326,15 +328,13 @@ namespace JiksLib
 
         /// <summary>
         /// 去除片段开头的指定字符集合
+        /// 与 <see cref="string.TrimStart(char[])"/> 一致：<paramref name="trimChars"/> 为 null 或空数组时去除空白字符
         /// </summary>
-        /// <param name="trimChars">要删除的字符集合</param>
-        /// <exception cref="ArgumentNullException">字符集合为 null</exception>
-        public StringSegment TrimStart(params char[] trimChars)
+        /// <param name="trimChars">要删除的字符集合；null 或空数组表示空白字符</param>
+        public StringSegment TrimStart(params char[]? trimChars)
         {
-            trimChars.ThrowIfNull();
-
-            if (trimChars.Length == 0)
-                return this;
+            if (trimChars == null || trimChars.Length == 0)
+                return TrimStart();
 
             int start = 0;
 
@@ -374,15 +374,13 @@ namespace JiksLib
 
         /// <summary>
         /// 去除片段结尾的指定字符集合
+        /// 与 <see cref="string.TrimEnd(char[])"/> 一致：<paramref name="trimChars"/> 为 null 或空数组时去除空白字符
         /// </summary>
-        /// <param name="trimChars">要删除的字符集合</param>
-        /// <exception cref="ArgumentNullException">字符集合为 null</exception>
-        public StringSegment TrimEnd(params char[] trimChars)
+        /// <param name="trimChars">要删除的字符集合；null 或空数组表示空白字符</param>
+        public StringSegment TrimEnd(params char[]? trimChars)
         {
-            trimChars.ThrowIfNull();
-
-            if (trimChars.Length == 0)
-                return this;
+            if (trimChars == null || trimChars.Length == 0)
+                return TrimEnd();
 
             int end = Length;
 

@@ -34,6 +34,11 @@ JiksLib 把游戏开发中反复出现的一类底层工具收敛到一处：数
 
 需要 .NET 10 / .NET 11 SDK。CI（`.github/workflows/ci.yml`）在 Windows、Linux 与 macOS 上构建并测试：`net48` 目标的测试只在 Windows 上运行；netstandard2.1 产物在三个平台都会用同一套测试跑一遍；此外还包含库本体的 `dotnet format --verify-no-changes`、覆盖率采集、`dotnet pack` 校验与一个基准子集冒烟任务。
 
+> **多目标 API 差异**：`net10.0` / `net11.0` 额外提供少量依赖新运行时能力的成员
+> （如 `BidirectionalDictionary` 的 `IEnumerable<KeyValuePair<,>>` 构造、`PriorityQueue.EnsureCapacity`）；
+> `net48` / `netstandard2.1` 的 API 面略小，这是有意为之——库主要面向 Unity 2022 的 netstandard2.1，
+> 同时为现代 .NET 补齐便利成员。
+
 ```bash
 dotnet build JiksLib.slnx
 dotnet test JiksLib.Test/JiksLib.Test.csproj --framework net10.0
@@ -84,7 +89,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `MultiDictionary<TKey, TValue>` / `IReadOnlyMultiDictionary<TKey, TValue>` | 一键多值的多重字典，记录同一键值对的重复次数并实现 `ILookup<TKey, TValue>`。 | [MultiDictionary.cs](JiksLib/Collections/MultiDictionary.cs)、[IReadOnlyMultiDictionary.cs](JiksLib/Collections/IReadOnlyMultiDictionary.cs) |
 | `MultiHashSet<T>` / `IReadOnlyMultiSet<T>` | 允许同一元素重复出现的哈希集合，`Add` / `Remove` 返回该元素当前的数量。 | [MultiHashSet.cs](JiksLib/Collections/MultiHashSet.cs)、[IReadOnlyMultiSet.cs](JiksLib/Collections/IReadOnlyMultiSet.cs) |
 | `OnceCell<T>` | 只能赋值一次的格子，读取未赋值内容或重复赋值都会抛异常，首次赋值时触发 `OnSet`。 | [OnceCell.cs](JiksLib/Collections/OnceCell.cs) |
-| `PriorityQueue<TElement, TPriority>` | 基于二叉堆的优先级队列，支持出入队、`Try*`、`DequeueEnqueue`、批量入队、按值移除与无序枚举。 | [PriorityQueue.cs](JiksLib/Collections/PriorityQueue.cs) |
+| `PriorityQueue<TElement, TPriority>` | 基于二叉堆的优先级队列，支持出入队、`Try*`、`DequeueEnqueue`、批量入队、按值移除与无序枚举；类型名刻意与 BCL 同名，用于为 Unity 2022 等旧运行时补齐该类型。 | [PriorityQueue.cs](JiksLib/Collections/PriorityQueue.cs) |
 | `ReadOnlyListSegment<T>` | 对 `IReadOnlyList` 的一段只读视图，零拷贝切片、值类型、默认值为空片段。 | [ReadOnlyListSegment.cs](JiksLib/Collections/ReadOnlyListSegment.cs) |
 | `RingBuffer<T>` | 定长环形缓存，下标 0 为最新元素，写满覆盖最旧元素，支持 `AddRange`、`TryPeekNewest/Oldest`、`CopyTo`、结构体枚举器。 | [RingBuffer.cs](JiksLib/Collections/RingBuffer.cs) |
 | `SparseSet<T>` | 稀疏集，元素紧凑存放在数组中并以稀疏下标索引；`Add` / `RemoveAt` 平均 O(1)，通过 `InnerBuffer` 与结构体枚举器支持缓存友好的高频遍历。 | [SparseSet.cs](JiksLib/Collections/SparseSet.cs) |

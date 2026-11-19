@@ -15,6 +15,13 @@ namespace JiksLib.Control
     /// TypeChain 缓存按 TBaseEvent 独立：相同基类型的多个总线可以共享缓存，
     /// 不同基类型的缓存内容不同，不能共用同一个缓存。
     /// </summary>
+    /// <remarks>
+    /// 发布期间增删监听器的"延迟"是<b>按事件类型独立</b>生效的：每个事件类型拥有独立的
+    /// <see cref="SafeEvent{TEvent}"/> 会话。因此监听器在处理运行时类型 E 的事件时去增删
+    /// 基类型 B 的监听器，由于 B 的会话尚未开始，改动会立即生效，并影响同一次发布中随后
+    /// 对 B 的派发。这是"每种事件类型独立维护重入策略"的固有特性，不是缺陷；
+    /// 若需要跨类型的一致性，请在发布前完成监听器增删。
+    /// </remarks>
     public sealed class EventBus<TBaseEvent>
         where TBaseEvent : class
     {
@@ -31,7 +38,9 @@ namespace JiksLib.Control
         /// 被清理后其他总线会在下次发布时重建对应类型链，不影响正确性。
         /// </param>
         /// <param name="allowAddRemoveListenerDuringPublish">
-        /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到整个最外层发布结束后生效。
+        /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到该事件类型的最外层发布
+        /// （包括其递归队列排空）结束后生效。注意延迟是<b>按事件类型独立</b>的，
+        /// 对其它事件类型的增删会立即生效，详见类型注释。
         /// 不能与 <paramref name="autoPurgeListenerSlot"/> 同时开启。
         /// </param>
         /// <param name="allowRecursivePublish">
@@ -80,7 +89,9 @@ namespace JiksLib.Control
         /// </summary>
         /// <param name="publisher">构造出的事件发布器</param>
         /// <param name="allowAddRemoveListenerDuringPublish">
-        /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到整个最外层发布结束后生效。
+        /// 是否允许在发布期间添加或移除监听器；允许时操作会延迟到该事件类型的最外层发布
+        /// （包括其递归队列排空）结束后生效。注意延迟是<b>按事件类型独立</b>的，
+        /// 对其它事件类型的增删会立即生效，详见类型注释。
         /// 不能与 <paramref name="autoPurgeListenerSlot"/> 同时开启。
         /// </param>
         /// <param name="allowRecursivePublish">

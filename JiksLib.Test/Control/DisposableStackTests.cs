@@ -237,6 +237,41 @@ namespace JiksLib.Test.Control
             Assert.That(disposable.DisposeCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void Add_DuringDispose_ThrowsInvalidOperationException()
+        {
+            var stack = new DisposableStack();
+            Exception? captured = null;
+
+            stack.Add(() =>
+            {
+                try
+                {
+                    stack.Add(() => { });
+                }
+                catch (Exception exception)
+                {
+                    captured = exception;
+                }
+            });
+
+            stack.Dispose();
+
+            Assert.That(captured, Is.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void Dispose_Reentrant_DoesNotDisposeRemainingItemsAgain()
+        {
+            var count = 0;
+            var stack = new DisposableStack();
+            stack.Add(() => count++);
+            stack.Add(() => stack.Dispose());
+
+            Assert.DoesNotThrow(() => stack.Dispose());
+            Assert.That(count, Is.EqualTo(1));
+        }
+
         sealed class RecordingDisposable : IDisposable
         {
             public RecordingDisposable(string name, List<string> order)

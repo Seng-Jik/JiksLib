@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using JiksLib.Extensions;
 
@@ -104,6 +103,7 @@ namespace JiksLib.Collections
                 array[index].Value = item;
                 array[index].Prev = index - 1;
                 array[index].Next = index + 1;
+                array[index].Used = true;
                 index++;
             }
 
@@ -504,6 +504,7 @@ namespace JiksLib.Collections
                     newArray[newIndex].Value = array[current].Value;
                     newArray[newIndex].Prev = newIndex - 1;
                     newArray[newIndex].Next = newIndex + 1;
+                    newArray[newIndex].Used = true;
                     current = array[current].Next;
                     newIndex++;
                 }
@@ -524,36 +525,15 @@ namespace JiksLib.Collections
 
         #region Details
 
-        [Conditional("DEBUG")]
+        /// <summary>
+        /// 校验槽位是否仍然属于链表中的元素。
+        /// 直接读取槽位的 <see cref="Node.Used"/> 标记做 O(1) 判断，
+        /// 因此在 Release 构建中同样生效，避免"只在 DEBUG 生效的异常契约"。
+        /// </summary>
         void EnsureSlotUsed(int slotIndex)
         {
-            static void fail() =>
+            if ((uint)slotIndex >= (uint)arrayUsedCount || !array[slotIndex].Used)
                 throw new ArgumentOutOfRangeException(nameof(slotIndex));
-
-            if (slotIndex < 0 || slotIndex >= arrayUsedCount)
-                fail();
-
-            int slot = firstFreeNode;
-
-            while (slot != -1)
-            {
-                if (slot == slotIndex)
-                    fail();
-
-                slot = array[slot].Next;
-            }
-
-            slot = FirstSlot;
-
-            while (slot != -1)
-            {
-                if (slot == slotIndex)
-                    return;
-
-                slot = array[slot].Next;
-            }
-
-            fail();
         }
 
         int AllocateSlot()
@@ -562,6 +542,7 @@ namespace JiksLib.Collections
             {
                 int slotIndex = firstFreeNode;
                 firstFreeNode = array[slotIndex].Next;
+                array[slotIndex].Used = true;
                 return slotIndex;
             }
             else
@@ -570,14 +551,14 @@ namespace JiksLib.Collections
                     EnsureCapacity(Growth((long)arrayUsedCount + 1));
 
                 int slotIndex = arrayUsedCount++;
+                array[slotIndex].Used = true;
                 return slotIndex;
             }
         }
 
-        // 不要再在这里做 EnsureSlotUsed 校验：唯一调用方 RemoveBySlot 已经校验过，
-        // 且调用本方法时节点已从链表解链，链表遍历校验会把合法槽位误判为无效。
         void FreeSlot(int slotIndex)
         {
+            array[slotIndex].Used = false;
             array[slotIndex].Next = firstFreeNode;
             firstFreeNode = slotIndex;
         }
@@ -698,9 +679,17 @@ namespace JiksLib.Collections
             public int Prev;
             public T Value;
             public int Next;
+
+            /// <summary>
+            /// 该槽位当前是否被链表中的元素占用。
+            /// 放在节点内部而不是单独的位图数组，避免两份状态不同步；
+            /// 校验时与槽位索引一起读取，O(1)。
+            /// </summary>
+            public bool Used;
         }
 
         Node[] array = Array.Empty<Node>();
+
         int arrayUsedCount = 0;
         int firstFreeNode = -1;
 
