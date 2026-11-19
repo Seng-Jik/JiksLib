@@ -28,17 +28,17 @@ jobs:
         os: [ windows-latest, ubuntu-latest, macos-latest ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: |
           10.0.x
           11.0.x
 
     - name: Cache NuGet packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'JiksLib.slnx') }}
@@ -51,9 +51,9 @@ jobs:
     - name: Build
       run: dotnet build ./JiksLib.slnx --configuration Release --no-restore
 
-    # 库本体要求格式整洁（测试/基准工程暂不纳入，避免一次性引入大量无关 diff）
+    # 库、测试与基准工程统一检查空白格式，避免测试/基准代码漂移
     - name: Format check
-      run: dotnet format whitespace ./JiksLib/JiksLib.csproj --verify-no-changes --no-restore
+      run: dotnet format whitespace ./JiksLib.slnx --verify-no-changes --no-restore
 
     - name: Test .NET 10.0
       run: >
@@ -91,7 +91,7 @@ jobs:
 
     - name: Upload coverage
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: coverage-${{ matrix.os }}
         path: TestResults/**
@@ -103,15 +103,15 @@ jobs:
     timeout-minutes: 20
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 10.0.x
 
     - name: Cache NuGet packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-benchmark-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
