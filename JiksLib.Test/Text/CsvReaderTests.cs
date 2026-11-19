@@ -1,7 +1,9 @@
 using NUnit.Framework;
 using JiksLib.Text;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace JiksLib.Test.Text
@@ -9,276 +11,487 @@ namespace JiksLib.Test.Text
     [TestFixture]
     public class CsvReaderTests
     {
-        [Test]
-        public void Constructor_WithString_CreatesInstance()
+        static List<List<string>> ParseAll(
+            string csv,
+            char separator = ',',
+            Encoding? encoding = null)
         {
-            // Arrange
-            var csvContent = "a,b,c\n1,2,3";
+            var bytes = (encoding ?? Encoding.UTF8).GetBytes(csv);
+            return ParseAll(new MemoryStream(bytes), separator, encoding);
+        }
 
-            // Act
-            using var reader = new CsvReader(csvContent);
+        static List<List<string>> ParseAll(
+            Stream stream,
+            char separator = ',',
+            Encoding? encoding = null)
+        {
+            var rows = new List<List<string>>();
 
-            // Assert - 不只是"构造没抛异常"，还要验证解析结果
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
+            using var reader = new CsvReader(stream, encoding, leaveOpen: false, separator);
+
+            foreach (var row in reader)
+            {
+                var fields = new List<string>();
+
+                foreach (var field in row)
+                    fields.Add(field);
+
+                rows.Add(fields);
+            }
+
+            return rows;
         }
 
         [Test]
-        public void Constructor_WithTextReader_CreatesInstance()
+        public void Read_SimpleCsv_ReturnsRows()
         {
-            // Arrange
-            var textReader = new StringReader("a,b,c");
+            var rows = ParseAll("a,b,c\n1,2,3");
 
-            // Act
-            using var reader = new CsvReader(textReader, leaveOpen: true);
-
-            // Assert
-            Assert.That(reader, Is.Not.Null);
+            Assert.That(rows, Has.Count.EqualTo(2));
+            Assert.That(rows[0], Is.EqualTo(new[] { "a", "b", "c" }));
+            Assert.That(rows[1], Is.EqualTo(new[] { "1", "2", "3" }));
         }
 
         [Test]
-        public void Constructor_WithCustomSeparator_UsesCustomSeparator()
+        public void Read_QuotedAndEscapedFields_UnquotesNormally()
         {
-            // Arrange
-            var csvContent = "a|b|c";
+            var rows = ParseAll("\"a,b\",\"c\"\"d\"");
 
-            // Act
-            using var reader = new CsvReader(csvContent, '|');
-            var field1 = reader.PopField();
-
-            // Assert
-            Assert.That(field1, Is.EqualTo("a"));
+            Assert.That(rows[0], Is.EqualTo(new[] { "a,b", "c\"d" }));
         }
 
         [Test]
-        public void PopField_SimpleCsv_ReturnsFields()
+        public void Read_QuotedFieldWithNewline_StaysInOneRow()
         {
-            // Arrange
-            var csvContent = "a,b,c";
-            using var reader = new CsvReader(csvContent);
+            var rows = ParseAll("\"line1\nline2\",x");
 
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
-            Assert.That(reader.PopField(), Is.Null);
+            Assert.That(rows, Has.Count.EqualTo(1));
+            Assert.That(rows[0], Is.EqualTo(new[] { "line1\nline2", "x" }));
         }
 
         [Test]
-        public void PopField_WithQuotedField_ReturnsUnquotedValue()
+        public void Read_CrLfRecords_AreSplit()
         {
-            // Arrange
-            var csvContent = "\"a,b\",c";
-            using var reader = new CsvReader(csvContent);
+            var rows = ParseAll("a,b\r\nc,d");
 
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a,b"));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
+            Assert.That(rows, Has.Count.EqualTo(2));
+            Assert.That(rows[1], Is.EqualTo(new[] { "c", "d" }));
         }
 
         [Test]
-        public void PopField_WithEscapedQuote_ReturnsCorrectValue()
+        public void Read_EmptyStream_YieldsNoRows()
         {
-            // Arrange
-            var csvContent = "\"a\"\"b\",c";
-            using var reader = new CsvReader(csvContent);
-
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a\"b"));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
+            Assert.That(ParseAll(new MemoryStream()), Is.Empty);
         }
 
         [Test]
-        public void PopField_WithEmptyField_ReturnsEmptyString()
+        public void Read_TrailingNewline_DoesNotProduceExtraRow()
         {
-            // Arrange
-            var csvContent = "a,,c";
-            using var reader = new CsvReader(csvContent);
+            var rows = ParseAll("a,b\n");
 
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo(""));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
+            Assert.That(rows, Has.Count.EqualTo(1));
+            Assert.That(rows[0], Is.EqualTo(new[] { "a", "b" }));
         }
 
         [Test]
-        public void PopField_WithUnclosedQuote_ThrowsInvalidDataException()
+        public void Read_BlankLines_ProduceEmptyRecords()
         {
-            // Arrange
-            var csvContent = "\"unclosed";
-            using var reader = new CsvReader(csvContent);
+            var rows = ParseAll("a\n\nb");
 
-            // Act & Assert
-            Assert.That(() => reader.PopField(), Throws.TypeOf<InvalidDataException>());
+            Assert.That(rows, Has.Count.EqualTo(3));
+            Assert.That(rows[1], Is.EqualTo(new[] { "" }));
         }
 
         [Test]
-        public void NextRecord_SkipsCurrentRecord_KnownIssue()
+        public void Read_Utf8Bom_IsNotIncludedInFirstField()
         {
-            // Arrange
-            var csvContent = "a,b,c\n1,2,3";
-            using var reader = new CsvReader(csvContent);
+            var bytes = Encoding.UTF8.GetPreamble()
+                .Concat(Encoding.UTF8.GetBytes("a,b"))
+                .ToArray();
 
-            // Act & Assert
-            // 已知缺陷 P0-1：构造后的读取器被认为"位于第一条记录内部"，
-            // 第一次 NextRecord 会把首条记录解析后丢弃，因此这里只能读到第二条。
-            // 该用例固定当前行为；期望行为见下方 Ignore 的用例。
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("1"));
-            Assert.That(reader.PopField(), Is.EqualTo("2"));
-            Assert.That(reader.PopField(), Is.EqualTo("3"));
+            var rows = ParseAll(new MemoryStream(bytes));
+
+            Assert.That(rows[0], Is.EqualTo(new[] { "a", "b" }));
         }
 
         [Test]
-        [Ignore("P0-1：NextRecord 不应丢弃首条记录；修复后移除 Ignore 并删除 KnownIssue 用例")]
-        public void NextRecord_ShouldNotSkipFirstRecord()
+        public void Read_ChunkedStream_StillReadsWholeRecords()
         {
-            // Arrange
-            var csvContent = "a,b,c\n1,2,3";
-            using var reader = new CsvReader(csvContent);
+            var bytes = Encoding.UTF8.GetBytes("ab,\"c\r\nd\"\r\nxy,z");
+            var rows = ParseAll(new OneByteStream(bytes));
 
-            // Act
-            Assert.That(reader.NextRecord(), Is.True);
+            Assert.That(rows, Has.Count.EqualTo(2), Dump(rows));
+            Assert.That(rows[0], Is.EqualTo(new[] { "ab", "c\r\nd" }));
+            Assert.That(rows[1], Is.EqualTo(new[] { "xy", "z" }));
+        }
 
-            // Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
+        static string Dump(List<List<string>> rows)
+        {
+            var parts = new List<string>();
+
+            foreach (var row in rows)
+            {
+                var fields = new List<string>();
+
+                foreach (var field in row)
+                {
+                    fields.Add(
+                        field.Replace("\r", "\\r").Replace("\n", "\\n"));
+                }
+
+                parts.Add("[" + string.Join("|", fields) + "]");
+            }
+
+            return string.Join(" ", parts);
         }
 
         [Test]
-        public void NextRecord_AtEndOfFile_ReturnsFalse()
+        public void Read_CustomSeparator_ParsesTsv()
         {
-            // Arrange
-            var csvContent = "a,b";
-            using var reader = new CsvReader(csvContent);
-            reader.PopField(); // a
-            reader.PopField(); // b
-            reader.PopField(); // null
+            var rows = ParseAll("a|b|c", '|');
 
-            // Act
-            var result = reader.NextRecord();
-
-            // Assert
-            Assert.That(result, Is.False);
+            Assert.That(rows[0], Is.EqualTo(new[] { "a", "b", "c" }));
         }
 
         [Test]
-        public void NextRecord_WithEmptyLines_ProducesEmptyFields()
+        public void Read_UnclosedQuote_ThrowsInvalidDataException()
         {
-            // Arrange
-            var csvContent = "a,b\n\n\nc,d";
-            using var reader = new CsvReader(csvContent);
-
-            // Act & Assert
-            // Read first line
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.Null);
-
-            // First empty line - produces empty field
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("")); // Empty field from empty line
-            Assert.That(reader.PopField(), Is.Null);
-
-            // Second empty line
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo(""));
-            Assert.That(reader.PopField(), Is.Null);
-
-            // Third line contains c,d
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
-            Assert.That(reader.PopField(), Is.EqualTo("d"));
-            Assert.That(reader.PopField(), Is.Null);
+            Assert.That(
+                () => ParseAll("\"unclosed"),
+                Throws.TypeOf<InvalidDataException>());
         }
 
         [Test]
-        public void PopField_AfterNextRecord_ResetsFieldReading()
+        public void Read_UnicodeEncoding_IsHonored()
         {
-            // Arrange
-            var csvContent = "a,b\nc,d";
-            using var reader = new CsvReader(csvContent);
+            var rows = ParseAll("中文,值", encoding: Encoding.Unicode);
 
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.Null);
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
-            Assert.That(reader.PopField(), Is.EqualTo("d"));
+            Assert.That(rows[0], Is.EqualTo(new[] { "中文", "值" }));
         }
 
         [Test]
-        public void Dispose_WithLeaveOpenFalse_DisposesTextReader()
+        public void Read_MatchesCsvParserResults()
         {
-            // Arrange
-            var textReader = new StringReader("a,b,c");
-            var reader = new CsvReader(textReader, leaveOpen: false);
+            const string sample = "a,\"b,c\",\"d\"\"e\"\r\nx,\"y\nz\",\r\n\r\n";
 
-            // Act
-            reader.Dispose();
+            var expected = new List<List<string>>();
+
+            foreach (var row in new CsvParser(sample))
+            {
+                var fields = new List<string>();
+
+                foreach (var field in row)
+                    fields.Add(field.ToString());
+
+                expected.Add(fields);
+            }
+
+            Assert.That(ParseAll(sample), Is.EqualTo(expected));
         }
 
         [Test]
-        public void Dispose_WithLeaveOpenTrue_DoesNotDisposeTextReader()
+        public void Read_ManyRows_Works()
         {
-            // Arrange
-            var textReader = new StringReader("a,b,c");
-            var reader = new CsvReader(textReader, leaveOpen: true);
+            var builder = new StringBuilder();
 
-            // Act
+            for (int i = 0; i < 1000; i++)
+                builder.Append(i).Append(",x").Append('\n');
+
+            var rows = ParseAll(builder.ToString());
+
+            Assert.That(rows, Has.Count.EqualTo(1000));
+            Assert.That(rows[999], Is.EqualTo(new[] { "999", "x" }));
+        }
+
+        [Test]
+        public void Read_NestedForeach_YieldsRowsAndFields()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b\nc,d"));
+            using var reader = new CsvReader(stream);
+
+            var fields = new List<string>();
+
+            foreach (var row in reader)
+            {
+                foreach (var field in row)
+                    fields.Add(field);
+            }
+
+            Assert.That(fields, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+        }
+
+        [Test]
+        public void Dispose_LeaveOpenFalse_DisposesStream()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            var reader = new CsvReader(stream, leaveOpen: false);
+
             reader.Dispose();
 
-            // Assert - TextReader should still be usable
-            Assert.DoesNotThrow(() => textReader.Read());
+            Assert.That(stream.CanRead, Is.False);
         }
 
         [Test]
-        public void PopField_WithCarriageReturnNewLine_HandlesCorrectly()
+        public void Dispose_LeaveOpenTrue_KeepsStreamOpen()
         {
-            // Arrange
-            var csvContent = "a,b\r\nc,d";
-            using var reader = new CsvReader(csvContent);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            var reader = new CsvReader(stream, leaveOpen: true);
 
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.Null);
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("c"));
-            Assert.That(reader.PopField(), Is.EqualTo("d"));
+            reader.Dispose();
+
+            Assert.That(stream.CanRead, Is.True);
         }
 
         [Test]
-        public void PopField_WithTrailingSeparator_HandlesCorrectly()
+        public void Constructor_NullStream_ThrowsArgumentNullException()
         {
-            // Arrange
-            var csvContent = "a,b,";
-            using var reader = new CsvReader(csvContent);
-
-            // Act & Assert
-            Assert.That(reader.PopField(), Is.EqualTo("a"));
-            Assert.That(reader.PopField(), Is.EqualTo("b"));
-            Assert.That(reader.PopField(), Is.EqualTo(""));
-            Assert.That(reader.PopField(), Is.Null);
+            Assert.That(
+                () => new CsvReader(null!),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]
-        public void NextRecord_WithoutPoppingAllFields_StillMovesToNextLine()
+        public void Constructor_NonReadableStream_ThrowsArgumentException()
         {
-            // Arrange
-            var csvContent = "a,b,c\n1,2,3";
-            using var reader = new CsvReader(csvContent);
+            Assert.That(
+                () => new CsvReader(new WriteOnlyStream()),
+                Throws.TypeOf<ArgumentException>());
+        }
 
-            // Act
-            reader.PopField(); // a
-            // Don't pop b and c
+        [TestCase('"')]
+        [TestCase('\r')]
+        [TestCase('\n')]
+        public void Constructor_InvalidSeparator_ThrowsArgumentException(char separator)
+        {
+            using var stream = new MemoryStream();
 
-            // Assert
-            Assert.That(reader.NextRecord(), Is.True);
-            Assert.That(reader.PopField(), Is.EqualTo("1"));
+            Assert.That(
+                () => new CsvReader(stream, separator: separator),
+                Throws.TypeOf<ArgumentException>());
+        }
+
+        [Test]
+        public void Reset_ThrowsNotSupportedException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+
+            Assert.That(
+                () => enumerator.Reset(),
+                Throws.TypeOf<NotSupportedException>());
+        }
+
+        [Test]
+        public void Row_IsEnumerableOfString_SupportsLinq()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var row = enumerator.Current;
+            var fields = ((IEnumerable<string>)row).ToArray();
+
+            Assert.That(fields, Is.EqualTo(new[] { "a", "b" }));
+        }
+
+        [Test]
+        public void Read_OnlyFirstField_SkipsRest()
+        {
+            using var stream = new MemoryStream(
+                Encoding.UTF8.GetBytes("k1,a,b\nk2,c,d"));
+
+            using var reader = new CsvReader(stream);
+
+            var keys = new List<string>();
+
+            foreach (var row in reader)
+            {
+                foreach (var field in row)
+                {
+                    keys.Add(field);
+                    break;   // 只读主键，剩余字段由下一次 MoveNext 跳过
+                }
+            }
+
+            Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
+        }
+
+        [Test]
+        public void Read_PartialRead_SkipsQuotedRemainder()
+        {
+            const string csv = "k1,\"x\ny\",z\nk2,\"a\"\"b\",c";
+
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+            using var reader = new CsvReader(stream);
+
+            var keys = new List<string>();
+
+            foreach (var row in reader)
+            {
+                foreach (var field in row)
+                {
+                    keys.Add(field);
+                    break;
+                }
+            }
+
+            Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
+
+            // 跳过带引号/换行/转义的剩余字段后，完整解析仍然正确
+            var rows = ParseAll(csv);
+
+            Assert.That(rows[0], Is.EqualTo(new[] { "k1", "x\ny", "z" }));
+            Assert.That(rows[1], Is.EqualTo(new[] { "k2", "a\"b", "c" }));
+        }
+
+        [Test]
+        public void Row_AfterAdvance_ThrowsInvalidOperationException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b\nc,d"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var stale = enumerator.Current;
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            Assert.That(
+                () =>
+                {
+                    foreach (var _ in stale)
+                    {
+                    }
+                },
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void Read_SkippedRows_DoNotAllocate()
+        {
+            var csv = string.Join(
+                "\n",
+                Enumerable.Range(0, 100).Select(i => $"key{i},value{i},extra{i}"));
+
+            // 预热
+            using (var warmupStream = new MemoryStream(Encoding.UTF8.GetBytes(csv)))
+            using (var warmupReader = new CsvReader(warmupStream))
+            {
+                int warmupCount = 0;
+
+                foreach (var row in warmupReader)
+                    warmupCount++;
+
+                Assert.That(warmupCount, Is.EqualTo(100));
+            }
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+                using var reader = new CsvReader(stream);
+
+                var enumerator = reader.GetEnumerator();
+
+                // 先消费第一行，把 StreamReader 首次读取的分配排除在测量之外
+                Assert.That(enumerator.MoveNext(), Is.True);
+
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int count = 0;
+
+                // 不枚举字段：后续 99 行应只扫描、不分配
+                while (enumerator.MoveNext())
+                    count++;
+
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.That(count, Is.EqualTo(99));
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0));
+        }
+#endif
+
+        /// <summary>
+        /// 每次 Read 最多返回 1 个字节，用于验证读取器能跨缓冲区边界正确拼记录
+        /// </summary>
+        private sealed class OneByteStream : Stream
+        {
+            readonly byte[] data;
+            int position;
+
+            public OneByteStream(byte[] data)
+            {
+                this.data = data;
+            }
+
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => data.Length;
+
+            public override long Position
+            {
+                get => position;
+                set => throw new NotSupportedException();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                if (position >= data.Length)
+                    return 0;
+
+                buffer[offset] = data[position++];
+                return 1;
+            }
+
+            public override void Flush() { }
+
+            public override long Seek(long offset, SeekOrigin origin) =>
+                throw new NotSupportedException();
+
+            public override void SetLength(long value) =>
+                throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count) =>
+                throw new NotSupportedException();
+        }
+
+        /// <summary>
+        /// 只写流，用于验证可读性校验
+        /// </summary>
+        private sealed class WriteOnlyStream : Stream
+        {
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => 0;
+
+            public override long Position
+            {
+                get => 0;
+                set => throw new NotSupportedException();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count) =>
+                throw new NotSupportedException();
+
+            public override void Flush() { }
+
+            public override long Seek(long offset, SeekOrigin origin) =>
+                throw new NotSupportedException();
+
+            public override void SetLength(long value) =>
+                throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count) { }
         }
     }
 }
