@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using JiksLib.Extensions;
 
@@ -18,7 +19,6 @@ namespace JiksLib.Text
         public CsvWriter(char separator = ',')
         {
             this.separator = separator;
-            separatorString = separator.ToString();
         }
 
         /// <summary>
@@ -28,29 +28,53 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 在当前记录写入字段
+        /// 字段含分隔符、双引号、CR/LF（以及逗号/制表符）时用双引号包裹，内部双引号双写
         /// </summary>
         /// <param name="field">字段值</param>
+        /// <exception cref="ArgumentNullException">字段为 null 时抛出</exception>
         public void WriteField(string field)
         {
-            field.ThrowIfNull();
+            field.ThrowIfNull(nameof(field));
 
             if (!isFirstFieldOfCurrentLine)
                 sb.Append(separator);
             isFirstFieldOfCurrentLine = false;
 
-            bool wrap =
-                AlwaysWrap ||
-                field.Contains(separatorString) ||
-                field.Contains("\r") ||
-                field.Contains("\"") ||
-                field.Contains("\'") ||
-                field.Contains("\n") ||
-                field.Contains(",") ||
-                field.Contains("\t");
+            if (!AlwaysWrap && !NeedsWrap(field))
+            {
+                sb.Append(field);
+                return;
+            }
 
-            if (wrap) sb.Append('\"');
-            sb.Append(wrap ? field.Replace("\"", "\"\"") : field);
-            if (wrap) sb.Append('\"');
+            sb.Append('"');
+
+            foreach (char c in field)
+            {
+                if (c == '"')
+                    sb.Append('"');
+
+                sb.Append(c);
+            }
+
+            sb.Append('"');
+        }
+
+        /// <summary>
+        /// 判断字段是否需要加引号
+        /// 只扫描一遍；逗号与制表符目前仍无条件触发包裹（P2-25 第 2 项暂不改变行为）
+        /// </summary>
+        bool NeedsWrap(string field)
+        {
+            foreach (char c in field)
+            {
+                if (c == separator || c == '"' || c == '\r' || c == '\n' ||
+                    c == ',' || c == '\t')
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -81,7 +105,6 @@ namespace JiksLib.Text
         }
 
         readonly char separator;
-        readonly string separatorString;
         readonly StringBuilder sb = new();
         bool isFirstFieldOfCurrentLine = true;
     }
