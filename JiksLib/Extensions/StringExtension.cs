@@ -18,13 +18,17 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
-        /// 计算字符串的BKDR哈希值
+        /// 计算字符串的 BKDR 哈希值
+        /// 乘子使用 16777619（FNV-1a 素数）：旧实现的 131 小于 char 值域，
+        /// 会产生结构性碰撞（例如 "ab" 与 "\u3205"），因此不再使用。
         /// </summary>
+        /// <param name="s">要计算哈希的字符串</param>
+        /// <param name="inputHash">初始哈希值，便于增量拼接</param>
         public static ulong BKDRHash(
             this string s,
             ulong inputHash = 0)
         {
-            ulong seed = 131;
+            const ulong seed = 16777619;
             ulong hash = inputHash;
 
             unchecked

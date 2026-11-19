@@ -792,7 +792,7 @@ namespace JiksLib
                         {
                             for (int i = 0; i < Length; i++)
                             {
-                                hash = hash * 131 +
+                                hash = hash * 16777619 +
                                        char.ToUpperInvariant(source![Offset + i]);
                             }
                         }
@@ -961,6 +961,7 @@ namespace JiksLib
         /// <summary>
         /// 计算片段的 BKDR 哈希值，与
         /// <see cref="StringExtension.BKDRHash(string, ulong)"/> 的结果一致。
+        /// 乘子为 16777619（FNV-1a 素数），避免旧乘子 131 的结构性碰撞。
         /// </summary>
         /// <param name="inputHash">初始哈希值</param>
         public ulong BKDRHash(ulong inputHash = 0)
@@ -970,7 +971,7 @@ namespace JiksLib
             unchecked
             {
                 for (int i = 0; i < Length; i++)
-                    hash = hash * 131 + source![Offset + i];
+                    hash = hash * 16777619 + source![Offset + i];
             }
 
             return hash;
