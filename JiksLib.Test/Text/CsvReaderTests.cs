@@ -298,6 +298,127 @@ namespace JiksLib.Test.Text
             Assert.That(fields, Is.EqualTo(new[] { "a", "b" }));
         }
 
+        [Test]
+        public void Read_OnlyFirstField_SkipsRest()
+        {
+            using var stream = new MemoryStream(
+                Encoding.UTF8.GetBytes("k1,a,b\nk2,c,d"));
+
+            using var reader = new CsvReader(stream);
+
+            var keys = new List<string>();
+
+            foreach (var row in reader)
+            {
+                foreach (var field in row)
+                {
+                    keys.Add(field);
+                    break;   // 只读主键，剩余字段由下一次 MoveNext 跳过
+                }
+            }
+
+            Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
+        }
+
+        [Test]
+        public void Read_PartialRead_SkipsQuotedRemainder()
+        {
+            const string csv = "k1,\"x\ny\",z\nk2,\"a\"\"b\",c";
+
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+            using var reader = new CsvReader(stream);
+
+            var keys = new List<string>();
+
+            foreach (var row in reader)
+            {
+                foreach (var field in row)
+                {
+                    keys.Add(field);
+                    break;
+                }
+            }
+
+            Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
+
+            // 跳过带引号/换行/转义的剩余字段后，完整解析仍然正确
+            var rows = ParseAll(csv);
+
+            Assert.That(rows[0], Is.EqualTo(new[] { "k1", "x\ny", "z" }));
+            Assert.That(rows[1], Is.EqualTo(new[] { "k2", "a\"b", "c" }));
+        }
+
+        [Test]
+        public void Row_AfterAdvance_ThrowsInvalidOperationException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b\nc,d"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var stale = enumerator.Current;
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            Assert.That(
+                () =>
+                {
+                    foreach (var _ in stale)
+                    {
+                    }
+                },
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void Read_SkippedRows_DoNotAllocate()
+        {
+            var csv = string.Join(
+                "\n",
+                Enumerable.Range(0, 100).Select(i => $"key{i},value{i},extra{i}"));
+
+            // 预热
+            using (var warmupStream = new MemoryStream(Encoding.UTF8.GetBytes(csv)))
+            using (var warmupReader = new CsvReader(warmupStream))
+            {
+                int warmupCount = 0;
+
+                foreach (var row in warmupReader)
+                    warmupCount++;
+
+                Assert.That(warmupCount, Is.EqualTo(100));
+            }
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; round++)
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+                using var reader = new CsvReader(stream);
+
+                var enumerator = reader.GetEnumerator();
+
+                // 先消费第一行，把 StreamReader 首次读取的分配排除在测量之外
+                Assert.That(enumerator.MoveNext(), Is.True);
+
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                int count = 0;
+
+                // 不枚举字段：后续 99 行应只扫描、不分配
+                while (enumerator.MoveNext())
+                    count++;
+
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.That(count, Is.EqualTo(99));
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(best, Is.EqualTo(0));
+        }
+#endif
+
         /// <summary>
         /// 每次 Read 最多返回 1 个字节，用于验证读取器能跨缓冲区边界正确拼记录
         /// </summary>
