@@ -89,6 +89,59 @@ namespace JiksLib.Text
         readonly char separator;
 
         /// <summary>
+        /// 记录边界扫描关心的特殊字符：引号与换行
+        /// </summary>
+        static readonly char[] RecordSpecialChars = { '"', '\r', '\n' };
+
+        /// <summary>
+        /// 从 <paramref name="startIndex"/> 开始查找记录边界相关的特殊字符（引号 / CR / LF）
+        /// 借助底层字符串的 <see cref="string.IndexOfAny(char[], int, int)"/> 做向量化跳跃，
+        /// 避免逐字符扫描
+        /// </summary>
+        /// <returns>相对片段的下标；找不到时返回 -1</returns>
+        static int IndexOfRecordSpecial(StringSegment segment, int startIndex)
+        {
+            if (startIndex >= segment.Length)
+                return -1;
+
+            int index = segment.Source.IndexOfAny(
+                RecordSpecialChars,
+                segment.Offset + startIndex,
+                segment.Length - startIndex);
+
+            return index < 0 ? -1 : index - segment.Offset;
+        }
+
+        /// <summary>
+        /// 跳过引号区：从开引号之后开始扫描，返回结束引号的位置
+        /// <c>""</c> 是转义引号，单个 <c>"</c> 是结束引号；找不到结束引号时抛异常
+        /// </summary>
+        static int SkipQuotedSection(
+            StringSegment record,
+            int startIndex,
+            out bool hasEscapedQuote)
+        {
+            hasEscapedQuote = false;
+
+            while (true)
+            {
+                int quote = record.IndexOf('"', startIndex);
+
+                if (quote < 0)
+                    throw new InvalidDataException("Unclosed double quote in field.");
+
+                if (quote + 1 < record.Length && record[quote + 1] == '"')
+                {
+                    hasEscapedQuote = true;
+                    startIndex = quote + 2;
+                    continue;
+                }
+
+                return quote;
+            }
+        }
+
+        /// <summary>
         /// CSV 字段
         /// 保存字段的原始切片与"是否包含 <c>""</c> 转义"的标记，解转义是惰性的。
         /// 默认值（<c>default</c>）表示空字段：<see cref="Raw"/> 为默认 <see cref="StringSegment"/>，长度为 0。
@@ -250,59 +303,44 @@ namespace JiksLib.Text
 
                     if (record[start] == '"')
                     {
-                        int index = start + 1;
-                        bool hasEscapedQuote = false;
+                        int closing = SkipQuotedSection(record, start + 1, out bool hasEscapedQuote);
+                        int after = closing + 1;
 
-                        while (index < record.Length)
+                        // RFC 4180：结束引号之后只能是分隔符、记录结束或文件结束
+                        if (after < record.Length && record[after] != separator)
+                            throw new InvalidDataException(
+                                $"Unexpected character after field closure: {record[after]}");
+
+                        if (after >= record.Length)
                         {
-                            if (record[index] != '"')
-                            {
-                                index++;
-                                continue;
-                            }
-
-                            // "" 表示一个转义引号，字段还没结束
-                            if (index + 1 < record.Length && record[index + 1] == '"')
-                            {
-                                hasEscapedQuote = true;
-                                index += 2;
-                                continue;
-                            }
-
-                            int contentEnd = index;
-                            index++;
-
-                            // RFC 4180：结束引号之后只能是分隔符、记录结束或文件结束
-                            if (index < record.Length && record[index] != separator)
-                                throw new InvalidDataException(
-                                    $"Unexpected character after field closure: {record[index]}");
-
-                            if (index >= record.Length)
-                            {
-                                next = record.Length;
-                                isLast = true;
-                            }
-                            else
-                            {
-                                next = index + 1;
-                                isLast = false;
-                            }
-
-                            var content = record.Slice(start + 1, contentEnd - start - 1);
-
-                            return new Field(content, hasEscapedQuote);
+                            next = record.Length;
+                            isLast = true;
+                        }
+                        else
+                        {
+                            next = after + 1;
+                            isLast = false;
                         }
 
-                        throw new InvalidDataException("Unclosed double quote in field.");
+                        return new Field(
+                            record.Slice(start + 1, closing - start - 1),
+                            hasEscapedQuote);
                     }
 
-                    int end = start;
+                    // 无引号字段：直接跳到分隔符
+                    int end = record.IndexOf(separator, start);
 
-                    while (end < record.Length && record[end] != separator)
-                        end++;
-
-                    next = end < record.Length ? end + 1 : record.Length;
-                    isLast = end >= record.Length;
+                    if (end < 0)
+                    {
+                        next = record.Length;
+                        isLast = true;
+                        end = record.Length;
+                    }
+                    else
+                    {
+                        next = end + 1;
+                        isLast = false;
+                    }
 
                     return new Field(record.Slice(start, end - start), false);
                 }
@@ -355,72 +393,53 @@ namespace JiksLib.Text
 
                 int start = position;
                 int index = start;
-                bool inQuotes = false;
-                bool fieldStart = true;
 
-                while (index < source.Length)
+                while (true)
                 {
-                    char c = source[index];
+                    int special = IndexOfRecordSpecial(source, index);
 
-                    if (inQuotes)
+                    // 没有终止符：最后一条记录
+                    if (special < 0)
                     {
-                        if (c == '"')
-                        {
-                            // 转义引号：跳过成对的两个引号；否则是结束引号
-                            if (index + 1 < source.Length && source[index + 1] == '"')
-                                index++;
+                        current = new Row(
+                            source.Slice(start, source.Length - start),
+                            separator);
 
-                            else
-                                inQuotes = false;
-                        }
-
-                        index++;
-                        continue;
+                        position = source.Length;
+                        finished = true;
+                        return true;
                     }
 
-                    if (c == '"' && fieldStart)
-                    {
-                        inQuotes = true;
-                        fieldStart = false;
-                        index++;
-                        continue;
-                    }
+                    char c = source[special];
 
-                    if (c == separator)
-                    {
-                        fieldStart = true;
-                        index++;
-                        continue;
-                    }
-
+                    // 引号外的换行就是记录边界
                     if (c == '\r' || c == '\n')
                     {
-                        int recordEnd = index;
-                        int next = index + 1;
+                        int next = special + 1;
 
                         if (c == '\r' && next < source.Length && source[next] == '\n')
                             next++;
 
                         current = new Row(
-                            source.Slice(start, recordEnd - start),
+                            source.Slice(start, special - start),
                             separator);
 
                         position = next;
                         return true;
                     }
 
-                    fieldStart = false;
-                    index++;
+                    // 引号：只有出现在字段开头才开启引号区，否则按字面字符处理
+                    bool atFieldStart = special == start || source[special - 1] == separator;
+
+                    if (!atFieldStart)
+                    {
+                        index = special + 1;
+                        continue;
+                    }
+
+                    // 跳过整个引号区：引号内的换行与分隔符都是内容
+                    index = SkipQuotedSection(source, special + 1, out _) + 1;
                 }
-
-                if (inQuotes)
-                    throw new InvalidDataException("Unclosed double quote in field.");
-
-                // 最后一条记录没有终止符
-                current = new Row(source.Slice(start, index - start), separator);
-                position = index;
-                finished = true;
-                return true;
             }
 
             /// <summary>
