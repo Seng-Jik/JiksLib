@@ -20,6 +20,10 @@ namespace JiksLib.Control
         /// 创建一个在 Dispose 时执行指定委托的 <see cref="IDisposable"/> 对象
         /// 该委托最多只会被执行一次，即使 Dispose 被重复调用
         /// </summary>
+        /// <remarks>
+        /// Dispose 是单次语义：委托在第一次 Dispose 时被取走并执行；若执行抛出异常，
+        /// 异常原样向外传播且不会重试，后续 Dispose 为空操作。需要重试时请由调用方自行处理。
+        /// </remarks>
         /// <param name="disposeAction">Dispose 时要执行的操作，不可为 null</param>
         /// <exception cref="ArgumentNullException">disposeAction 为 null</exception>
         public static IDisposable FromAction(Action disposeAction) =>

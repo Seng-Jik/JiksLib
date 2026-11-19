@@ -100,7 +100,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | --- | --- | --- |
 | `Disposable` | `IDisposable` 辅助：全局共享的 `Empty`，以及把委托包装为最多执行一次的 `IDisposable` 的 `FromAction`。 | [Disposable.cs](JiksLib/Control/Disposable.cs) |
 | `DisposableStack` | 按后进先出顺序集中释放的栈；单个对象抛异常不会中断其余对象，`Dispose` 可安全重复调用。 | [DisposableStack.cs](JiksLib/Control/DisposableStack.cs) |
-| `EventBus<TBaseEvent>` | 以类型为索引的事件总线，发布时沿运行时类型的继承链与接口链分发，监听器异常收集到输出列表中；`Publisher` 是发布端结构体。 | [EventBus.cs](JiksLib/Control/EventBus.cs) |
+| `EventBus<TBaseEvent>` | 以类型为索引的事件总线，发布时沿运行时类型的继承链与接口链分发，监听器异常收集到输出列表中；`Publisher` 是发布端结构体。不支持泛型变体（协变/逆变）派发，监听器需注册在运行时类型或共同的 `TBaseEvent` 上。 | [EventBus.cs](JiksLib/Control/EventBus.cs) |
 | `ValueEventBus<TConstraint>` | 面向值类型事件的事件总线，避免发布时的装箱；`SubPublisher<TEvent>` 可提前绑定单一事件类型以进一步降低开销。 | [ValueEventBus.cs](JiksLib/Control/ValueEventBus.cs) |
 | `SafeEvent<TEvent>` / `ISafeEventPublisher<TEvent>` / `EventHandler<TEvent>` | 单个事件的安全包装器：隔离监听器异常；默认拒绝发布期间增删监听器与递归发布，可配置为延迟增删和 FIFO 队列化递归发布。 | [SafeEvent.cs](JiksLib/Control/SafeEvent.cs) |
 | `EventFilter<TEventPublisher, TEvent>` | 在发布端过滤事件的装饰器，过滤函数可以修改事件，返回 `false` 则丢弃该事件。 | [EventFilter.cs](JiksLib/Control/EventFilter.cs) |
