@@ -229,24 +229,37 @@ namespace JiksLib.Test
             Assert.That(reportedValue, Is.EqualTo(0.5f).Within(0.0001f));
         }
 
-        [Test]
-        public void CreateSubProgress_WithNegativeProgress_ReportsCorrectMapping()
+        [TestCase(-0.5f, 0.5f)]
+        [TestCase(0.5f, 1.5f)]
+        [TestCase(1.1f, 1.2f)]
+        [TestCase(-0.1f, -0.2f)]
+        public void CreateSubProgress_WithOutOfRangeValues_ThrowsArgumentOutOfRange(
+            float startProgress,
+            float endProgress)
         {
             // Arrange
-            float reportedValue = 0f;
-            Action<float> onProgress = x => reportedValue = x;
-            var parentProgress = Progress.Create(onProgress);
-            var subProgress = parentProgress.CreateSubProgress(-0.5f, 0.5f);
+            var parentProgress = Progress.Create<float>(_ => { });
 
             // Act & Assert
-            subProgress.Report(0f);
-            Assert.That(reportedValue, Is.EqualTo(-0.5f).Within(0.0001f));
+            Assert.That(
+                () => parentProgress.CreateSubProgress(startProgress, endProgress),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        }
 
-            subProgress.Report(0.5f);
-            Assert.That(reportedValue, Is.EqualTo(0f).Within(0.0001f)); // -0.5 + 0.5*(0.5 - (-0.5)) = 0
+        [TestCase(0f, 1f)]
+        [TestCase(0f, 0f)]
+        [TestCase(1f, 0f)]
+        [TestCase(0.8f, 0.2f)]
+        public void CreateSubProgress_WithInRangeValues_IsAllowed(
+            float startProgress,
+            float endProgress)
+        {
+            // Arrange
+            var parentProgress = Progress.Create<float>(_ => { });
 
-            subProgress.Report(1f);
-            Assert.That(reportedValue, Is.EqualTo(0.5f).Within(0.0001f));
+            // Act & Assert
+            Assert.DoesNotThrow(
+                () => parentProgress.CreateSubProgress(startProgress, endProgress));
         }
 
         [Test]

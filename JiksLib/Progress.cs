@@ -30,19 +30,20 @@ namespace JiksLib
         /// </summary>
         /// <param name="parentProgress">父进度报告器</param>
         /// <param name="startProgress">
-        /// 子进度开始部分。允许任意有限值；不做 [0,1] 限制，越界值会按线性映射外推给父进度。
+        /// 子进度开始部分，必须在 [0, 1] 范围内。
         /// </param>
         /// <param name="endProgress">
-        /// 子进度结束部分。允许任意有限值，且可以小于 <paramref name="startProgress"/>
+        /// 子进度结束部分，必须在 [0, 1] 范围内；可以小于 <paramref name="startProgress"/>
         /// （反向映射，可用于倒计时进度）。
         /// </param>
         /// <returns>子进度报告器</returns>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// 当 <paramref name="startProgress"/> 或 <paramref name="endProgress"/> 为 NaN / 无穷大时抛出
+        /// 当 <paramref name="startProgress"/> 或 <paramref name="endProgress"/> 为 NaN / 无穷大，
+        /// 或不在 [0, 1] 范围内时抛出
         /// </exception>
         /// <remarks>
         /// 映射公式为 <c>start * (1 - x) + end * x</c>，在 x=0 / x=1 处精确命中两端点；
-        /// 不校验 [0,1] 区间与 start &lt;= end，这是有意保留的线性外推与反向映射能力。
+        /// 允许 start &gt; end（反向映射），但不允许越出 [0, 1]。
         /// </remarks>
         public static IProgress<float> CreateSubProgress(
             this IProgress<float> parentProgress,
@@ -60,6 +61,16 @@ namespace JiksLib
                 throw new ArgumentOutOfRangeException(
                     nameof(endProgress),
                     "Value cannot be NaN or infinity.");
+
+            if (startProgress < 0f || startProgress > 1f)
+                throw new ArgumentOutOfRangeException(
+                    nameof(startProgress),
+                    "Value must be in the range [0, 1].");
+
+            if (endProgress < 0f || endProgress > 1f)
+                throw new ArgumentOutOfRangeException(
+                    nameof(endProgress),
+                    "Value must be in the range [0, 1].");
 
             if (parentProgress is NullProgressImpl<float>)
                 return NullProgressImpl<float>.Instance;
