@@ -5,6 +5,10 @@ namespace JiksLib.Collections
     /// <summary>
     /// 只读多重集合
     /// </summary>
+    /// <remarks>
+    /// 该接口是对可变实现的只读视图，不保证可以强转回可写类型。
+    /// 调用方不得通过强制转换绕过只读约束，强转属于未定义行为。
+    /// </remarks>
     /// <typeparam name="T">元素类型</typeparam>
     public interface IReadOnlyMultiSet<T> :
         IEnumerable<T>,

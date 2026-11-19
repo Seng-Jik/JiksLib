@@ -56,31 +56,6 @@ namespace JiksLib.Collections
             item != null && dict.TryGetValue(item, out var count) ? count : 0;
 
         /// <summary>
-        /// 获取只读集合视图；返回的包装对象无法强转回 <see cref="MultiHashSet{T}"/>，
-        /// 因此调用方不能通过它修改集合。视图在实例内缓存，重复获取不会重复分配。
-        /// </summary>
-        internal IReadOnlyCollection<T> GetReadOnlyView() =>
-            readOnlyView ??= new ReadOnlyCollectionView(this);
-
-        sealed class ReadOnlyCollectionView : IReadOnlyCollection<T>
-        {
-            readonly MultiHashSet<T> set;
-
-            internal ReadOnlyCollectionView(MultiHashSet<T> set)
-            {
-                this.set = set;
-            }
-
-            public int Count => set.Count;
-
-            public IEnumerator<T> GetEnumerator() => set.GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
-        IReadOnlyCollection<T>? readOnlyView;
-
-        /// <summary>
         /// 清空集合
         /// </summary>
         public void Clear()
@@ -190,6 +165,7 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 转换为只读集合
+        /// 返回的是当前实例的只读视图，禁止强转回 <see cref="MultiHashSet{T}"/> 修改；强转属于未定义行为
         /// </summary>
         public IReadOnlyMultiSet<T> AsReadOnly() => this;
 
