@@ -358,5 +358,15 @@ namespace JiksLib.Test.Text
             // Assert
             Assert.That(result, Is.EqualTo("a;b"));
         }
+
+        [TestCase('"')]
+        [TestCase('\r')]
+        [TestCase('\n')]
+        public void Constructor_WithInvalidSeparator_ThrowsArgumentException(char separator)
+        {
+            // 与 CsvParser / CsvReader 的校验保持一致，避免写出自家解析器读不了的内容
+            var ex = Assert.Throws<ArgumentException>(() => new CsvWriter(separator));
+            Assert.That(ex!.ParamName, Is.EqualTo("separator"));
+        }
     }
 }

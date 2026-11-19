@@ -145,7 +145,7 @@ namespace JiksLib.Control
         /// 注册某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类或子接口
         /// </summary>
-        public void AddListener<TEvent>(EventHandler<TEvent> listener)
+        public void AddListener<TEvent>(SafeEventHandler<TEvent> listener)
             where TEvent : TBaseEvent
         {
             SafeEvent<TEvent> safeEvent;
@@ -162,7 +162,7 @@ namespace JiksLib.Control
         /// 移除某一类型的事件监听器
         /// TEvent应该是TBaseEvent的子类或子接口
         /// </summary>
-        public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
+        public void RemoveListener<TEvent>(SafeEventHandler<TEvent> listener)
             where TEvent : TBaseEvent
         {
             if (innerEvents.TryGetValue(typeof(TEvent), out var h))

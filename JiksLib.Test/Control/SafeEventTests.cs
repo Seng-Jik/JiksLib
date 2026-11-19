@@ -748,7 +748,7 @@ namespace JiksLib.Test.Control
             var safeEvent = new SafeEvent<TestSafeEvent>(out _);
             const int listenerCount = 50;
             var listeners =
-                new JiksLib.Control.EventHandler<TestSafeEvent>[listenerCount];
+                new JiksLib.Control.SafeEventHandler<TestSafeEvent>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
@@ -1098,12 +1098,12 @@ namespace JiksLib.Test.Control
             // Arrange
             var safeEvent = new SafeEvent<TestSafeEvent>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new JiksLib.Control.EventHandler<TestSafeEvent>[listenerCount];
+            var listeners = new JiksLib.Control.SafeEventHandler<TestSafeEvent>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                JiksLib.Control.EventHandler<TestSafeEvent> listener = e => callCount++;
+                JiksLib.Control.SafeEventHandler<TestSafeEvent> listener = e => callCount++;
                 listeners[i] = listener;
                 safeEvent.AddListener(listener);
             }
@@ -1137,7 +1137,7 @@ namespace JiksLib.Test.Control
             // 添加一些监听器
             for (int i = 0; i < 10; i++)
             {
-                var listener = new JiksLib.Control.EventHandler<TestSafeEvent>(e => callCount++);
+                var listener = new JiksLib.Control.SafeEventHandler<TestSafeEvent>(e => callCount++);
                 safeEvent.AddListener(listener);
                 weakRefs.Add(new WeakReference(listener));
             }

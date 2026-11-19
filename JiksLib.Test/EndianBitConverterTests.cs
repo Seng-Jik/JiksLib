@@ -783,5 +783,39 @@ namespace JiksLib.Test
         }
 
         #endregion
+
+        #region 缓冲区校验的参数名测试
+
+        [Test]
+        public void ToInt32_BufferTooSmall_ReportsPublicParameterName()
+        {
+            var ex = Assert.Throws<ArgumentException>(
+                () => EndianBitConverter.LittleEndian.ToInt32(
+                    new ArraySegment<byte>(new byte[2])));
+
+            Assert.That(ex!.ParamName, Is.EqualTo("bytes"));
+        }
+
+        [Test]
+        public void GetBytes_BufferTooSmall_ReportsPublicParameterName()
+        {
+            var ex = Assert.Throws<ArgumentException>(
+                () => EndianBitConverter.LittleEndian.GetBytes(
+                    1,
+                    new ArraySegment<byte>(new byte[2])));
+
+            Assert.That(ex!.ParamName, Is.EqualTo("output"));
+        }
+
+        [Test]
+        public void ToInt32_DefaultSegment_ReportsPublicParameterName()
+        {
+            var ex = Assert.Throws<ArgumentNullException>(
+                () => EndianBitConverter.LittleEndian.ToInt32(default));
+
+            Assert.That(ex!.ParamName, Is.EqualTo("bytes"));
+        }
+
+        #endregion
     }
 }

@@ -14,8 +14,8 @@ namespace JiksLib.Benchmark.Control
     [MemoryDiagnoser]
     public class ListenerRemovalOrderBenchmarks
     {
-        private List<JiksLib.Control.EventHandler<TestEvent>> refListeners = null!;
-        private List<JiksLib.Control.EventHandler<TestValueEvent>> valueListeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestEvent>> refListeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestValueEvent>> valueListeners = null!;
 
         private EventBus<TestEvent> refEventBus = null!;
         private ValueEventBus<IValueEvent> valueEventBus = null!;
@@ -26,8 +26,8 @@ namespace JiksLib.Benchmark.Control
         [GlobalSetup]
         public void GlobalSetup()
         {
-            refListeners = new List<JiksLib.Control.EventHandler<TestEvent>>(ListenerCount);
-            valueListeners = new List<JiksLib.Control.EventHandler<TestValueEvent>>(ListenerCount);
+            refListeners = new List<JiksLib.Control.SafeEventHandler<TestEvent>>(ListenerCount);
+            valueListeners = new List<JiksLib.Control.SafeEventHandler<TestValueEvent>>(ListenerCount);
 
             for (int i = 0; i < ListenerCount; ++i)
             {

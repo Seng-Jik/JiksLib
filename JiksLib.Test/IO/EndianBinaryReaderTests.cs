@@ -944,6 +944,52 @@ namespace JiksLib.Test.IO
 
         #endregion
 
+        #region Large String Buffer Tests
+
+        [Test]
+        public void ReadString_LargePayload_RoundTrips()
+        {
+            // 超过读缓冲区缓存上限（4096 字节）时走临时缓冲区路径
+            var text = new string('x', 10_000);
+            using var stream = new MemoryStream();
+
+            using (var writer = new EndianBinaryWriter(
+                EndianBitConverter.LittleEndian, stream, Encoding.UTF8, leaveOpen: true))
+            {
+                writer.Write(text);
+            }
+
+            stream.Position = 0;
+
+            using var reader = new EndianBinaryReader(
+                EndianBitConverter.LittleEndian, stream);
+
+            Assert.That(reader.ReadString(), Is.EqualTo(text));
+        }
+
+        [Test]
+        public void ReadString_AfterLargePayload_SmallPayloadStillWorks()
+        {
+            using var stream = new MemoryStream();
+
+            using (var writer = new EndianBinaryWriter(
+                EndianBitConverter.LittleEndian, stream, Encoding.UTF8, leaveOpen: true))
+            {
+                writer.Write(new string('y', 5000));
+                writer.Write("small");
+            }
+
+            stream.Position = 0;
+
+            using var reader = new EndianBinaryReader(
+                EndianBitConverter.LittleEndian, stream);
+
+            Assert.That(reader.ReadString().Length, Is.EqualTo(5000));
+            Assert.That(reader.ReadString(), Is.EqualTo("small"));
+        }
+
+        #endregion
+
         #region Helper Classes
 
         private class NonReadableStream : Stream

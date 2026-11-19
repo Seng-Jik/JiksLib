@@ -10,6 +10,10 @@ namespace JiksLib.Collections
     /// 基于数组的链表实现
     /// 非线程安全
     /// </summary>
+    /// <remarks>
+    /// 枚举期间修改链表（增删、扩容、清空等）属于未定义行为：枚举器不检测版本变化，
+    /// 可能跳过、重复或读到已移除的元素。需要边遍历边修改时，请先复制一份元素。
+    /// </remarks>
     /// <typeparam name="T">元素类型</typeparam>
     public sealed class ArrayLinkedList<T> :
         ICollection<T>,
@@ -558,6 +562,8 @@ namespace JiksLib.Collections
 
         void FreeSlot(int slotIndex)
         {
+            // 清空元素引用，避免已移除的对象被数组继续保活到槽位复用为止。
+            array[slotIndex].Value = default!;
             array[slotIndex].Used = false;
             array[slotIndex].Next = firstFreeNode;
             firstFreeNode = slotIndex;

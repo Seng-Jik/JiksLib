@@ -209,7 +209,7 @@ namespace JiksLib.Test
         public void StripPrefixSuffix_OverlappingAffixes_ReturnsFalse()
         {
             Assert.That("abc".StripPrefixSuffix("abc", "c", out var remain), Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]

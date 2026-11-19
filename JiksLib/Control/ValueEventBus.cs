@@ -67,7 +67,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 注册某一类型的事件监听器
         /// </summary>
-        public void AddListener<TEvent>(EventHandler<TEvent> listener)
+        public void AddListener<TEvent>(SafeEventHandler<TEvent> listener)
             where TEvent : struct, TConstraint
         {
             SafeEvent<TEvent> safeEvent;
@@ -83,7 +83,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 移除某一类型的事件监听器
         /// </summary>
-        public void RemoveListener<TEvent>(EventHandler<TEvent> listener)
+        public void RemoveListener<TEvent>(SafeEventHandler<TEvent> listener)
             where TEvent : struct, TConstraint
         {
             if (innerEvents.TryGetValue(typeof(TEvent), out var eventHandler))

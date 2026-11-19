@@ -297,6 +297,14 @@ namespace JiksLib.IO
             if (CanSeek && length > BaseStream.Length - BaseStream.Position)
                 throw new EndOfStreamException();
 
+            // 大块字符串使用临时缓冲区，避免把实例的读缓冲区永久撑大
+            if (length > MaxCachedStringBuffer)
+            {
+                var largeBuffer = new byte[length];
+                ReadBytesExactly(new ArraySegment<byte>(largeBuffer));
+                return encoding.GetString(largeBuffer, 0, length);
+            }
+
             var buf = GetReadBuffer(length);
             ReadBytesExactly(buf);
             return encoding.GetString(buf.Array!, buf.Offset, buf.Count);
@@ -306,6 +314,11 @@ namespace JiksLib.IO
         readonly Encoding encoding;
         readonly bool leaveOpen;
         byte[]? readBuffer = null;
+
+        /// <summary>
+        /// 读缓冲区缓存的长度上限；超过该长度的字符串改用临时缓冲区，读后即可回收。
+        /// </summary>
+        const int MaxCachedStringBuffer = 4096;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ArraySegment<byte> GetReadBuffer(int size)

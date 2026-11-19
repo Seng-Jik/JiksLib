@@ -17,8 +17,8 @@ namespace JiksLib.Benchmark.Control
         private EventBus<TestEvent>.Publisher refPublisher;
         private ValueEventBus<IValueEvent> valueEventBus = null!;
         private ValueEventBus<IValueEvent>.Publisher valuePublisher;
-        private List<JiksLib.Control.EventHandler<TestEvent>> refListeners = null!;
-        private List<JiksLib.Control.EventHandler<TestValueEvent>> valueListeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestEvent>> refListeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestValueEvent>> valueListeners = null!;
 
         [Params(1, 10, 100, 1000)]
         public int ListenerCount { get; set; }
@@ -31,8 +31,8 @@ namespace JiksLib.Benchmark.Control
             valueEventBus = new ValueEventBus<IValueEvent>(out var valuePub);
             valuePublisher = valuePub;
 
-            refListeners = new List<JiksLib.Control.EventHandler<TestEvent>>(ListenerCount);
-            valueListeners = new List<JiksLib.Control.EventHandler<TestValueEvent>>(ListenerCount);
+            refListeners = new List<JiksLib.Control.SafeEventHandler<TestEvent>>(ListenerCount);
+            valueListeners = new List<JiksLib.Control.SafeEventHandler<TestValueEvent>>(ListenerCount);
 
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)

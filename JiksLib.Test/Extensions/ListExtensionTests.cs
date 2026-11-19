@@ -112,6 +112,26 @@ namespace JiksLib.Test.Extensions
         }
 
         [Test]
+        public void RemoveO1_WithFixedSizeList_ThrowsWithoutModifyingElements()
+        {
+            // 数组实现 IList<T> 但 RemoveAt 抛 NotSupportedException；
+            // 异常路径不能留下“已覆盖但未删除”的元素
+            IList<int> list = new[] { 1, 2, 3 };
+
+            Assert.That(() => list.RemoveO1(0), Throws.TypeOf<NotSupportedException>());
+            Assert.That(list, Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void RemoveO1_WithIndexOutOfRange_ReportsParameterName()
+        {
+            IList<int> list = new List<int> { 1, 2, 3 };
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveO1(10));
+            Assert.That(ex!.ParamName, Is.EqualTo("n"));
+        }
+
+        [Test]
         public void RemoveO1_PreservesOrderExceptForRemovedElement()
         {
             // Arrange
@@ -1021,6 +1041,26 @@ namespace JiksLib.Test.Extensions
                 }
                 cumulative += weight;
             }
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithHugeWeights_DoesNotOverflowToInfinity()
+        {
+            // 两个 float.MaxValue 用 float 求和会溢出为 +∞，导致选择退化为"最后一项"
+            var list = new[] { "a", "b" };
+            var weights = new[] { float.MaxValue, float.MaxValue };
+
+            Assert.That(list.RandomSelectIndex(0.5f, weights), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RandomSelectIndex_WithHugeWeightsAndSelector_DoesNotOverflowToInfinity()
+        {
+            var list = new[] { "a", "b" };
+
+            Assert.That(
+                list.RandomSelectIndex(0.5f, _ => float.MaxValue),
+                Is.EqualTo(0));
         }
 
         #endregion

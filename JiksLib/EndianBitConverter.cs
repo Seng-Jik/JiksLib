@@ -14,7 +14,7 @@ namespace JiksLib
 
         public bool ToBoolean(ArraySegment<byte> bytes)
         {
-            CheckBuffer(bytes, 1, "Boolean");
+            CheckBuffer(bytes, 1, "Boolean", nameof(bytes));
             return bytes.Array![bytes.Offset] != 0;
         }
 
@@ -22,7 +22,7 @@ namespace JiksLib
 
         public void GetBytes(bool value, ArraySegment<byte> output)
         {
-            CheckBuffer(output, 1, "Boolean");
+            CheckBuffer(output, 1, "Boolean", nameof(output));
             output.Array![output.Offset] = value ? (byte)1 : (byte)0;
         }
 
@@ -39,13 +39,13 @@ namespace JiksLib
 
         public sbyte ToSByte(ArraySegment<byte> bytes)
         {
-            CheckBuffer(bytes, 1, "SByte");
+            CheckBuffer(bytes, 1, "SByte", nameof(bytes));
             return (sbyte)bytes.Array![bytes.Offset];
         }
 
         public void GetBytes(sbyte value, ArraySegment<byte> output)
         {
-            CheckBuffer(output, 1, "SByte");
+            CheckBuffer(output, 1, "SByte", nameof(output));
             output.Array![output.Offset] = (byte)value;
         }
 
@@ -178,21 +178,21 @@ namespace JiksLib
         {
             public override void GetBytes(short value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 2, "Int16");
+                CheckBuffer(output, 2, "Int16", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
             }
 
             public override void GetBytes(ushort value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 2, "UInt16");
+                CheckBuffer(output, 2, "UInt16", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
             }
 
             public override void GetBytes(int value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 4, "Int32");
+                CheckBuffer(output, 4, "Int32", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 16) & 0xFF);
@@ -201,7 +201,7 @@ namespace JiksLib
 
             public override void GetBytes(uint value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 4, "UInt32");
+                CheckBuffer(output, 4, "UInt32", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 16) & 0xFF);
@@ -210,7 +210,7 @@ namespace JiksLib
 
             public override void GetBytes(long value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 8, "Int64");
+                CheckBuffer(output, 8, "Int64", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 16) & 0xFF);
@@ -223,7 +223,7 @@ namespace JiksLib
 
             public override void GetBytes(ulong value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 8, "UInt64");
+                CheckBuffer(output, 8, "UInt64", nameof(output));
                 output.Array![output.Offset] = (byte)(value & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 16) & 0xFF);
@@ -236,13 +236,13 @@ namespace JiksLib
 
             public override short ToInt16(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 2, "Int16");
+                CheckBuffer(bytes, 2, "Int16", nameof(bytes));
                 return (short)(bytes.Array![bytes.Offset] | (bytes.Array[bytes.Offset + 1] << 8));
             }
 
             public override int ToInt32(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 4, "Int32");
+                CheckBuffer(bytes, 4, "Int32", nameof(bytes));
                 return bytes.Array![bytes.Offset] |
                         (bytes.Array[bytes.Offset + 1] << 8) |
                         (bytes.Array[bytes.Offset + 2] << 16) |
@@ -251,7 +251,7 @@ namespace JiksLib
 
             public override long ToInt64(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 8, "Int64");
+                CheckBuffer(bytes, 8, "Int64", nameof(bytes));
                 return bytes.Array![bytes.Offset] |
                         ((long)bytes.Array[bytes.Offset + 1] << 8) |
                         ((long)bytes.Array[bytes.Offset + 2] << 16) |
@@ -264,13 +264,13 @@ namespace JiksLib
 
             public override ushort ToUInt16(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 2, "UInt16");
+                CheckBuffer(bytes, 2, "UInt16", nameof(bytes));
                 return (ushort)(bytes.Array![bytes.Offset] | (bytes.Array[bytes.Offset + 1] << 8));
             }
 
             public override uint ToUInt32(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 4, "UInt32");
+                CheckBuffer(bytes, 4, "UInt32", nameof(bytes));
                 return (uint)(bytes.Array![bytes.Offset] |
                         (bytes.Array[bytes.Offset + 1] << 8) |
                         (bytes.Array[bytes.Offset + 2] << 16) |
@@ -279,7 +279,7 @@ namespace JiksLib
 
             public override ulong ToUInt64(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 8, "UInt64");
+                CheckBuffer(bytes, 8, "UInt64", nameof(bytes));
                 return bytes.Array![bytes.Offset] |
                         ((ulong)bytes.Array[bytes.Offset + 1] << 8) |
                         ((ulong)bytes.Array[bytes.Offset + 2] << 16) |
@@ -295,21 +295,21 @@ namespace JiksLib
         {
             public override void GetBytes(short value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 2, "Int16");
+                CheckBuffer(output, 2, "Int16", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)(value & 0xFF);
             }
 
             public override void GetBytes(ushort value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 2, "UInt16");
+                CheckBuffer(output, 2, "UInt16", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 8) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)(value & 0xFF);
             }
 
             public override void GetBytes(int value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 4, "Int32");
+                CheckBuffer(output, 4, "Int32", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 24) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 16) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 8) & 0xFF);
@@ -318,7 +318,7 @@ namespace JiksLib
 
             public override void GetBytes(uint value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 4, "UInt32");
+                CheckBuffer(output, 4, "UInt32", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 24) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 16) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 8) & 0xFF);
@@ -327,7 +327,7 @@ namespace JiksLib
 
             public override void GetBytes(long value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 8, "Int64");
+                CheckBuffer(output, 8, "Int64", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 56) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 48) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 40) & 0xFF);
@@ -340,7 +340,7 @@ namespace JiksLib
 
             public override void GetBytes(ulong value, ArraySegment<byte> output)
             {
-                CheckBuffer(output, 8, "UInt64");
+                CheckBuffer(output, 8, "UInt64", nameof(output));
                 output.Array![output.Offset] = (byte)((value >> 56) & 0xFF);
                 output.Array[output.Offset + 1] = (byte)((value >> 48) & 0xFF);
                 output.Array[output.Offset + 2] = (byte)((value >> 40) & 0xFF);
@@ -353,13 +353,13 @@ namespace JiksLib
 
             public override short ToInt16(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 2, "Int16");
+                CheckBuffer(bytes, 2, "Int16", nameof(bytes));
                 return (short)((bytes.Array![bytes.Offset] << 8) | bytes.Array[bytes.Offset + 1]);
             }
 
             public override int ToInt32(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 4, "Int32");
+                CheckBuffer(bytes, 4, "Int32", nameof(bytes));
                 return (bytes.Array![bytes.Offset] << 24) |
                        (bytes.Array[bytes.Offset + 1] << 16) |
                        (bytes.Array[bytes.Offset + 2] << 8) |
@@ -368,7 +368,7 @@ namespace JiksLib
 
             public override long ToInt64(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 8, "Int64");
+                CheckBuffer(bytes, 8, "Int64", nameof(bytes));
                 return ((long)bytes.Array![bytes.Offset] << 56) |
                        ((long)bytes.Array[bytes.Offset + 1] << 48) |
                        ((long)bytes.Array[bytes.Offset + 2] << 40) |
@@ -381,13 +381,13 @@ namespace JiksLib
 
             public override ushort ToUInt16(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 2, "UInt16");
+                CheckBuffer(bytes, 2, "UInt16", nameof(bytes));
                 return (ushort)((bytes.Array![bytes.Offset] << 8) | bytes.Array[bytes.Offset + 1]);
             }
 
             public override uint ToUInt32(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 4, "UInt32");
+                CheckBuffer(bytes, 4, "UInt32", nameof(bytes));
                 return (uint)((bytes.Array![bytes.Offset] << 24) |
                        (bytes.Array[bytes.Offset + 1] << 16) |
                        (bytes.Array[bytes.Offset + 2] << 8) |
@@ -396,7 +396,7 @@ namespace JiksLib
 
             public override ulong ToUInt64(ArraySegment<byte> bytes)
             {
-                CheckBuffer(bytes, 8, "UInt64");
+                CheckBuffer(bytes, 8, "UInt64", nameof(bytes));
                 return ((ulong)bytes.Array![bytes.Offset] << 56) |
                        ((ulong)bytes.Array[bytes.Offset + 1] << 48) |
                        ((ulong)bytes.Array[bytes.Offset + 2] << 40) |
@@ -421,18 +421,19 @@ namespace JiksLib
         static void CheckBuffer(
             ArraySegment<byte> buf,
             int size,
-            string typeName)
+            string typeName,
+            string paramName)
         {
             if (buf.Array == null)
                 throw new ArgumentNullException(
-                    nameof(buf),
+                    paramName,
                     "ArraySegment.Array must not be null.");
 
             if (buf.Count < size)
                 throw new ArgumentException(
                     $"ArraySegment length must be {size} for {typeName} conversion, " +
                     $"but was {buf.Count}.",
-                    nameof(buf));
+                    paramName);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -407,6 +407,17 @@ namespace JiksLib.Test.Collections
             Assert.That(range.ToString(), Is.EqualTo("[0.1, 0.9)"));
         }
 
+        [Test]
+        [SetCulture("de-DE")]
+        public void ToString_UsesInvariantCulture()
+        {
+            // Arrange - de-DE 的小数点是逗号；ToString 必须固定用 "."
+            var range = new FloatRange(1.5f, true, 2.5f, false);
+
+            // Act & Assert
+            Assert.That(range.ToString(), Is.EqualTo("[1.5, 2.5)"));
+        }
+
         #endregion
     }
 }

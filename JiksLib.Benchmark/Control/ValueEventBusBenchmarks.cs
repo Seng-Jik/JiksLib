@@ -16,7 +16,7 @@ namespace JiksLib.Benchmark.Control
         private ValueEventBus<IValueEvent> valueEventBus = null!;
         private ValueEventBus<IValueEvent>.Publisher publisher;
         private ValueEventBus<IValueEvent>.SubPublisher<TestValueEvent> subPublisher;
-        private List<JiksLib.Control.EventHandler<TestValueEvent>> listeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestValueEvent>> listeners = null!;
 
         [Params(1, 10, 100, 1000)]
         public int ListenerCount { get; set; }
@@ -24,7 +24,7 @@ namespace JiksLib.Benchmark.Control
         [GlobalSetup]
         public void GlobalSetup()
         {
-            listeners = new List<JiksLib.Control.EventHandler<TestValueEvent>>(ListenerCount);
+            listeners = new List<JiksLib.Control.SafeEventHandler<TestValueEvent>>(ListenerCount);
 
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)

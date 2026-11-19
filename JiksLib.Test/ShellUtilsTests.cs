@@ -384,5 +384,33 @@ namespace JiksLib.Test
         }
 
         #endregion
+
+#if NET6_0_OR_GREATER
+        [Test]
+        public void FindExecutable_UnixFileWithoutExecutePermission_ReturnsNull()
+        {
+            // 只在 Linux 上断言：确保 access(X_OK) 与 File.GetUnixFileMode 的语义一致
+            if (!OperatingSystem.IsLinux())
+                Assert.Ignore("只在 Linux 上断言 Unix 执行位");
+
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                string filePath = Path.Combine(tempDir, "no-exec");
+                File.WriteAllText(filePath, "");
+                File.SetUnixFileMode(
+                    filePath,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+                Assert.That(ShellUtils.FindExecutable(filePath), Is.Null);
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+#endif
     }
 }

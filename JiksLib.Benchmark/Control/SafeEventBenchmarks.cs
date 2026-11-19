@@ -16,7 +16,7 @@ namespace JiksLib.Benchmark.Control
     {
         private SafeEvent<TestValueEvent> safeEvent = null!;
         private SafeEvent<TestValueEvent>.Publisher publisher;
-        private List<JiksLib.Control.EventHandler<TestValueEvent>> listeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestValueEvent>> listeners = null!;
         private List<Exception> exceptions = new();
         private TestValueEvent evt;
 
@@ -26,7 +26,7 @@ namespace JiksLib.Benchmark.Control
         [GlobalSetup]
         public void GlobalSetup()
         {
-            listeners = new List<JiksLib.Control.EventHandler<TestValueEvent>>(ListenerCount);
+            listeners = new List<JiksLib.Control.SafeEventHandler<TestValueEvent>>(ListenerCount);
 
             for (int i = 0; i < ListenerCount; ++i)
                 listeners.Add(_ => { /* 空操作 */ });
@@ -145,7 +145,7 @@ namespace JiksLib.Benchmark.Control
     [MemoryDiagnoser]
     public class SafeEventRecursiveBenchmarks
     {
-        private static readonly JiksLib.Control.EventHandler<TestValueEvent> NoOp =
+        private static readonly JiksLib.Control.SafeEventHandler<TestValueEvent> NoOp =
             _ => { };
 
         private SafeEvent<TestValueEvent> safeEvent = null!;

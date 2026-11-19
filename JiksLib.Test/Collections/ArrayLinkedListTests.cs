@@ -3,6 +3,7 @@ using JiksLib.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace JiksLib.Test.Collections
 {
@@ -676,6 +677,30 @@ namespace JiksLib.Test.Collections
         }
 
         #endregion
+
+        [Test]
+        public void RemoveBySlot_ReleasesElementReference()
+        {
+            var list = new ArrayLinkedList<object>();
+
+            var weak = AddAndRemove(list);
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            Assert.That(weak.IsAlive, Is.False, "已移除的元素不应被空闲槽位继续保活。");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static WeakReference AddAndRemove(ArrayLinkedList<object> list)
+        {
+            var payload = new object();
+            var weak = new WeakReference(payload);
+            int slot = list.AddLast(payload);
+            list.RemoveBySlot(slot, out _, out _);
+            return weak;
+        }
 
     }
 }

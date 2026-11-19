@@ -14,11 +14,17 @@ namespace JiksLib.Collections
     /// 即优先级数值越小越先出队；需要"大者优先"请传入反向比较器。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 类型名与 <c>System.Collections.Generic.PriorityQueue&lt;TElement,TPriority&gt;</c>
     /// 相同，这是有意的：本库面向 Unity 2022（netstandard2.1）等尚未提供该类型的运行时，
     /// 以同名同语义的实现补齐，便于代码迁移。若同一文件同时使用两个命名空间，请用
     /// <c>using</c> 别名区分，例如
     /// <c>using JiksPriorityQueue = JiksLib.Collections.PriorityQueue&lt;int, int&gt;;</c>。
+    /// </para>
+    /// <para>
+    /// 枚举（<see cref="UnorderedItems"/> 或 <c>foreach</c>）期间修改队列属于未定义行为：
+    /// 枚举器不检测版本变化，可能跳过、重复或读到已移除的元素。
+    /// </para>
     /// </remarks>
     /// <typeparam name="TElement">元素类型</typeparam>
     /// <typeparam name="TPriority">优先级类型</typeparam>
@@ -32,11 +38,11 @@ namespace JiksLib.Collections
         /// <summary>
         /// 使用指定的优先级比较器创建空的优先级队列
         /// </summary>
-        /// <param name="comparer">优先级比较器</param>
-        public PriorityQueue(IComparer<TPriority> comparer)
+        /// <param name="comparer">优先级比较器；为 null 时使用 <c>Comparer&lt;TPriority&gt;.Default</c></param>
+        public PriorityQueue(IComparer<TPriority>? comparer)
         {
             heap = new();
-            Comparer = comparer;
+            Comparer = comparer ?? System.Collections.Generic.Comparer<TPriority>.Default;
         }
 
         /// <summary>
@@ -51,13 +57,13 @@ namespace JiksLib.Collections
         /// 使用指定的优先级比较器创建优先级队列，并初始化指定的元素集合
         /// </summary>
         /// <param name="collection">初始元素集合</param>
-        /// <param name="comparer">优先级比较器</param>
+        /// <param name="comparer">优先级比较器；为 null 时使用 <c>Comparer&lt;TPriority&gt;.Default</c></param>
         public PriorityQueue(
             IEnumerable<(TElement, TPriority)> collection,
-            IComparer<TPriority> comparer)
+            IComparer<TPriority>? comparer)
         {
             heap = collection.ToList();
-            Comparer = comparer;
+            Comparer = comparer ?? System.Collections.Generic.Comparer<TPriority>.Default;
             Heapify();
         }
 
@@ -65,13 +71,13 @@ namespace JiksLib.Collections
         /// 使用指定的初始容量和优先级比较器创建空的优先级队列
         /// </summary>
         /// <param name="capacity">初始容量</param>
-        /// <param name="comparer">优先级比较器</param>
+        /// <param name="comparer">优先级比较器；为 null 时使用 <c>Comparer&lt;TPriority&gt;.Default</c></param>
         public PriorityQueue(
             int capacity,
-            IComparer<TPriority> comparer)
+            IComparer<TPriority>? comparer)
         {
             heap = new(capacity: capacity);
-            Comparer = comparer;
+            Comparer = comparer ?? System.Collections.Generic.Comparer<TPriority>.Default;
         }
 
         /// <summary>
@@ -451,7 +457,7 @@ namespace JiksLib.Collections
             {
                 get
                 {
-                    if (_index < 0 || _index >= _heap.Count)
+                    if (_heap == null || _index < 0 || _index >= _heap.Count)
                         throw new InvalidOperationException("Enumeration has not started or has already finished.");
 
                     return _heap[_index];
@@ -462,6 +468,10 @@ namespace JiksLib.Collections
 
             public bool MoveNext()
             {
+                // 默认值（未绑定队列）按空视图处理
+                if (_heap == null)
+                    return false;
+
                 _index++;
                 return _index < _heap.Count;
             }
@@ -483,7 +493,10 @@ namespace JiksLib.Collections
                 _heap = heap;
             }
 
-            public int Count => _heap.Count;
+            /// <summary>
+            /// 视图中的元素数量；<c>default</c> 视图为空，返回 0
+            /// </summary>
+            public int Count => _heap == null ? 0 : _heap.Count;
 
             public UnorderedItemsViewEnumerator GetEnumerator() => new UnorderedItemsViewEnumerator(_heap);
 

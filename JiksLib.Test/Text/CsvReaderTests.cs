@@ -370,6 +370,29 @@ namespace JiksLib.Test.Text
                 Throws.TypeOf<InvalidOperationException>());
         }
 
+        [Test]
+        public void Row_AfterEof_ThrowsInvalidOperationException()
+        {
+            // 推进到 EOF 也必须让先前返回的 Row 失效，而不是静默返回空集合
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            var enumerator = reader.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+
+            var stale = enumerator.Current;
+            Assert.That(enumerator.MoveNext(), Is.False);
+
+            Assert.That(
+                () =>
+                {
+                    foreach (var _ in stale)
+                    {
+                    }
+                },
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
 #if NET5_0_OR_GREATER
         [Test]
         public void Read_SkippedRows_DoNotAllocate()

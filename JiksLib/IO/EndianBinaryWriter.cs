@@ -49,6 +49,13 @@ namespace JiksLib.IO
         /// </summary>
         public bool CanSeek { get; private set; }
 
+        /// <summary>
+        /// <see cref="Write(string)"/> / <see cref="WriteAsync(string)"/> 允许写入的字符串最大字节数，默认 64 MiB。
+        /// 与 <see cref="EndianBinaryReader.MaxStringLength"/> 的默认值一致，
+        /// 避免本库写出的字符串无法被默认配置的读取器读回；必须为非负数。
+        /// </summary>
+        public int MaxStringLength { get; set; } = 64 * 1024 * 1024;
+
         public EndianBinaryWriter(
             EndianBitConverter endianBitConverter,
             Stream stream,
@@ -294,11 +301,15 @@ namespace JiksLib.IO
         /// <summary>
         /// 写入一个字符串
         /// </summary>
+        /// <param name="value">要写入的字符串</param>
+        /// <exception cref="InvalidDataException">
+        /// 编码后的字节长度超过 <see cref="MaxStringLength"/> 时抛出
+        /// </exception>
         public void Write(string value)
         {
             value.ThrowIfNull(nameof(value));
 
-            var bytes = encoding.GetBytes(value);
+            var bytes = EncodeString(value);
             Write(bytes.Length);
             Write(bytes);
         }
@@ -306,17 +317,23 @@ namespace JiksLib.IO
         /// <summary>
         /// 写入一个字符串
         /// </summary>
+        /// <param name="value">要写入的字符串</param>
         public Task WriteAsync(string value) =>
             WriteAsync(value, CancellationToken.None);
 
         /// <summary>
         /// 写入一个字符串
         /// </summary>
+        /// <param name="value">要写入的字符串</param>
+        /// <param name="cancellationToken">取消标记</param>
+        /// <exception cref="InvalidDataException">
+        /// 编码后的字节长度超过 <see cref="MaxStringLength"/> 时抛出
+        /// </exception>
         public Task WriteAsync(string value, CancellationToken cancellationToken)
         {
             value.ThrowIfNull(nameof(value));
 
-            var bytes = encoding.GetBytes(value);
+            var bytes = EncodeString(value);
             Write(bytes.Length);
             return WriteAsync(bytes, cancellationToken);
         }
@@ -329,6 +346,23 @@ namespace JiksLib.IO
             writeBuffer ??= new byte[8];
             ArraySegment<byte> b = new(writeBuffer, 0, size);
             return b;
+        }
+
+        /// <summary>
+        /// 按构造时的编码取得字符串字节，并校验长度上限
+        /// </summary>
+        /// <exception cref="InvalidDataException">
+        /// 编码后的字节长度超过 <see cref="MaxStringLength"/> 时抛出
+        /// </exception>
+        byte[] EncodeString(string value)
+        {
+            var bytes = encoding.GetBytes(value);
+
+            if (bytes.Length > MaxStringLength)
+                throw new InvalidDataException(
+                    $"String length {bytes.Length} exceeds the maximum allowed length {MaxStringLength}.");
+
+            return bytes;
         }
 
         readonly EndianBitConverter endian;

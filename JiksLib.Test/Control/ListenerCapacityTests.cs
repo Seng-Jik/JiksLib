@@ -162,7 +162,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var bus = new EventBus<TestEventBase>(out var publisher);
             int callCount = 0;
-            JiksLib.Control.EventHandler<TestEventA> listener = _ => callCount++;
+            JiksLib.Control.SafeEventHandler<TestEventA> listener = _ => callCount++;
 
             // Act
             bus.WarmupListenerSlot<TestEventA>(4);

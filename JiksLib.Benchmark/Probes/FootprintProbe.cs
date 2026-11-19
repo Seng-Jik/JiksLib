@@ -89,7 +89,7 @@ namespace JiksLib.Benchmark.Probes
             // 事件总线要求事件是 class；本探针只需要一个可注册监听的空类型。
         }
 
-        private static readonly JiksLib.Control.EventHandler<ProbeEvent> SharedListener = static _ => { };
+        private static readonly JiksLib.Control.SafeEventHandler<ProbeEvent> SharedListener = static _ => { };
 
         private static int Measure(string scenario, int trial)
         {

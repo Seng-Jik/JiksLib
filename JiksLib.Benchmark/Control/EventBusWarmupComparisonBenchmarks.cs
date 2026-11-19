@@ -13,7 +13,7 @@ namespace JiksLib.Benchmark.Control
     [MemoryDiagnoser]
     public class EventBusWarmupComparisonBenchmarks
     {
-        private static readonly JiksLib.Control.EventHandler<TestEvent> Listener =
+        private static readonly JiksLib.Control.SafeEventHandler<TestEvent> Listener =
             _ => { };
 
         private ICache<Type, EventBus<TestEvent>.TypeChain> sharedCache = null!;
