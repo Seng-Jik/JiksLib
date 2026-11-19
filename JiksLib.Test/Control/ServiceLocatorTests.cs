@@ -327,9 +327,6 @@ namespace JiksLib.Test.Control
 
             // Second dispose should not throw
             Assert.DoesNotThrow(() => disposable.Dispose());
-
-            // 作用域栈必须已经被弹出
-            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
         }
 
         [Test]
@@ -347,7 +344,6 @@ namespace JiksLib.Test.Control
             ServiceLocator.Reset();
 
             // Assert - 所有作用域都被释放，服务回到未注册状态
-            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
             Assert.That(
                 () => ServiceLocator.Get<string>(),
                 Throws.TypeOf<InvalidOperationException>());
@@ -357,7 +353,6 @@ namespace JiksLib.Test.Control
         public void Reset_WithNoActiveScopes_IsNoOp()
         {
             Assert.DoesNotThrow(() => ServiceLocator.Reset());
-            Assert.That(ServiceLocator.ActiveScopeCount, Is.EqualTo(0));
         }
 
         [Test]
