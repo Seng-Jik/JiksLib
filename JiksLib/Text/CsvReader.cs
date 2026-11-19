@@ -195,15 +195,11 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 一行记录
-        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
-        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="string"/>）以支持 LINQ。
+        /// 保存记录的原始文本，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
+        /// 实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="string"/>），枚举器是嵌套的
+        /// <see cref="Row.Enumerator"/>；同一行可以重复枚举。
         /// </summary>
-        /// <remarks>
-        /// <see cref="Row"/> 是游标：<see cref="GetEnumerator"/> 返回当前游标位置的副本。
-        /// 从读取器取得的行位于第一个字段之前，因此同一个行值可以重复 foreach。
-        /// 通过 <see cref="IEnumerable{T}"/> 遍历会装箱，热路径请使用 foreach。
-        /// </remarks>
-        public struct Row : IEnumerator<string>, IEnumerable<string>
+        public readonly struct Row : IEnumerable<string>
         {
             internal Row(string record, char separator)
             {
@@ -211,31 +207,10 @@ namespace JiksLib.Text
             }
 
             /// <summary>
-            /// 当前字段
+            /// 获取字段枚举器
+            /// 结构体枚举器，配合 foreach 使用不产生分配
             /// </summary>
-            public string Current => inner.Current.ToString();
-
-            object? IEnumerator.Current => Current;
-
-            /// <summary>
-            /// 移动到下一个字段
-            /// </summary>
-            /// <returns>还有字段时返回 true</returns>
-            public bool MoveNext() => inner.MoveNext();
-
-            /// <summary>
-            /// 不支持重置：请对 CsvReader 重新 GetEnumerator
-            /// </summary>
-            public void Reset() =>
-                throw new NotSupportedException(
-                    "Reset is not supported on CsvReader.Row. Use CsvReader.GetEnumerator() instead.");
-
-            public void Dispose() { }
-
-            /// <summary>
-            /// 返回自身，使 Row 可以直接用于 foreach
-            /// </summary>
-            public Row GetEnumerator() => this;
+            public Enumerator GetEnumerator() => new(inner);
 
             /// <summary>
             /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
@@ -244,7 +219,43 @@ namespace JiksLib.Text
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-            CsvParser.Row inner;
+            readonly CsvParser.Row inner;
+
+            /// <summary>
+            /// 字段枚举器
+            /// 逐字段解析一条记录；结构体枚举器，配合 foreach 使用不产生分配。
+            /// </summary>
+            public struct Enumerator : IEnumerator<string>
+            {
+                internal Enumerator(CsvParser.Row row)
+                {
+                    inner = row.GetEnumerator();
+                }
+
+                /// <summary>
+                /// 当前字段
+                /// </summary>
+                public string Current => inner.Current.ToString();
+
+                object? IEnumerator.Current => Current;
+
+                /// <summary>
+                /// 移动到下一个字段
+                /// </summary>
+                /// <returns>还有字段时返回 true</returns>
+                public bool MoveNext() => inner.MoveNext();
+
+                /// <summary>
+                /// 不支持重置：请重新调用 GetEnumerator
+                /// </summary>
+                public void Reset() =>
+                    throw new NotSupportedException(
+                        "Reset is not supported on CsvReader.Row.Enumerator. Call GetEnumerator() again instead.");
+
+                public void Dispose() { }
+
+                CsvParser.Row.Enumerator inner;
+            }
         }
 
         /// <summary>

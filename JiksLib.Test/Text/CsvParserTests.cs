@@ -217,9 +217,10 @@ namespace JiksLib.Test.Text
 
             var row = enumerator.Current;
             var fields = new List<string>();
+            var rowEnumerator = row.GetEnumerator();
 
-            while (row.MoveNext())
-                fields.Add(row.Current.ToString());
+            while (rowEnumerator.MoveNext())
+                fields.Add(rowEnumerator.Current.ToString());
 
             Assert.That(fields, Is.EqualTo(new[] { "a", "b", "c,d" }));
         }
@@ -304,9 +305,10 @@ namespace JiksLib.Test.Text
             Assert.That(enumerator.MoveNext(), Is.True);
 
             var row = enumerator.Current;
+            var rowEnumerator = row.GetEnumerator();
 
-            Assert.That(row.MoveNext(), Is.True);
-            var escaped = row.Current;
+            Assert.That(rowEnumerator.MoveNext(), Is.True);
+            var escaped = rowEnumerator.Current;
 
             Assert.That(escaped.HasEscapedQuotes, Is.True);
             Assert.That(escaped.Raw.ToString(), Is.EqualTo("a\"\"b"));
@@ -317,8 +319,8 @@ namespace JiksLib.Test.Text
             StringSegment implicitValue = escaped;
             Assert.That(implicitValue.ToString(), Is.EqualTo("a\"b"));
 
-            Assert.That(row.MoveNext(), Is.True);
-            var plain = row.Current;
+            Assert.That(rowEnumerator.MoveNext(), Is.True);
+            var plain = rowEnumerator.Current;
 
             Assert.That(plain.HasEscapedQuotes, Is.False);
             Assert.That(plain.Raw, Is.EqualTo(plain.Value));
@@ -417,8 +419,9 @@ namespace JiksLib.Test.Text
             var enumerator = parser.GetEnumerator();
             enumerator.MoveNext();
             var row = enumerator.Current;
-            row.MoveNext();
-            return row.Current;
+            var rowEnumerator = row.GetEnumerator();
+            rowEnumerator.MoveNext();
+            return rowEnumerator.Current;
         }
 
         static int SumRawLengths(CsvParser parser, int times)

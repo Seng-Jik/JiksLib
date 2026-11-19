@@ -147,19 +147,14 @@ namespace JiksLib.Text
 
         /// <summary>
         /// 一行记录
-        /// 本身是一个结构体枚举器，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
-        /// 同时实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="Field"/>）以支持 LINQ。
+        /// 保存记录的原始切片，<c>foreach (var field in row)</c> 按顺序取出该行的所有字段。
+        /// 实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="Field"/>），枚举器是嵌套的
+        /// <see cref="Row.Enumerator"/>；同一行可以重复枚举。
         /// </summary>
-        /// <remarks>
-        /// <see cref="Row"/> 是游标：<see cref="GetEnumerator"/> 返回当前游标位置的副本。
-        /// 从 <see cref="CsvParser.GetEnumerator"/> 或 <c>foreach</c> 取得的行位于第一个字段之前，
-        /// 因此同一个行值可以重复 foreach；若先手动调用过 <see cref="MoveNext"/>，再 foreach 会从当前位置继续。
-        /// 通过 <see cref="IEnumerable{T}"/> 遍历会装箱，热路径请使用 foreach。
-        /// </remarks>
-        public struct Row : IEnumerator<Field>, IEnumerable<Field>
+        public readonly struct Row : IEnumerable<Field>
         {
             /// <summary>
-            /// 用记录片段构造行枚举器
+            /// 用记录片段构造行
             /// </summary>
             /// <param name="record">不包含记录终止符的原始记录文本</param>
             /// <param name="separator">字段分隔符</param>
@@ -167,62 +162,13 @@ namespace JiksLib.Text
             {
                 this.record = record;
                 this.separator = separator;
-                position = 0;
-                finished = false;
-                current = Field.Empty;
             }
 
             /// <summary>
-            /// 当前字段
+            /// 获取字段枚举器
+            /// 结构体枚举器，配合 foreach 使用不产生分配
             /// </summary>
-            public Field Current => current;
-
-            object? IEnumerator.Current => Current;
-
-            /// <summary>
-            /// 移动到下一个字段
-            /// </summary>
-            /// <returns>还有字段时返回 true</returns>
-            public bool MoveNext()
-            {
-                if (finished)
-                    return false;
-
-                // 空记录（例如两个换行之间没有任何字符）按一个空字段处理
-                if (record.Length == 0)
-                {
-                    current = Field.Empty;
-                    finished = true;
-                    return true;
-                }
-
-                // 上一个字段以分隔符结尾：产生末尾空字段
-                if (position == record.Length)
-                {
-                    current = Field.Empty;
-                    finished = true;
-                    return true;
-                }
-
-                current = ParseField(out int next, out bool isLast);
-                position = next;
-                finished = isLast;
-                return true;
-            }
-
-            /// <summary>
-            /// 不支持重置：内部只保存了当前位置，重置成"开头"需要重新构造，请对 CsvParser 重新 GetEnumerator
-            /// </summary>
-            public void Reset() =>
-                throw new NotSupportedException(
-                    "Reset is not supported on CsvParser.Row. Use CsvParser.GetEnumerator() instead.");
-
-            public void Dispose() { }
-
-            /// <summary>
-            /// 返回自身，使 Row 可以直接用于 foreach
-            /// </summary>
-            public Row GetEnumerator() => this;
+            public Enumerator GetEnumerator() => new(record, separator);
 
             /// <summary>
             /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
@@ -231,80 +177,146 @@ namespace JiksLib.Text
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-            /// <summary>
-            /// 解析 position 处的字段，并给出下一个字段的起始位置
-            /// 只做切片与标记，不分配；解转义推迟到 <see cref="Field.Value"/>
-            /// </summary>
-            /// <param name="next">下一个字段的起始位置</param>
-            /// <param name="isLast">当前字段之后没有分隔符（已到记录末尾）</param>
-            Field ParseField(out int next, out bool isLast)
-            {
-                int start = position;
-
-                if (record[start] == '"')
-                {
-                    int index = start + 1;
-                    bool hasEscapedQuote = false;
-
-                    while (index < record.Length)
-                    {
-                        if (record[index] != '"')
-                        {
-                            index++;
-                            continue;
-                        }
-
-                        // "" 表示一个转义引号，字段还没结束
-                        if (index + 1 < record.Length && record[index + 1] == '"')
-                        {
-                            hasEscapedQuote = true;
-                            index += 2;
-                            continue;
-                        }
-
-                        int contentEnd = index;
-                        index++;
-
-                        // RFC 4180：结束引号之后只能是分隔符、记录结束或文件结束
-                        if (index < record.Length && record[index] != separator)
-                            throw new InvalidDataException(
-                                $"Unexpected character after field closure: {record[index]}");
-
-                        if (index >= record.Length)
-                        {
-                            next = record.Length;
-                            isLast = true;
-                        }
-                        else
-                        {
-                            next = index + 1;
-                            isLast = false;
-                        }
-
-                        var content = record.Slice(start + 1, contentEnd - start - 1);
-
-                        return new Field(content, hasEscapedQuote);
-                    }
-
-                    throw new InvalidDataException("Unclosed double quote in field.");
-                }
-
-                int end = start;
-
-                while (end < record.Length && record[end] != separator)
-                    end++;
-
-                next = end < record.Length ? end + 1 : record.Length;
-                isLast = end >= record.Length;
-
-                return new Field(record.Slice(start, end - start), false);
-            }
-
             readonly StringSegment record;
             readonly char separator;
-            int position;
-            bool finished;
-            Field current;
+
+            /// <summary>
+            /// 字段枚举器
+            /// 逐字段解析一条记录；结构体枚举器，配合 foreach 使用不产生分配。
+            /// </summary>
+            public struct Enumerator : IEnumerator<Field>
+            {
+                internal Enumerator(StringSegment record, char separator)
+                {
+                    this.record = record;
+                    this.separator = separator;
+                    position = 0;
+                    finished = false;
+                    current = Field.Empty;
+                }
+
+                /// <summary>
+                /// 当前字段
+                /// </summary>
+                public Field Current => current;
+
+                object? IEnumerator.Current => Current;
+
+                /// <summary>
+                /// 移动到下一个字段
+                /// </summary>
+                /// <returns>还有字段时返回 true</returns>
+                public bool MoveNext()
+                {
+                    if (finished)
+                        return false;
+
+                    // 空记录（例如两个换行之间没有任何字符）按一个空字段处理
+                    if (record.Length == 0)
+                    {
+                        current = Field.Empty;
+                        finished = true;
+                        return true;
+                    }
+
+                    // 上一个字段以分隔符结尾：产生末尾空字段
+                    if (position == record.Length)
+                    {
+                        current = Field.Empty;
+                        finished = true;
+                        return true;
+                    }
+
+                    current = ParseField(out int next, out bool isLast);
+                    position = next;
+                    finished = isLast;
+                    return true;
+                }
+
+                /// <summary>
+                /// 不支持重置：请重新调用 GetEnumerator
+                /// </summary>
+                public void Reset() =>
+                    throw new NotSupportedException(
+                        "Reset is not supported on CsvParser.Row.Enumerator. Call GetEnumerator() again instead.");
+
+                public void Dispose() { }
+
+                /// <summary>
+                /// 解析 position 处的字段，并给出下一个字段的起始位置
+                /// 只做切片与标记，不分配；解转义推迟到 <see cref="Field.Value"/>
+                /// </summary>
+                /// <param name="next">下一个字段的起始位置</param>
+                /// <param name="isLast">当前字段之后没有分隔符（已到记录末尾）</param>
+                Field ParseField(out int next, out bool isLast)
+                {
+                    int start = position;
+
+                    if (record[start] == '"')
+                    {
+                        int index = start + 1;
+                        bool hasEscapedQuote = false;
+
+                        while (index < record.Length)
+                        {
+                            if (record[index] != '"')
+                            {
+                                index++;
+                                continue;
+                            }
+
+                            // "" 表示一个转义引号，字段还没结束
+                            if (index + 1 < record.Length && record[index + 1] == '"')
+                            {
+                                hasEscapedQuote = true;
+                                index += 2;
+                                continue;
+                            }
+
+                            int contentEnd = index;
+                            index++;
+
+                            // RFC 4180：结束引号之后只能是分隔符、记录结束或文件结束
+                            if (index < record.Length && record[index] != separator)
+                                throw new InvalidDataException(
+                                    $"Unexpected character after field closure: {record[index]}");
+
+                            if (index >= record.Length)
+                            {
+                                next = record.Length;
+                                isLast = true;
+                            }
+                            else
+                            {
+                                next = index + 1;
+                                isLast = false;
+                            }
+
+                            var content = record.Slice(start + 1, contentEnd - start - 1);
+
+                            return new Field(content, hasEscapedQuote);
+                        }
+
+                        throw new InvalidDataException("Unclosed double quote in field.");
+                    }
+
+                    int end = start;
+
+                    while (end < record.Length && record[end] != separator)
+                        end++;
+
+                    next = end < record.Length ? end + 1 : record.Length;
+                    isLast = end >= record.Length;
+
+                    return new Field(record.Slice(start, end - start), false);
+                }
+
+                readonly StringSegment record;
+                readonly char separator;
+                int position;
+                bool finished;
+                Field current;
+            }
         }
 
         /// <summary>
