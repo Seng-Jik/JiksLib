@@ -14,15 +14,30 @@ namespace JiksLib.Extensions
         /// <param name="ls">列表</param>
         /// <param name="n">要删除元素的下标</param>
         /// <typeparam name="T">列表元素的类型</typeparam>
+        /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
+        /// <exception cref="InvalidOperationException">列表为空时抛出</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// 当 <paramref name="n"/> 不在 [0, Count) 范围内时抛出
+        /// </exception>
         public static void RemoveO1<T>(this IList<T> ls, int n)
         {
+            ls.ThrowIfNull(nameof(ls));
+
             if (ls.Count == 0)
                 throw new InvalidOperationException("list has no element to remove.");
 
+            if ((uint)n >= (uint)ls.Count)
+                throw new ArgumentOutOfRangeException(nameof(n));
+
             var lastIndex = ls.Count - 1;
             var last = ls[lastIndex];
-            ls[n] = last;
+
+            // 先删除再回填：定长集合（如数组）的 RemoveAt 会抛异常，
+            // 这样异常路径不会留下"已覆盖但未删除"的半成品状态。
             ls.RemoveAt(lastIndex);
+
+            if (n != lastIndex)
+                ls[n] = last;
         }
 
         /// <summary>
@@ -124,6 +139,7 @@ namespace JiksLib.Extensions
         /// <remarks>
         /// 权重函数会被调用两次（一次求和、一次选择），因此必须是纯函数；
         /// 需要只求值一次时，请使用接收预计算权重的重载。
+        /// 权重和以 <see cref="double"/> 累加，避免大量 float 权重相加时溢出为 +∞ 导致分布错误。
         /// </remarks>
         /// <typeparam name="T">元素类型</typeparam>
         /// <param name="ls">要抽取元素的列表</param>
@@ -149,7 +165,7 @@ namespace JiksLib.Extensions
 
             ValidateRandomNumber(randomNumber);
 
-            float allWeight = 0f;
+            double allWeight = 0.0;
 
             for (int i = 0; i < ls.Count; i++)
             {
@@ -158,11 +174,11 @@ namespace JiksLib.Extensions
                 allWeight += weight;
             }
 
-            if (!(allWeight > 0f))
+            if (!(allWeight > 0.0))
                 throw new InvalidOperationException(
                     "Total weight must be greater than zero.");
 
-            float selectedWeight = allWeight * randomNumber;
+            double selectedWeight = allWeight * randomNumber;
 
             for (int i = 0; i < ls.Count; i++)
             {
@@ -215,7 +231,7 @@ namespace JiksLib.Extensions
 
             ValidateRandomNumber(randomNumber);
 
-            float allWeight = 0f;
+            double allWeight = 0.0;
 
             for (int i = 0; i < weights.Count; i++)
             {
@@ -223,11 +239,11 @@ namespace JiksLib.Extensions
                 allWeight += weights[i];
             }
 
-            if (!(allWeight > 0f))
+            if (!(allWeight > 0.0))
                 throw new InvalidOperationException(
                     "Total weight must be greater than zero.");
 
-            float selectedWeight = allWeight * randomNumber;
+            double selectedWeight = allWeight * randomNumber;
 
             for (int i = 0; i < weights.Count; i++)
             {

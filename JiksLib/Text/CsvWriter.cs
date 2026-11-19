@@ -16,9 +16,12 @@ namespace JiksLib.Text
         /// 构造一个 CsvWriter 实例
         /// </summary>
         /// <param name="separator">指定 CSV 表格的分隔符，修改此值可以用于生成 TSV 或 DSV</param>
+        /// <exception cref="ArgumentException">
+        /// 当 <paramref name="separator"/> 为双引号或换行符时抛出
+        /// </exception>
         public CsvWriter(char separator = ',')
         {
-            this.separator = separator;
+            this.separator = CsvParser.ValidateSeparator(separator);
         }
 
         /// <summary>

@@ -845,5 +845,44 @@ namespace JiksLib.Test.Collections
 #endif
 
         #endregion
+
+        #region 评审修复回归（P2-08 / P2-09）
+
+        [Test]
+        public void Constructor_NullComparer_FallsBackToDefault()
+        {
+            // BCL 语义：comparer 为 null 时使用 Comparer<TPriority>.Default
+            var queue = new JiksLib.Collections.PriorityQueue<int, int>(
+                (IComparer<int>?)null);
+
+            queue.Enqueue(1, 20);
+            queue.Enqueue(2, 10);
+
+            Assert.That(queue.Comparer, Is.SameAs(Comparer<int>.Default));
+            Assert.That(queue.Dequeue(), Is.EqualTo((2, 10)));
+        }
+
+        [Test]
+        public void Constructor_NullComparerWithCapacity_FallsBackToDefault()
+        {
+            var queue = new JiksLib.Collections.PriorityQueue<int, int>(
+                capacity: 4,
+                comparer: null);
+
+            queue.Enqueue(1, 1);
+
+            Assert.That(queue.Comparer, Is.SameAs(Comparer<int>.Default));
+        }
+
+        [Test]
+        public void UnorderedItemsView_Default_IsEmpty()
+        {
+            var view = default(JiksLib.Collections.PriorityQueue<int, int>.UnorderedItemsView);
+
+            Assert.That(view.Count, Is.EqualTo(0));
+            Assert.That(view.ToList(), Is.Empty);
+        }
+
+        #endregion
     }
 }

@@ -587,6 +587,54 @@ namespace JiksLib.Test.Collections
             Assert.That(evictedKeys, Is.EqualTo(new[] { 2 }));
         }
 
+        [Test]
+        public void AsyncCache_ValueIsCachedBeforeOnReceiveCallback()
+        {
+            // 回调内查询同一 key 应命中刚写入的值，而不是再次触发工厂
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.FIFO,
+                (key, onReceive, _) => onReceive($"async{key}"),
+                3);
+
+            bool cachedDuringCallback = false;
+            string? cachedValue = null;
+
+            // Act
+            cache.Access(
+                1,
+                v =>
+                {
+                    cachedDuringCallback = cache.GetCached(1, out var cached);
+                    cachedValue = cached;
+                },
+                _ => { });
+
+            // Assert
+            Assert.That(cachedDuringCallback, Is.True);
+            Assert.That(cachedValue, Is.EqualTo("async1"));
+        }
+
+        [Test]
+        public void AsyncCache_OnReceiveThrows_ValueStillCached()
+        {
+            // Arrange
+            var cache = Cache.MakeAsync<int, string>(
+                Cache.Algorithm.FIFO,
+                (key, onReceive, _) => onReceive($"async{key}"),
+                3);
+
+            // Act & Assert
+            Assert.That(
+                () => cache.Access(
+                    1,
+                    _ => throw new InvalidOperationException("callback failed"),
+                    _ => { }),
+                Throws.TypeOf<InvalidOperationException>());
+
+            Assert.That(cache.GetCached(1, out var value), Is.True);
+            Assert.That(value, Is.EqualTo("async1"));
+        }
+
         #endregion
 
         #region Evict / GetCached 测试

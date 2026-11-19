@@ -259,7 +259,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -331,7 +331,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -346,7 +346,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -361,7 +361,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         #endregion
@@ -380,7 +380,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -452,7 +452,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -467,7 +467,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -482,7 +482,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         #endregion
@@ -502,7 +502,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -578,7 +578,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -594,7 +594,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -610,7 +610,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -643,7 +643,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]
@@ -675,7 +675,7 @@ namespace JiksLib.Test.Extensions
 
             // Assert
             Assert.That(result, Is.False);
-            Assert.That(remain, Is.Null);
+            Assert.That(remain, Is.Empty);
         }
 
         [Test]

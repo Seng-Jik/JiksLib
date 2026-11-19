@@ -495,12 +495,12 @@ namespace JiksLib.Test.Control
             // Arrange
             var superEvent = new EventBus<TestEventBase>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new JiksLib.Control.EventHandler<TestEventA>[listenerCount];
+            var listeners = new JiksLib.Control.SafeEventHandler<TestEventA>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                JiksLib.Control.EventHandler<TestEventA> listener = e => callCount++;
+                JiksLib.Control.SafeEventHandler<TestEventA> listener = e => callCount++;
                 listeners[i] = listener;
                 superEvent.AddListener(listener);
             }
@@ -1059,7 +1059,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var eventBus = new EventBus<TestEventBase>(out _);
-            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventA> listener = e => { };
             eventBus.AddListener(listener);
 
             // Act & Assert
@@ -1074,8 +1074,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var eventBus = new EventBus<TestEventBase>(out _);
-            JiksLib.Control.EventHandler<TestEventA> listenerA = e => { };
-            JiksLib.Control.EventHandler<TestEventB> listenerB = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventA> listenerA = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventB> listenerB = e => { };
             eventBus.AddListener(listenerA);
             eventBus.AddListener(listenerB);
             eventBus.RemoveListener(listenerA);
@@ -1226,7 +1226,7 @@ namespace JiksLib.Test.Control
             // Arrange
             var cache = EventBus<TestEventBase>.TypeChain.MakeTypeChainCache();
             var eventBus = new EventBus<TestEventBase>(out var publisher, cache);
-            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventA> listener = e => { };
             eventBus.AddListener(listener);
             publisher.WarmupPublish<TestEventA>();
             eventBus.RemoveListener(listener);
@@ -1277,8 +1277,8 @@ namespace JiksLib.Test.Control
             var eventBus = new EventBus<TestEventBase>(
                 out var publisher,
                 cache);
-            JiksLib.Control.EventHandler<TestEventA> listenerA = e => { };
-            JiksLib.Control.EventHandler<TestEventB> listenerB = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventA> listenerA = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventB> listenerB = e => { };
             eventBus.AddListener(listenerA);
             eventBus.AddListener(listenerB);
             publisher.WarmupPublish<TestEventA>();
@@ -1309,7 +1309,7 @@ namespace JiksLib.Test.Control
                 cache,
                 autoPurgeListenerSlot: true);
             publisher.WarmupPublish<TestEventA>();
-            JiksLib.Control.EventHandler<TestEventA> listener = e => { };
+            JiksLib.Control.SafeEventHandler<TestEventA> listener = e => { };
             eventBus.AddListener(listener);
 
             // Act
@@ -1337,7 +1337,7 @@ namespace JiksLib.Test.Control
             var observedDuringPublish = -1;
             var addedCalls = 0;
 
-            JiksLib.Control.EventHandler<TestEventA> added = e => addedCalls++;
+            JiksLib.Control.SafeEventHandler<TestEventA> added = e => addedCalls++;
             eventBus.AddListener<TestEventA>(e =>
             {
                 observedDuringPublish = eventBus.GetListenersCount<TestEventA>();
@@ -1376,7 +1376,7 @@ namespace JiksLib.Test.Control
                 out var publisher,
                 allowAddRemoveListenerDuringPublish: true);
             var observedDuringPublish = -1;
-            JiksLib.Control.EventHandler<TestEventA>? listener = null;
+            JiksLib.Control.SafeEventHandler<TestEventA>? listener = null;
             listener = e =>
             {
                 observedDuringPublish = eventBus.GetListenersCount<TestEventA>();

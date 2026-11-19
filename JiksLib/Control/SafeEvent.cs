@@ -11,7 +11,7 @@ namespace JiksLib.Control
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="event">事件对象</param>
-    public delegate void EventHandler<TEvent>(TEvent @event);
+    public delegate void SafeEventHandler<TEvent>(TEvent @event);
 
     /// <summary>
     /// 安全事件发布器
@@ -114,7 +114,7 @@ namespace JiksLib.Control
         /// 其 <c>exceptionsOutput</c>；对于排队的嵌套事件，则写入发起该次嵌套 Publish
         /// 时传入的集合。异常不会从 Publish 抛出。
         /// </exception>
-        public void AddListener(EventHandler<TEvent> listener)
+        public void AddListener(SafeEventHandler<TEvent> listener)
         {
             listener.ThrowIfNull(nameof(listener));
 
@@ -152,7 +152,7 @@ namespace JiksLib.Control
         /// 若该调用发生在监听器回调内且未自行捕获，异常会由外层发布收集到
         /// <c>exceptionsOutput</c>，不会从外层 <c>Publish</c> 抛出。
         /// </exception>
-        public void RemoveListener(EventHandler<TEvent> listener)
+        public void RemoveListener(SafeEventHandler<TEvent> listener)
         {
             listener.ThrowIfNull(nameof(listener));
 
@@ -391,7 +391,7 @@ namespace JiksLib.Control
         }
 
         /// <summary>监听器列表；删除只置 null，下一次发布时压缩。</summary>
-        readonly List<EventHandler<TEvent>?> listeners;
+        readonly List<SafeEventHandler<TEvent>?> listeners;
 
         /// <summary>是否处于发布会话中；会话会覆盖递归队列的整个排空过程。</summary>
         bool invoking = false;
@@ -410,7 +410,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 发布期间产生的监听器增删操作；未启用发布期间增删时为 null。
         /// </summary>
-        readonly Queue<(bool isAddOrRemove, EventHandler<TEvent>)>?
+        readonly Queue<(bool isAddOrRemove, SafeEventHandler<TEvent>)>?
             listenersDelayedOperation;
 
         /// <summary>

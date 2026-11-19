@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using JiksLib.Extensions;
 
 namespace JiksLib
@@ -45,6 +46,11 @@ namespace JiksLib
         /// 显式路径（绝对路径或含目录分隔符）直接检查该路径，
         /// 其余情况只在 PATH 中查找，不查找当前工作目录
         /// </summary>
+        /// <remarks>
+        /// Unix 上会校验执行位：net6.0+ 使用 <c>File.GetUnixFileMode</c>，
+        /// net48 / netstandard2.1 使用 POSIX <c>access(X_OK)</c>；
+        /// 后者在原生调用不可用时退回"文件存在即可执行"。
+        /// </remarks>
         /// <param name="executableName">可执行文件名称</param>
         /// <returns>可执行文件的信息</returns>
         public static FileInfo? FindExecutable(string executableName)
@@ -158,9 +164,38 @@ namespace JiksLib
                 return false;
             }
 #else
-            return true;
+            if (IsCurrentOSWindowsFamily)
+                return true;
+
+            // net48 / netstandard2.1 没有 File.GetUnixFileMode，使用 POSIX access(X_OK)。
+            // 原生库不可用时退回“文件存在即视为可执行”的历史行为。
+            try
+            {
+                return Access(path, X_OK) == 0;
+            }
+            catch (DllNotFoundException)
+            {
+                return true;
+            }
+            catch (EntryPointNotFoundException)
+            {
+                return true;
+            }
 #endif
         }
+
+#if !NET6_0_OR_GREATER
+        /// <summary>
+        /// POSIX <c>access()</c> 的 X_OK 标志
+        /// </summary>
+        const int X_OK = 1;
+
+        // CA2101：该调用只在 Unix 上执行，路径按 UTF-8 封送，不存在 Windows 的 best-fit 映射问题。
+#pragma warning disable CA2101
+        [DllImport("libc", EntryPoint = "access", SetLastError = true)]
+        static extern int Access([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int mode);
+#pragma warning restore CA2101
+#endif
 
         /// <summary>
         /// 得到当前平台下的可执行文件后缀

@@ -15,8 +15,8 @@ namespace JiksLib.Benchmark.Control
     {
         private EventBus<TestEvent> eventBus = null!;
         private EventBus<TestEvent>.Publisher publisher;
-        private List<JiksLib.Control.EventHandler<TestEvent>> listeners = null!;
-        private List<JiksLib.Control.EventHandler<DerivedTestEvent>> derivedListeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<TestEvent>> listeners = null!;
+        private List<JiksLib.Control.SafeEventHandler<DerivedTestEvent>> derivedListeners = null!;
 
         // 预先创建事件对象：避免把事件分配计入发布路径的 Allocated 指标
         private readonly TestEvent testEvent = new() { Value = 42 };
@@ -31,8 +31,8 @@ namespace JiksLib.Benchmark.Control
         [GlobalSetup]
         public void GlobalSetup()
         {
-            listeners = new List<JiksLib.Control.EventHandler<TestEvent>>(ListenerCount);
-            derivedListeners = new List<JiksLib.Control.EventHandler<DerivedTestEvent>>(ListenerCount);
+            listeners = new List<JiksLib.Control.SafeEventHandler<TestEvent>>(ListenerCount);
+            derivedListeners = new List<JiksLib.Control.SafeEventHandler<DerivedTestEvent>>(ListenerCount);
 
             // 预创建监听器
             for (int i = 0; i < ListenerCount; i++)

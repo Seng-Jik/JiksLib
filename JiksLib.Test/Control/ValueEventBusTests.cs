@@ -497,12 +497,12 @@ namespace JiksLib.Test.Control
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out var publisher);
             const int listenerCount = 50;
-            var listeners = new JiksLib.Control.EventHandler<TestValueEventA>[listenerCount];
+            var listeners = new JiksLib.Control.SafeEventHandler<TestValueEventA>[listenerCount];
 
             for (int i = 0; i < listenerCount; i++)
             {
                 int callCount = 0;
-                JiksLib.Control.EventHandler<TestValueEventA> listener = e => callCount++;
+                JiksLib.Control.SafeEventHandler<TestValueEventA> listener = e => callCount++;
                 listeners[i] = listener;
                 eventBus.AddListener(listener);
             }
@@ -1821,7 +1821,7 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
-            JiksLib.Control.EventHandler<TestValueEventA> listener = e => { };
+            JiksLib.Control.SafeEventHandler<TestValueEventA> listener = e => { };
             eventBus.AddListener(listener);
 
             // Act & Assert
@@ -1836,8 +1836,8 @@ namespace JiksLib.Test.Control
         {
             // Arrange
             var eventBus = new ValueEventBus<IValueEvent>(out _);
-            JiksLib.Control.EventHandler<TestValueEventA> listenerA = e => { };
-            JiksLib.Control.EventHandler<TestValueEventB> listenerB = e => { };
+            JiksLib.Control.SafeEventHandler<TestValueEventA> listenerA = e => { };
+            JiksLib.Control.SafeEventHandler<TestValueEventB> listenerB = e => { };
             eventBus.AddListener(listenerA);
             eventBus.AddListener(listenerB);
             eventBus.RemoveListener(listenerA);
@@ -1913,7 +1913,7 @@ namespace JiksLib.Test.Control
                 out var publisher,
                 allowAddRemoveListenerDuringPublish: true);
             var observedDuringPublish = -1;
-            JiksLib.Control.EventHandler<TestValueEventA>? listener = null;
+            JiksLib.Control.SafeEventHandler<TestValueEventA>? listener = null;
             listener = e =>
             {
                 observedDuringPublish =

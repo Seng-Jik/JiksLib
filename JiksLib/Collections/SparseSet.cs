@@ -9,6 +9,10 @@ namespace JiksLib.Collections
     /// <summary>
     /// 稀疏集
     /// </summary>
+    /// <remarks>
+    /// 枚举期间修改集合（增删、扩容、清空等）属于未定义行为：枚举器不检测版本变化，
+    /// 可能跳过、重复或读到已移除的元素。需要边遍历边修改时，请先复制一份元素。
+    /// </remarks>
     public sealed class SparseSet<T> :
         ICollection<T>,
         IReadOnlyCollection<T>,

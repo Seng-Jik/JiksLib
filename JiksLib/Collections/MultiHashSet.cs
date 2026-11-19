@@ -13,6 +13,10 @@ namespace JiksLib.Collections
     /// 多重哈希集合
     /// 允许单个元素重复多次
     /// </summary>
+    /// <remarks>
+    /// 枚举期间修改集合（增删、清空等）属于未定义行为：枚举器可能抛出异常，
+    /// 也可能跳过、重复或读到已移除的元素。需要边遍历边修改时，请先复制一份元素。
+    /// </remarks>
     public sealed class MultiHashSet<T> : IReadOnlyMultiSet<T>
         where T : notnull
     {

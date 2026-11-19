@@ -97,7 +97,12 @@ namespace JiksLib.Text
             fieldIndex = 0;
 
             if (PeekChar() < 0)
+            {
+                // 推进到 EOF 同样要让先前返回的 Row 失效，
+                // 否则过期 Row 会静默返回空集合而不是抛出异常。
+                version++;
                 return false;
+            }
 
             rowStarted = true;
             version++;

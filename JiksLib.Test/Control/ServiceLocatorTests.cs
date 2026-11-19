@@ -401,5 +401,30 @@ namespace JiksLib.Test.Control
                 Assert.That(ServiceLocator.Get<object>(), Is.SameAs(objService));
             }
         }
+
+        [Test]
+        public void Register_NullService_ThrowsArgumentNullException()
+        {
+            var scope = new TestScope(s => s.RegisterService<string>(null!));
+
+            Assert.That(
+                () => ServiceLocator.EnterScope(scope),
+                Throws.TypeOf<ArgumentNullException>()
+                    .With.Property("ParamName").EqualTo("service"));
+        }
+
+        [Test]
+        public void Reset_ThenDisposeOldHandle_DoesNotThrow()
+        {
+            var scope = new TestScope(s => s.RegisterService("temp"));
+            var handle = ServiceLocator.EnterScope(scope);
+
+            ServiceLocator.Reset();
+
+            Assert.That(() => handle.Dispose(), Throws.Nothing);
+            Assert.That(
+                () => ServiceLocator.Get<string>(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
     }
 }

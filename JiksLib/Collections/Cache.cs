@@ -13,6 +13,10 @@ namespace JiksLib.Collections
     /// 实现类虽然同时实现了 <see cref="IAsyncCache{TKey,TValue}"/>（为了复用淘汰逻辑），
     /// 但通过异步接口调用会抛 <see cref="InvalidOperationException"/>；
     /// 这是两种创建方式互斥的固有特性，不是缺陷。
+    /// <para>
+    /// 本缓存<b>不是线程安全的</b>；异步缓存（<see cref="IAsyncCache{TKey,TValue}"/>）的工厂回调
+    /// 可能在任意线程上完成，调用方必须自行序列化对缓存及其回调状态的访问。
+    /// </para>
     /// </remarks>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
@@ -90,6 +94,10 @@ namespace JiksLib.Collections
     /// 实现类虽然同时实现了 <see cref="ICache{TKey,TValue}"/>（为了复用淘汰逻辑），
     /// 但通过同步接口调用会抛 <see cref="InvalidOperationException"/>；
     /// 这是两种创建方式互斥的固有特性，不是缺陷。
+    /// <para>
+    /// 本缓存<b>不是线程安全的</b>：工厂回调可能在任意线程上完成，
+    /// 调用方必须自行序列化对缓存、回调状态与 <see cref="OnEvicted"/> 处理器的访问。
+    /// </para>
     /// </remarks>
     /// <typeparam name="TKey">被缓存的值的Key</typeparam>
     /// <typeparam name="TValue">被缓存的值的Value</typeparam>
@@ -100,6 +108,8 @@ namespace JiksLib.Collections
         /// 访问缓存
         /// 如果值已缓存，则会立刻将已缓存的值传入onReceiveValue
         /// 如果值未缓存，则会在淘汰旧值后使用Factory创建新值并传入onReceiveValue
+        /// 新值在回调之前写入缓存，因此回调内重入同一 key 会直接命中缓存；
+        /// 回调抛出的异常会向上传播，但已写入的值会保留。
         /// </summary>
         void Access(
             TKey key,
@@ -299,8 +309,10 @@ namespace JiksLib.Collections
                     key,
                     value =>
                     {
-                        onReceiveValue(value);
+                        // 先写入缓存再回调：回调内重入同一 key 会命中缓存，
+                        // 不会递归调用工厂；回调抛异常时新值也不会丢失。
                         Put(key, value);
+                        onReceiveValue(value);
                     },
                     onException);
             }

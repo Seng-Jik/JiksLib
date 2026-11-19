@@ -11,6 +11,10 @@ namespace JiksLib.Collections
     /// 双端列表
     /// 非线程安全
     /// </summary>
+    /// <remarks>
+    /// 枚举期间修改队列（增删、扩容、清空等）属于未定义行为：枚举器不检测版本变化，
+    /// 可能跳过、重复或读到已移除的元素。需要边遍历边修改时，请先复制一份元素。
+    /// </remarks>
     /// <typeparam name="T">元素类型</typeparam>
     public sealed class Deque<T> : IReadOnlyList<T>
     {
@@ -403,8 +407,12 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 转换为只读双端列表
+        /// 转换为只读双端列表视图
         /// </summary>
+        /// <remarks>
+        /// 返回的是当前实例本身，不会创建只读包装器；只读性仅由返回的接口类型保证。
+        /// 调用方不应把它强转回 <see cref="Deque{T}"/> 后修改，否则会绕过只读语义。
+        /// </remarks>
         public IReadOnlyList<T> AsReadOnly() => this;
 
         /// <summary>

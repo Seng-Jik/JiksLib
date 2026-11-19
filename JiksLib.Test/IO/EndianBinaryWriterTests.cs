@@ -611,6 +611,55 @@ namespace JiksLib.Test.IO
 
         #endregion
 
+        #region MaxStringLength 测试
+
+        [Test]
+        public void MaxStringLength_DefaultMatchesReaderDefault()
+        {
+            using var writeStream = new MemoryStream();
+            using var readStream = new MemoryStream();
+            using var writer = new EndianBinaryWriter(EndianBitConverter.LittleEndian, writeStream);
+            using var reader = new EndianBinaryReader(EndianBitConverter.LittleEndian, readStream);
+
+            Assert.That(writer.MaxStringLength, Is.EqualTo(reader.MaxStringLength));
+        }
+
+        [Test]
+        public void WriteString_ExceedsMaxStringLength_ThrowsWithoutWriting()
+        {
+            using var stream = new MemoryStream();
+            using var writer = new EndianBinaryWriter(EndianBitConverter.LittleEndian, stream);
+            writer.MaxStringLength = 4;
+
+            Assert.That(() => writer.Write("abcde"), Throws.TypeOf<InvalidDataException>());
+            Assert.That(stream.Length, Is.EqualTo(0), "校验必须在写入长度前缀之前完成。");
+        }
+
+        [Test]
+        public void WriteString_AtMaxStringLength_Succeeds()
+        {
+            using var stream = new MemoryStream();
+            using var writer = new EndianBinaryWriter(EndianBitConverter.LittleEndian, stream);
+            writer.MaxStringLength = 4;
+
+            writer.Write("abcd");
+
+            // Int32 长度前缀 + 4 字节内容
+            Assert.That(stream.Length, Is.EqualTo(8));
+        }
+
+        [Test]
+        public void WriteAsyncString_ExceedsMaxStringLength_Throws()
+        {
+            using var stream = new MemoryStream();
+            using var writer = new EndianBinaryWriter(EndianBitConverter.LittleEndian, stream);
+            writer.MaxStringLength = 4;
+
+            Assert.That(() => writer.WriteAsync("abcde"), Throws.TypeOf<InvalidDataException>());
+        }
+
+        #endregion
+
         #region Write Array Tests
 
         [Test]

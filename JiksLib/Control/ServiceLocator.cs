@@ -19,12 +19,15 @@ namespace JiksLib.Control
             /// <summary>
             /// 注册服务，仅可在 OnRegisterServices 中调用
             /// </summary>
+            /// <exception cref="ArgumentNullException">当 <paramref name="service"/> 为 null 时抛出</exception>
             protected void Register<T>(T service)
                 where T : class
             {
                 var unregisterStack = UnregisterStack
                     ?? throw new InvalidOperationException(
                         "Only allow call Register<T> in OnRegisterServices.");
+
+                service.ThrowIfNull(nameof(service));
 
                 var old = ServiceHolder<T>.Service;
                 unregisterStack.Add(() => ServiceHolder<T>.Service = old);
@@ -92,13 +95,15 @@ namespace JiksLib.Control
             scope.ThrowIfNull(nameof(scope));
 
             DisposableStack unregisterStack;
+            ScopeEntry entry;
 
             try
             {
                 unregisterStack = new DisposableStack();
                 scope.UnregisterStack = unregisterStack;
                 scope.OnRegisterServices();
-                scopes.Add(new ScopeEntry(scope, unregisterStack));
+                entry = new ScopeEntry(scope, unregisterStack);
+                scopes.Add(entry);
             }
             catch (Exception exception)
             {
@@ -122,7 +127,13 @@ namespace JiksLib.Control
 
             return Disposable.FromAction(() =>
             {
-                if (scopes.Count == 0 || scopes[scopes.Count - 1].Scope != scope)
+                int index = IndexOfScopeEntry(entry);
+
+                // Reset() 会注销并清空所有作用域；此时旧句柄的 Dispose 视为已处理，静默返回。
+                if (index < 0)
+                    return;
+
+                if (index != scopes.Count - 1)
                     throw new InvalidOperationException(
                         "Dispose service locator scope must in order.");
 
@@ -150,6 +161,7 @@ namespace JiksLib.Control
         /// <summary>
         /// 释放所有仍处于活动状态的作用域，按进入顺序的逆序逐个注销。
         /// 单个作用域的注销异常会被收集，全部处理完后以 <see cref="AggregateException"/> 抛出。
+        /// 调用后，先前 <see cref="EnterScope"/> 返回的句柄再释放不会抛异常（视为已注销）。
         /// </summary>
         public static void Reset()
         {
@@ -171,6 +183,23 @@ namespace JiksLib.Control
 
             if (exceptions != null)
                 throw new AggregateException(exceptions);
+        }
+
+        /// <summary>
+        /// 查找作用域条目；不存在时返回 -1
+        /// </summary>
+        static int IndexOfScopeEntry(in ScopeEntry entry)
+        {
+            for (int i = 0; i < scopes.Count; ++i)
+            {
+                if (ReferenceEquals(scopes[i].Scope, entry.Scope)
+                    && ReferenceEquals(scopes[i].UnregisterStack, entry.UnregisterStack))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         readonly struct ScopeEntry

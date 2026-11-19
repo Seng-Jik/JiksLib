@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace JiksLib.Collections
 {
@@ -107,11 +108,16 @@ namespace JiksLib.Collections
 
         public static bool operator !=(FloatRange left, FloatRange right) => !left.Equals(right);
 
+        /// <summary>
+        /// 按不变文化（小数点为 "."）输出区间写法，例如 <c>[1.5, 2.5)</c>
+        /// </summary>
         public override string ToString()
         {
             char left = IncludeMin ? '[' : '(';
             char right = IncludeMax ? ']' : ')';
-            return $"{left}{Min}, {Max}{right}";
+            return $"{left}" +
+                $"{Min.ToString(CultureInfo.InvariantCulture)}, " +
+                $"{Max.ToString(CultureInfo.InvariantCulture)}{right}";
         }
     }
 }
