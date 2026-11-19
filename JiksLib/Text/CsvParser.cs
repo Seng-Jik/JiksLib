@@ -110,12 +110,12 @@ namespace JiksLib.Text
             /// <summary>
             /// 原始内容（保留 <c>""</c> 转义，零拷贝）
             /// </summary>
-            public StringSegment Raw { get; }
+            public readonly StringSegment Raw;
 
             /// <summary>
             /// 是否包含 <c>""</c> 转义
             /// </summary>
-            public bool HasEscapedQuotes { get; }
+            public readonly bool HasEscapedQuotes;
 
             /// <summary>
             /// 解转义后的值
