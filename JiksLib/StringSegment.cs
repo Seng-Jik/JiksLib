@@ -7,8 +7,9 @@ namespace JiksLib
 {
     /// <summary>
     /// 字符串片段：对 <see cref="string"/> 的一段只读视图。
-    /// 切片、比较、查找与切分都不会复制底层字符串；只有 <see cref="ToString()"/> 等
-    /// 明确返回 <see cref="string"/> 的成员才会分配。
+    /// 切片、比较、查找都不会复制底层字符串；<see cref="Split(char)"/> 会分配结果数组
+    /// （数组元素仍是原字符串的视图），需要零分配的切分请使用 <see cref="Tokenizer"/>。
+    /// 只有 <see cref="ToString()"/> 等明确返回 <see cref="string"/> 的成员才会分配字符串。
     /// </summary>
     /// <remarks>
     /// 该类型是值类型，默认值表示空片段。底层字符串为 null 时（即 default 值），
@@ -906,6 +907,7 @@ namespace JiksLib
         /// <summary>
         /// 用分隔符切分片段，行为与 <see cref="string.Split(char[])"/> 一致，
         /// 包括保留空项与结尾空项；空片段会得到一个空片段。
+        /// 结果数组本身是新分配的，但每个元素都是原片段的视图，不复制字符。
         /// </summary>
         /// <param name="separator">分隔符</param>
         public StringSegment[] Split(char separator = ',')

@@ -5,7 +5,8 @@ namespace JiksLib.Text
 {
     /// <summary>
     /// CSV 写入器
-    /// 其中 CSV 格式遵守 IETF RFC 4180 中所描述的格式，同时也允许修改分隔符以写入TSV和DSV
+    /// 引号、转义与 CRLF 记录分隔遵循 RFC 4180；分隔符可修改以写入 TSV / DSV，
+    /// 此时输出不再是严格意义的 RFC 4180（例如以制表符作为分隔符）。
     /// https://www.ietf.org/rfc/rfc4180.txt
     /// </summary>
     public class CsvWriter
