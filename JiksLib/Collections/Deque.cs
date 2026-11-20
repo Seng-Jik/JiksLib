@@ -53,7 +53,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 元素数量
         /// </summary>
-        public int Count { get; private set; } = 0;
+        public int Count { get; private set; }
 
         /// <summary>
         /// 容器容量
@@ -555,8 +555,8 @@ namespace JiksLib.Collections
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         T[] buffer = Array.Empty<T>();
-        int front = 0;
-        int rear = 0;
+        int front;
+        int rear;
 
         #endregion
     }

@@ -23,7 +23,7 @@ namespace JiksLib.Collections
         /// <summary>
         /// 元素数量
         /// </summary>
-        public int Count { get; private set; } = 0;
+        public int Count { get; private set; }
 
         /// <summary>
         /// 第一个元素的槽位索引，如果链表为空则为-1
@@ -696,7 +696,7 @@ namespace JiksLib.Collections
 
         Node[] array = Array.Empty<Node>();
 
-        int arrayUsedCount = 0;
+        int arrayUsedCount;
         int firstFreeNode = -1;
 
         void ICollection<T>.Add(T item) => AddLast(item);

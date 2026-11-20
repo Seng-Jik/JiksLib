@@ -378,11 +378,11 @@ namespace JiksLib.Collections
             protected abstract void RemoveAllEntries(
                 List<KeyValuePair<TKey, TValue>>? evicted);
 
-            readonly IAsyncCache<TKey, TValue>.Factory? asyncFactory = null;
-            readonly ICache<TKey, TValue>.Factory? factory = null;
+            readonly IAsyncCache<TKey, TValue>.Factory? asyncFactory;
+            readonly ICache<TKey, TValue>.Factory? factory;
         }
 
-        private class NeverEvict<TKey, TValue> : CacheImpl<TKey, TValue>
+        private sealed class NeverEvict<TKey, TValue> : CacheImpl<TKey, TValue>
             where TKey : notnull
         {
             public NeverEvict(IAsyncCache<TKey, TValue>.Factory factory) :

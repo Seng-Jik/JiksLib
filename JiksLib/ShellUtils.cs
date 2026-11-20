@@ -114,12 +114,22 @@ namespace JiksLib
         }
 
         /// <summary>
+        /// 目录分隔符集合。
+        /// 用一次 <see cref="string.IndexOfAny(char[])"/> 同时匹配主分隔符与备用分隔符，
+        /// 也避免了单字符 IndexOf 在 net48 上没有 StringComparison 重载的问题。
+        /// </summary>
+        static readonly char[] DirectorySeparators =
+        {
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar,
+        };
+
+        /// <summary>
         /// 路径是否为显式路径（绝对路径或含目录分隔符）
         /// </summary>
         static bool IsExplicitPath(string path) =>
             Path.IsPathRooted(path) ||
-            path.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
-            path.IndexOf(Path.AltDirectorySeparatorChar) >= 0;
+            path.IndexOfAny(DirectorySeparators) >= 0;
 
         /// <summary>
         /// 去除 PATH 条目的空白与引号
@@ -191,7 +201,9 @@ namespace JiksLib
         const int X_OK = 1;
 
         // CA2101：该调用只在 Unix 上执行，路径按 UTF-8 封送，不存在 Windows 的 best-fit 映射问题。
+        // 限定 DllImport 搜索路径为安全目录，避免以相对路径/当前目录劫持原生库加载。
 #pragma warning disable CA2101
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport("libc", EntryPoint = "access", SetLastError = true)]
         static extern int Access([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int mode);
 #pragma warning restore CA2101
@@ -214,7 +226,11 @@ namespace JiksLib
             {
                 foreach (var item in pathExt.Split(';'))
                 {
+                    // CA1308 建议统一归一化为大写，但 ExecutableSuffixes 的公开契约
+                    //（文档与测试）要求小写后缀，因此这里保留 ToLowerInvariant。
+#pragma warning disable CA1308 // 后缀以小写形式对外发布是既有契约
                     var suffix = item.Trim().ToLowerInvariant();
+#pragma warning restore CA1308
 
                     if (suffix.Length == 0 || suffix[0] != '.')
                         continue;

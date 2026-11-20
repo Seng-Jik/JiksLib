@@ -25,7 +25,8 @@ namespace JiksLib
         /// <summary>
         /// 空片段
         /// </summary>
-        public static readonly StringSegment Empty = default;
+        // 默认值即空片段；不写 = default 是因为 CA1805 会把显式默认初始化判为冗余。
+        public static readonly StringSegment Empty;
 
         /// <summary>
         /// 在底层字符串中的起始下标
@@ -428,7 +429,7 @@ namespace JiksLib
             if (Length == 0)
                 return -1;
 
-            int index = source!.IndexOf(value, Offset, Length);
+            int index = IndexOfChar(source!, value, Offset, Length);
             return index < 0 ? -1 : index - Offset;
         }
 
@@ -446,7 +447,12 @@ namespace JiksLib
             if (startIndex == Length)
                 return -1;
 
-            int index = source!.IndexOf(value, Offset + startIndex, Length - startIndex);
+            int index = IndexOfChar(
+                source!,
+                value,
+                Offset + startIndex,
+                Length - startIndex);
+
             return index < 0 ? -1 : index - Offset;
         }
 
@@ -765,7 +771,9 @@ namespace JiksLib
             return Equals(new StringSegment(other), comparisonType);
         }
 
-        public override bool Equals(object? obj) => obj is StringSegment other && Equals(other);
+        public override bool Equals(object? obj) =>
+            obj is StringSegment other &&
+            Equals(other, StringComparison.Ordinal);
 
         public override int GetHashCode() => GetHashCode(StringComparison.Ordinal);
 
@@ -884,13 +892,13 @@ namespace JiksLib
         /// 按序数比较判断两个片段是否相等
         /// </summary>
         public static bool operator ==(StringSegment left, StringSegment right) =>
-            left.Equals(right);
+            left.Equals(right, StringComparison.Ordinal);
 
         /// <summary>
         /// 按序数比较判断两个片段是否不相等
         /// </summary>
         public static bool operator !=(StringSegment left, StringSegment right) =>
-            !left.Equals(right);
+            !left.Equals(right, StringComparison.Ordinal);
 
         public static bool operator <(StringSegment left, StringSegment right) =>
             left.CompareTo(right) < 0;
@@ -1109,7 +1117,8 @@ namespace JiksLib
 
             while (searchStart <= searchEnd)
             {
-                int found = x.IndexOf(
+                int found = IndexOfChar(
+                    x,
                     first,
                     searchStart,
                     searchEnd - searchStart + 1);
@@ -1154,6 +1163,34 @@ namespace JiksLib
             }
 
             return -1;
+        }
+
+        /// <summary>
+        /// 在底层字符串上按序数查找字符。
+        /// net48 没有接受 <see cref="StringComparison"/> 的 char 重载，因此按目标框架分派；
+        /// 两种写法都是序数比较，语义一致。单独抽出该辅助方法，避免在每个调用点重复条件编译。
+        /// </summary>
+        /// <param name="text">要搜索的字符串</param>
+        /// <param name="value">要查找的字符</param>
+        /// <param name="startIndex">搜索的起始下标</param>
+        /// <param name="count">最多搜索的字符数</param>
+        /// <returns>字符在整个字符串中的下标；找不到时返回 -1</returns>
+        static int IndexOfChar(
+            string text,
+            char value,
+            int startIndex,
+            int count)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            // ReadOnlySpan<char>.IndexOf 返回的是相对 span 的下标，这里换算回整个字符串的下标。
+            int index = text.AsSpan(startIndex, count).IndexOf(value);
+            return index < 0 ? -1 : startIndex + index;
+#else
+            // net48 的 char 重载没有 StringComparison 参数；对单个字符的查找本身即为序数比较。
+#pragma warning disable CA1307 // 仅 net48 分支：该重载在此目标框架上不存在
+            return text.IndexOf(value, startIndex, count);
+#pragma warning restore CA1307
+#endif
         }
 
         static int CompareOrdinal(StringSegment x, StringSegment y)

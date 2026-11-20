@@ -24,7 +24,8 @@ namespace JiksLib.Collections
         /// <summary>
         /// 空片段
         /// </summary>
-        public static readonly ReadOnlyListSegment<T> Empty = default;
+        // 默认值即空片段；不写 = default 是因为 CA1805 会把显式默认初始化判为冗余。
+        public static readonly ReadOnlyListSegment<T> Empty;
 
         /// <summary>
         /// 在底层列表中的起始下标

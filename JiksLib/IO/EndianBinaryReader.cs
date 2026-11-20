@@ -313,7 +313,7 @@ namespace JiksLib.IO
         readonly EndianBitConverter endian;
         readonly Encoding encoding;
         readonly bool leaveOpen;
-        byte[]? readBuffer = null;
+        byte[]? readBuffer;
 
         /// <summary>
         /// 读缓冲区缓存的长度上限；超过该长度的字符串改用临时缓冲区，读后即可回收。

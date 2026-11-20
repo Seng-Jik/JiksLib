@@ -25,9 +25,11 @@ indent_size = 4
 # 统一使用 `== null` / `!= null`。同理，避免对这类值使用 `??` 与 `?.`。
 
 # --- 分析器规则取舍 -------------------------------------------------------
-# 以下规则的建议依赖 .NET 7+ API 或会改变公开 API 形态，而本库还需兼容
-# net48 / netstandard2.1，因此保持关闭；其余 CA 规则仍以 warning 呈现。
+# latest-all 会启用全部 CA 规则；下面按两类原因显式关闭其中一部分，
+# 其余规则保持启用并以 warning 报告（本仓库在 latest-all 下保持 0 warning）。
 
+# 1) 建议依赖 .NET 7+ API，或会改变公开 API 形态，而本库还需兼容
+#    net48 / netstandard2.1，因此保持关闭。
 # CS1591 已在 csproj 中通过 NoWarn 关闭（公开成员文档后续补齐）。
 dotnet_diagnostic.CA1014.severity = none   # 程序集需标记 CLSCompliant：本库不做 CLS 承诺
 dotnet_diagnostic.CA1822.severity = none   # 成员可设为 static：部分实例方法为保持 API 对称性而保留
@@ -35,3 +37,24 @@ dotnet_diagnostic.CA1510.severity = none   # 建议 ArgumentNullException.ThrowI
 dotnet_diagnostic.CA1512.severity = none   # 建议 ArgumentOutOfRangeException.ThrowIfNegative（.NET 7+）
 dotnet_diagnostic.CA1847.severity = none   # 建议 string.Contains(char)（net48 无此重载）
 dotnet_diagnostic.CA2249.severity = none   # 同上，建议 Contains 代替 IndexOf（net48 无 char 重载）
+
+# 2) 与库的公开 API 设计或零分配 / Unity 兼容目标冲突的 API 设计规则。
+#    这些规则大多是“换一种写法更好”的风格建议，采纳会破坏已公开的 API 或
+#    库刻意保证的行为，因此逐条关闭并注明原因。
+dotnet_diagnostic.CA1000.severity = none   # 泛型类型中的静态成员：TypeChain 的工厂必须绑定 TBaseEvent
+dotnet_diagnostic.CA1002.severity = none   # 不要暴露 List<T>：PurgeListenerSlots 直接复用内部列表以避免分配
+dotnet_diagnostic.CA1003.severity = none   # 使用 EventHandler<T>：Action 事件避免 EventArgs 装箱与无用的 sender
+dotnet_diagnostic.CA1024.severity = none   # 适用处使用属性：Get* 工厂方法改属性会破坏公开 API
+dotnet_diagnostic.CA1031.severity = none   # 不要捕获通用异常：事件分发与 Dispose 需隔离并聚合所有监听器异常
+dotnet_diagnostic.CA1034.severity = none   # 嵌套类型不应可见：Publisher/Enumerator/Field 等嵌套类型用于绑定泛型参数并收敛命名空间
+dotnet_diagnostic.CA1051.severity = none   # 不要声明可见实例字段：只读片段/区间的 public readonly 字段是零分配视图的契约
+dotnet_diagnostic.CA1065.severity = none   # 不要在属性中抛异常：索引器与 string/数组一致抛 IndexOutOfRangeException，Dispose 聚合异常均为文档化行为
+dotnet_diagnostic.CA1710.severity = none   # 集合类型命名后缀：PriorityQueue/MultiDictionary 等命名与 BCL/领域语义保持一致
+dotnet_diagnostic.CA1711.severity = none   # 类型名后缀：同上，改名会破坏公开 API
+dotnet_diagnostic.CA1716.severity = none   # 参数名与关键字冲突：@event 是全库统一的事件参数名，只在接口上改名会造成实现与文档不一致
+dotnet_diagnostic.CA1724.severity = none   # 类型名与命名空间冲突：Cache 是刻意使用的简短名称，命名空间已足够隔离
+dotnet_diagnostic.CA1815.severity = none   # 值类型应重写 Equals：Publisher/Field 等是短生命周期的分发/视图结构体，不参与值相等
+dotnet_diagnostic.CA1819.severity = none   # 属性不应返回数组：SparseSet.InnerBuffer 返回内部缓冲区正是零拷贝批量更新的设计
+dotnet_diagnostic.CA2201.severity = none   # 不要抛保留异常类型：索引器保持与 string/数组一致的 IndexOutOfRangeException
+dotnet_diagnostic.CA2225.severity = none   # 运算符需要命名替代项：隐式转换类型均已有公开构造函数/属性作为显式入口
+dotnet_diagnostic.CA5394.severity = none   # 不要使用不安全的随机数：Shuffle 的 Random 由调用方提供，可复现的伪随机是游戏逻辑需求

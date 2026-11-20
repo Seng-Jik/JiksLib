@@ -23,7 +23,10 @@ namespace JiksLib.Extensions
         /// 把字典转为只读字典视图；返回原实例，不复制
         /// </summary>
         /// <exception cref="ArgumentNullException">当 <paramref name="d"/> 为 null 时抛出</exception>
-        public static IReadOnlyDictionary<T, U> AsReadOnly<T, U>(this Dictionary<T, U>? d) where T : notnull => d.ThrowIfNull(nameof(d));
+        public static IReadOnlyDictionary<TKey, TValue> AsReadOnly<TKey, TValue>(
+            this Dictionary<TKey, TValue>? d)
+            where TKey : notnull =>
+            d.ThrowIfNull(nameof(d));
 
         /// <summary>
         /// 把列表转为只读视图

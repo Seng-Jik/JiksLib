@@ -43,8 +43,11 @@ namespace JiksLib.Extensions
         /// <summary>
         /// 移除最后一个元素并返回该元素
         /// </summary>
+        /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
         public static T PopBack<T>(this IList<T> ls)
         {
+            ls.ThrowIfNull(nameof(ls));
+
             if (ls.Count == 0)
                 throw new InvalidOperationException("list has no element to remove.");
 
@@ -61,8 +64,14 @@ namespace JiksLib.Extensions
         /// <param name="ls">列表</param>
         /// <param name="predicate">条件</param>
         /// <returns>第一个符合条件的元素的下标，如果是-1则查找失败</returns>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="ls"/> 或 <paramref name="predicate"/> 为 null 时抛出
+        /// </exception>
         public static int FindIndex<T>(this IReadOnlyList<T> ls, Func<T, bool> predicate)
         {
+            ls.ThrowIfNull(nameof(ls));
+            predicate.ThrowIfNull(nameof(predicate));
+
             for (int i = 0; i < ls.Count; ++i)
                 if (predicate(ls[i]))
                     return i;
@@ -76,8 +85,14 @@ namespace JiksLib.Extensions
         /// <param name="list"></param>
         /// <param name="rand">随机数发生器</param>
         /// <typeparam name="T"></typeparam>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="list"/> 或 <paramref name="rand"/> 为 null 时抛出
+        /// </exception>
         public static void Shuffle<T>(this IList<T> list, Random rand)
         {
+            list.ThrowIfNull(nameof(list));
+            rand.ThrowIfNull(nameof(rand));
+
             //Fisher-Yates洗牌算法
             int n = list.Count;
             for (int i = n - 1; i > 0; i--)
@@ -96,9 +111,12 @@ namespace JiksLib.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="ls"></param>
         /// <returns></returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
         public static IEnumerable<T> GetReversedEnumerable<T>(
             this IReadOnlyList<T> ls)
         {
+            ls.ThrowIfNull(nameof(ls));
+
             for (int i = ls.Count - 1; i >= 0; --i)
                 yield return ls[i];
         }
@@ -110,6 +128,7 @@ namespace JiksLib.Extensions
         /// <param name="ls">要抽取元素的列表</param>
         /// <param name="randomNumber">随机数，范围为[0,1]，取 1 时返回最后一个元素</param>
         /// <returns>随机抽取的元素</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
         /// <exception cref="InvalidOperationException">列表为空时抛出</exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="randomNumber"/> 为 NaN 或不在 [0,1] 内时抛出
@@ -118,6 +137,8 @@ namespace JiksLib.Extensions
             this IReadOnlyList<T> ls,
             float randomNumber)
         {
+            ls.ThrowIfNull(nameof(ls));
+
             if (ls.Count == 0)
                 throw new InvalidOperationException(
                     "ls cannot be empty.");

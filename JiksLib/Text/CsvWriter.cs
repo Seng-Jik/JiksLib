@@ -27,7 +27,7 @@ namespace JiksLib.Text
         /// <summary>
         /// 是否强制每个字段均被双引号包裹
         /// </summary>
-        public bool AlwaysWrap { set; get; } = false;
+        public bool AlwaysWrap { set; get; }
 
         /// <summary>
         /// 在当前记录写入字段
