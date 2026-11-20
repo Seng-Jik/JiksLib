@@ -338,7 +338,7 @@ namespace JiksLib.IO
             return WriteAsync(bytes, cancellationToken);
         }
 
-        byte[]? writeBuffer = null;
+        byte[]? writeBuffer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ArraySegment<byte> GetWriteBuffer(int size)

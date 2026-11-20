@@ -394,12 +394,12 @@ namespace JiksLib.Control
         readonly List<SafeEventHandler<TEvent>?> listeners;
 
         /// <summary>是否处于发布会话中；会话会覆盖递归队列的整个排空过程。</summary>
-        bool invoking = false;
+        bool invoking;
 
         /// <summary>移除监听器时的反向扫描起点提示。</summary>
-        int removeIndex = 0;
+        int removeIndex;
 
-        int removeDirection = 0;
+        int removeDirection;
 
         /// <summary>
         /// 递归发布排队的事件及其异常输出；未启用递归发布时为 null。

@@ -414,7 +414,7 @@ namespace JiksLib.Control
         /// PurgeListenerSlot/PurgeListenerSlots，避免缓存的 SubPublisher
         /// 指向已移除的内部 SafeEvent。
         /// </summary>
-        bool subPublisherGot = false;
+        bool subPublisherGot;
         readonly Dictionary<Type, InnerPublisher> innerEvents;
         readonly bool allowAddRemoveListenerDuringPublish;
         readonly bool allowRecursivePublish;

@@ -27,7 +27,10 @@ namespace JiksLib.Collections
         /// <exception cref="ArgumentNullException">当 <paramref name="copyFrom"/> 为 null 时抛出</exception>
         public BidirectionalDictionary(
             BidirectionalDictionary<TKey, TValue> copyFrom) :
-            this(CopySequential(copyFrom), CopyReversed(copyFrom))
+            this(
+                new Dictionary<TKey, TValue>(
+                    copyFrom.ThrowIfNull(nameof(copyFrom)).sequential),
+                new Dictionary<TValue, TKey>(copyFrom.reversed))
         { }
 
         /// <summary>
@@ -52,20 +55,19 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 用键值对集合构造双向字典
+        /// 集合只会被枚举一次：先物化为数组，再据此建立正反两个索引。
         /// 仅在 net10.0 / net11.0 目标提供：旧运行时（net48 / netstandard2.1）的
         /// <see cref="Dictionary{TKey,TValue}"/> 没有对应的 IEnumerable 构造函数，
         /// 属于运行时能力差异，不是遗漏。
         /// </summary>
         public BidirectionalDictionary(
             IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) :
-            this(
-                new Dictionary<TKey, TValue>(keyValuePairs),
-                new(keyValuePairs.Select(x =>
-                    new KeyValuePair<TValue, TKey>(x.Value, x.Key))))
+            this(Materialize(keyValuePairs), null, null)
         { }
 
         /// <summary>
         /// 用键值对集合与指定比较器构造双向字典
+        /// 集合只会被枚举一次：先物化为数组，再据此建立正反两个索引。
         /// 仅在 net10.0 / net11.0 目标提供，原因同上。
         /// </summary>
         public BidirectionalDictionary(
@@ -73,12 +75,32 @@ namespace JiksLib.Collections
             IEqualityComparer<TKey> keyComparer,
             IEqualityComparer<TValue> valueComparer) :
             this(
+                Materialize(keyValuePairs),
+                keyComparer.ThrowIfNull(nameof(keyComparer)),
+                valueComparer.ThrowIfNull(nameof(valueComparer)))
+        { }
+
+        /// <summary>
+        /// 用已物化的键值对数组构造；数组可以安全地多次枚举
+        /// </summary>
+        BidirectionalDictionary(
+            KeyValuePair<TKey, TValue>[] keyValuePairs,
+            IEqualityComparer<TKey>? keyComparer,
+            IEqualityComparer<TValue>? valueComparer) :
+            this(
                 new Dictionary<TKey, TValue>(keyValuePairs, keyComparer),
-                new(
+                new Dictionary<TValue, TKey>(
                     keyValuePairs.Select(x =>
                         new KeyValuePair<TValue, TKey>(x.Value, x.Key)),
                     valueComparer))
         { }
+
+        /// <summary>
+        /// 把可能只能枚举一次的序列物化为数组，同时完成 null 校验
+        /// </summary>
+        static KeyValuePair<TKey, TValue>[] Materialize(
+            IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) =>
+            keyValuePairs.ThrowIfNull(nameof(keyValuePairs)).ToArray();
 
 #endif
 
@@ -308,23 +330,6 @@ namespace JiksLib.Collections
             new(
                 new Dictionary<TValue, TKey>(reversed),
                 new Dictionary<TKey, TValue>(sequential));
-
-        /// <summary>
-        /// 复制正向字典，同时完成 null 校验
-        /// </summary>
-        static Dictionary<TKey, TValue> CopySequential(
-            BidirectionalDictionary<TKey, TValue> source)
-        {
-            source.ThrowIfNull(nameof(source));
-            return new Dictionary<TKey, TValue>(source.sequential);
-        }
-
-        /// <summary>
-        /// 复制反向字典
-        /// </summary>
-        static Dictionary<TValue, TKey> CopyReversed(
-            BidirectionalDictionary<TKey, TValue> source) =>
-            new(source.reversed);
 
         #region Details
 

@@ -84,21 +84,21 @@ namespace JiksLib
         /// 转换进度类型
         /// </summary>
         /// <typeparam name="T">转换来源类型</typeparam>
-        /// <typeparam name="U">转换目标类型</typeparam>
+        /// <typeparam name="TResult">转换目标类型</typeparam>
         /// <param name="source">转换来源进度</param>
         /// <param name="converter">进度转换器</param>
         /// <returns>转换后的进度</returns>
-        public static IProgress<U> Convert<T, U>(
+        public static IProgress<TResult> Convert<T, TResult>(
             this IProgress<T> source,
-            Func<U, T> converter)
+            Func<TResult, T> converter)
         {
             source.ThrowIfNull(nameof(source));
             converter.ThrowIfNull(nameof(converter));
 
             if (source is NullProgressImpl<T>)
-                return NullProgressImpl<U>.Instance;
+                return NullProgressImpl<TResult>.Instance;
 
-            return new ActionProgressImpl<U>(
+            return new ActionProgressImpl<TResult>(
                 x => source.Report(converter(x)));
         }
 

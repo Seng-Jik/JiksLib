@@ -13,7 +13,7 @@ namespace JiksLib.Extensions
         public static string[] Split0(this string s, char sep = ',')
         {
             s.ThrowIfNull(nameof(s));
-            if (s == "") return Array.Empty<string>();
+            if (s.Length == 0) return Array.Empty<string>();
             else return s.Split(sep);
         }
 
@@ -24,10 +24,13 @@ namespace JiksLib.Extensions
         /// </summary>
         /// <param name="s">要计算哈希的字符串</param>
         /// <param name="inputHash">初始哈希值，便于增量拼接</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="s"/> 为 null 时抛出</exception>
         public static ulong BKDRHash(
             this string s,
             ulong inputHash = 0)
         {
+            s.ThrowIfNull(nameof(s));
+
             const ulong seed = 16777619;
             ulong hash = inputHash;
 

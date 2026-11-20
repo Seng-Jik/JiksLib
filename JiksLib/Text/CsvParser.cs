@@ -192,7 +192,23 @@ namespace JiksLib.Text
             /// 把字段内容中的 <c>""</c> 还原为 <c>"</c>
             /// </summary>
             static StringSegment Unescape(StringSegment content) =>
-                new(content.ToString().Replace("\"\"", "\""));
+                new(ReplaceEscapedQuotes(content.ToString()));
+
+            /// <summary>
+            /// 按字面量做序数替换：把 <c>""</c> 还原为 <c>"</c>。
+            /// net48 的 <see cref="string.Replace(string, string)"/> 没有 StringComparison 重载，
+            /// 因此按目标框架分派；两种写法都是序数匹配。
+            /// </summary>
+            static string ReplaceEscapedQuotes(string raw)
+            {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                return raw.Replace("\"\"", "\"", StringComparison.Ordinal);
+#else
+#pragma warning disable CA1307 // 仅 net48 分支：该重载在此目标框架上不存在
+                return raw.Replace("\"\"", "\"");
+#pragma warning restore CA1307
+#endif
+            }
         }
 
         /// <summary>
