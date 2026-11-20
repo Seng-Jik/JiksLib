@@ -210,6 +210,30 @@ namespace JiksLib.Test.Collections
             Assert.That(cache.Access(3), Is.EqualTo("value3"));
         }
 
+        [Test]
+        public void Fifo_EvictThenReinsert_AppendsToTail()
+        {
+            // Arrange：覆盖"移除的节点进入备用槽、重新插入时复用并排到队尾"的路径
+            var evictedKeys = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.FIFO, key => $"value{key}", 3);
+            cache.OnEvicted += (key, _) => evictedKeys.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+            cache.Access(3);
+
+            // Act
+            cache.Evict(2);
+            cache.Access(2); // 重新插入，应排到 3 之后
+            cache.Access(4); // 淘汰最早插入的 1
+
+            // Assert
+            Assert.That(evictedKeys, Is.EqualTo(new[] { 2, 1 }));
+            Assert.That(cache.GetCached(3, out _, true), Is.True);
+            Assert.That(cache.GetCached(2, out _, true), Is.True);
+            Assert.That(cache.GetCached(4, out _, true), Is.True);
+        }
+
         #endregion
 
         #region LRU 测试
@@ -280,6 +304,26 @@ namespace JiksLib.Test.Collections
             cache.Access(1);
             cache.Access(2);
             cache.Access(3);
+
+            // Assert
+            Assert.That(evictedKeys, Is.EqualTo(new[] { 1, 2 }));
+        }
+
+        [Test]
+        public void Lru_EvictThenReinsert_BecomesMostRecentlyUsed()
+        {
+            // Arrange：覆盖"移除的节点进入备用槽、重新插入时复用并刷新为最近使用"的路径
+            var evictedKeys = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LRU, key => $"value{key}", 2);
+            cache.OnEvicted += (key, _) => evictedKeys.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+
+            // Act
+            cache.Evict(1);
+            cache.Access(1); // 重新插入，应成为最近使用
+            cache.Access(3); // 淘汰 2
 
             // Assert
             Assert.That(evictedKeys, Is.EqualTo(new[] { 1, 2 }));
@@ -383,6 +427,55 @@ namespace JiksLib.Test.Collections
 
             // Assert
             Assert.That(evictedKeys, Is.EqualTo(new[] { 1, 2 }));
+        }
+
+        [Test]
+        public void Lfu_EvictHighFrequencyThenReinsert_ResetsFrequency()
+        {
+            // Arrange：覆盖高频条目移除后，条目/节点进入备用槽并以频率 1 重新插入
+            var evictedKeys = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LFU, key => $"value{key}", 2);
+            cache.OnEvicted += (key, _) => evictedKeys.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+            cache.Access(1); // 1 频率 2，2 频率 1
+            cache.Access(1); // 1 频率 3
+
+            // Act
+            cache.Evict(1);  // 移除频率 3 的桶与条目
+            cache.Access(1); // 以频率 1 重新插入
+            cache.Access(3); // 淘汰频率 1 中更早进入的 2
+
+            // Assert
+            Assert.That(evictedKeys, Is.EqualTo(new[] { 1, 2 }));
+            Assert.That(cache.Access(1), Is.EqualTo("value1"));
+            Assert.That(cache.Access(3), Is.EqualTo("value3"));
+        }
+
+        [Test]
+        public void Lfu_RemoveLastMinFrequencyEntry_RecomputesMinimum()
+        {
+            // Arrange：移除 minFrequency 桶中唯一的条目后，最小频率应重新计算为 2
+            var evictedKeys = new List<int>();
+            var cache = Cache.Make<int, string>(
+                Cache.Algorithm.LFU, key => $"value{key}", 4);
+            cache.OnEvicted += (key, _) => evictedKeys.Add(key);
+            cache.Access(1);
+            cache.Access(2);
+            cache.Access(3);
+            cache.Access(1); // 1 频率 2；2、3 频率 1
+            cache.Access(2); // 1、2 频率 2；3 频率 1
+
+            // Act
+            cache.Evict(3);  // 频率 1 的桶清空
+            cache.Access(4); // 频率 1 重新插入
+            cache.Access(5); // 容量仍够，不淘汰
+            cache.Access(6); // 容量满，淘汰频率 1 中更早进入的 4
+
+            // Assert
+            Assert.That(evictedKeys, Is.EqualTo(new[] { 3, 4 }));
+            Assert.That(cache.Count, Is.EqualTo(4));
         }
 
         #endregion
@@ -1154,6 +1247,82 @@ namespace JiksLib.Test.Collections
                 () => syncCache.Access(1),
                 Throws.TypeOf<InvalidOperationException>());
         }
+
+        #endregion
+
+        #region 零分配回归（性能）
+
+#if NET5_0_OR_GREATER
+        [TestCase(Cache.Algorithm.FIFO)]
+        [TestCase(Cache.Algorithm.LRU)]
+        [TestCase(Cache.Algorithm.LFU)]
+        public void AccessHit_AfterWarmup_DoesNotAllocate(Cache.Algorithm algorithm)
+        {
+            // 命中路径：LRU 提升顺序、LFU 提升频率都不应再分配
+            var cache = Cache.Make<int, string>(algorithm, _ => "value", 8);
+            cache.Access(0);
+
+            // 预热：覆盖首次升频、桶创建与节点迁移
+            string result = string.Empty;
+            for (int i = 0; i < 1000; ++i)
+                result = cache.Access(0);
+
+            Assert.That(result, Is.EqualTo("value"));
+
+            // 分层编译/GC 记账偶尔会在单次测量里产生一次性分配，取多轮最小增量
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; ++round)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; ++i)
+                    result = cache.Access(0);
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(result, Is.EqualTo("value"));
+            Assert.That(best, Is.Zero);
+        }
+
+        [TestCase(Cache.Algorithm.FIFO)]
+        [TestCase(Cache.Algorithm.LRU)]
+        [TestCase(Cache.Algorithm.LFU)]
+        public void EvictAndReinsert_AtCapacity_DoesNotAllocate(
+            Cache.Algorithm algorithm)
+        {
+            // 淘汰 + 重新插入：复用被移除的节点/条目，稳态下不再分配
+            var cache = Cache.Make<int, string>(algorithm, _ => "value", 4);
+            for (int i = 0; i < 4; ++i)
+                cache.Access(i);
+
+            // 预热：覆盖备用槽填充与首次复用
+            for (int i = 0; i < 100; ++i)
+            {
+                cache.Evict(0);
+                cache.Access(0);
+            }
+
+            long best = long.MaxValue;
+
+            for (int round = 0; round < 5; ++round)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; ++i)
+                {
+                    cache.Evict(0);
+                    cache.Access(0);
+                }
+                long after = GC.GetAllocatedBytesForCurrentThread();
+
+                best = Math.Min(best, after - before);
+            }
+
+            Assert.That(cache.Count, Is.EqualTo(4));
+            Assert.That(best, Is.Zero);
+        }
+#endif
 
         #endregion
     }

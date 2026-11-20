@@ -436,6 +436,10 @@ namespace JiksLib.Collections
         /// FIFO（先进先出）缓存
         /// 淘汰最早插入的值，访问不影响淘汰顺序
         /// </summary>
+        /// <remarks>
+        /// 顺序表与缓存表共用同一个节点：淘汰或手动移除后节点进入备用槽，
+        /// 下一次插入优先复用该节点，因此稳态下插入不再分配 <see cref="LinkedListNode{T}"/>。
+        /// </remarks>
         private sealed class Fifo<TKey, TValue> : CacheImpl<TKey, TValue>
             where TKey : notnull
         {
@@ -453,53 +457,82 @@ namespace JiksLib.Collections
                 this.capacity = capacity;
             }
 
-            protected override bool TryGetCache(TKey key, out TValue? value) =>
-                cache.TryGetValue(key, out value);
+            protected override bool TryGetCache(TKey key, out TValue? value)
+            {
+                if (cache.TryGetValue(key, out var entry))
+                {
+                    value = entry.value;
+                    return true;
+                }
 
-            protected override bool TryPeek(TKey key, out TValue? value) =>
-                cache.TryGetValue(key, out value);
+                value = default;
+                return false;
+            }
+
+            protected override bool TryPeek(TKey key, out TValue? value)
+            {
+                if (cache.TryGetValue(key, out var entry))
+                {
+                    value = entry.value;
+                    return true;
+                }
+
+                value = default;
+                return false;
+            }
 
             protected override bool TryRemove(TKey key, out TValue? value)
             {
-                if (!cache.TryGetValue(key, out value))
-                    return false;
-
-                cache.Remove(key);
-
-                if (orderNodes.TryGetValue(key, out var node))
+                if (!cache.TryGetValue(key, out var entry))
                 {
-                    order.Remove(node);
-                    orderNodes.Remove(key);
+                    value = default;
+                    return false;
                 }
 
+                order.Remove(entry.node);
+                cache.Remove(key);
+                RecycleNode(entry.node);
+                value = entry.value;
                 return true;
             }
 
             protected override void Put(TKey key, TValue value)
             {
-                if (cache.ContainsKey(key))
+                if (cache.TryGetValue(key, out var existing))
                 {
                     // 已存在：只更新值，不改变插入顺序，也不重复入队
-                    cache[key] = value;
+                    cache[key] = (value, existing.node);
                     return;
                 }
 
                 bool evicted = false;
                 TKey evictedKey = default!;
                 TValue evictedValue = default!;
+                LinkedListNode<TKey> node;
 
                 if (cache.Count >= capacity && order.First is { } oldestNode)
                 {
                     evictedKey = oldestNode.Value;
-                    order.RemoveFirst();
-                    orderNodes.Remove(evictedKey);
-                    evictedValue = cache[evictedKey];
+                    evictedValue = cache[evictedKey].value;
+                    order.Remove(oldestNode);
                     cache.Remove(evictedKey);
+                    node = oldestNode;
+                    node.Value = key;
                     evicted = true;
                 }
+                else if (spareNode != null)
+                {
+                    node = spareNode;
+                    spareNode = null;
+                    node.Value = key;
+                }
+                else
+                {
+                    node = new LinkedListNode<TKey>(key);
+                }
 
-                cache[key] = value;
-                orderNodes[key] = order.AddLast(key);
+                order.AddLast(node);
+                cache[key] = (value, node);
 
                 // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
                 if (evicted)
@@ -512,26 +545,38 @@ namespace JiksLib.Collections
                 if (evicted != null)
                 {
                     foreach (var pair in cache)
-                        evicted.Add(pair);
+                        evicted.Add(new KeyValuePair<TKey, TValue>(
+                            pair.Key, pair.Value.value));
                 }
 
                 cache.Clear();
                 order.Clear();
-                orderNodes.Clear();
+            }
+
+            void RecycleNode(LinkedListNode<TKey> node)
+            {
+                // 清空键，避免备用节点持有已移除的 key；节点本身只保留一个。
+                node.Value = default!;
+                if (spareNode == null)
+                    spareNode = node;
             }
 
             public override int Count => cache.Count;
 
-            readonly Dictionary<TKey, TValue> cache = new();
+            readonly Dictionary<TKey, (TValue value, LinkedListNode<TKey> node)> cache = new();
             readonly LinkedList<TKey> order = new();
-            readonly Dictionary<TKey, LinkedListNode<TKey>> orderNodes = new();
             readonly int capacity;
+            LinkedListNode<TKey>? spareNode;
         }
 
         /// <summary>
         /// LRU（最近最少使用）缓存
         /// 淘汰最久未被访问的值
         /// </summary>
+        /// <remarks>
+        /// 访问顺序表与缓存表共用同一个节点：淘汰或手动移除后节点进入备用槽，
+        /// 下一次插入优先复用该节点，因此稳态下插入不再分配 <see cref="LinkedListNode{T}"/>。
+        /// </remarks>
         private sealed class Lru<TKey, TValue> : CacheImpl<TKey, TValue>
             where TKey : notnull
         {
@@ -553,9 +598,13 @@ namespace JiksLib.Collections
             {
                 if (cache.TryGetValue(key, out var entry))
                 {
-                    // 移到链表尾部（最近使用）
-                    accessOrder.Remove(entry.node);
-                    accessOrder.AddLast(entry.node);
+                    // 移到链表尾部（最近使用）；已经在尾部时跳过无意义的摘链/挂链
+                    if (accessOrder.Last != entry.node)
+                    {
+                        accessOrder.Remove(entry.node);
+                        accessOrder.AddLast(entry.node);
+                    }
+
                     value = entry.value;
                     return true;
                 }
@@ -586,6 +635,7 @@ namespace JiksLib.Collections
 
                 accessOrder.Remove(entry.node);
                 cache.Remove(key);
+                RecycleNode(entry.node);
                 value = entry.value;
                 return true;
             }
@@ -595,8 +645,12 @@ namespace JiksLib.Collections
                 if (cache.TryGetValue(key, out var existing))
                 {
                     // 已存在：更新值并刷新为最近使用，不重复插入节点
-                    accessOrder.Remove(existing.node);
-                    accessOrder.AddLast(existing.node);
+                    if (accessOrder.Last != existing.node)
+                    {
+                        accessOrder.Remove(existing.node);
+                        accessOrder.AddLast(existing.node);
+                    }
+
                     cache[key] = (value, existing.node);
                     return;
                 }
@@ -604,18 +658,30 @@ namespace JiksLib.Collections
                 bool evicted = false;
                 TKey evictedKey = default!;
                 TValue evictedValue = default!;
+                LinkedListNode<TKey> node;
 
-                if (cache.Count >= capacity)
+                if (cache.Count >= capacity && accessOrder.First is { } oldestNode)
                 {
-                    var oldest = accessOrder.First!.Value;
-                    accessOrder.RemoveFirst();
-                    evictedKey = oldest;
-                    evictedValue = cache[oldest].value;
-                    cache.Remove(oldest);
+                    evictedKey = oldestNode.Value;
+                    evictedValue = cache[evictedKey].value;
+                    accessOrder.Remove(oldestNode);
+                    cache.Remove(evictedKey);
+                    node = oldestNode;
+                    node.Value = key;
                     evicted = true;
                 }
+                else if (spareNode != null)
+                {
+                    node = spareNode;
+                    spareNode = null;
+                    node.Value = key;
+                }
+                else
+                {
+                    node = new LinkedListNode<TKey>(key);
+                }
 
-                var node = accessOrder.AddLast(key);
+                accessOrder.AddLast(node);
                 cache[key] = (value, node);
 
                 // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
@@ -637,17 +703,30 @@ namespace JiksLib.Collections
                 accessOrder.Clear();
             }
 
+            void RecycleNode(LinkedListNode<TKey> node)
+            {
+                // 清空键，避免备用节点持有已移除的 key；节点本身只保留一个。
+                node.Value = default!;
+                if (spareNode == null)
+                    spareNode = node;
+            }
+
             public override int Count => cache.Count;
 
             readonly Dictionary<TKey, (TValue value, LinkedListNode<TKey> node)> cache = new();
             readonly LinkedList<TKey> accessOrder = new();
             readonly int capacity;
+            LinkedListNode<TKey>? spareNode;
         }
 
         /// <summary>
         /// LFU（最不经常使用）缓存
         /// 淘汰访问频率最低的值，频率相同时淘汰最早进入该频率的值
         /// </summary>
+        /// <remarks>
+        /// 频率桶、桶内节点与缓存条目都带备用槽：命中升频、淘汰与手动移除产生的对象
+        /// 会被后续操作复用，因此稳态下命中与插入不再分配。
+        /// </remarks>
         private sealed class Lfu<TKey, TValue> : CacheImpl<TKey, TValue>
             where TKey : notnull
         {
@@ -675,19 +754,20 @@ namespace JiksLib.Collections
                     if (oldFreqList.Count == 0)
                     {
                         freqLists.Remove(entry.frequency);
+                        RecycleBucket(oldFreqList);
                         if (entry.frequency == minFrequency)
                             minFrequency++;
                     }
 
-                    // 加入新频率桶
+                    // 加入新频率桶；节点本身从旧桶摘除后可原地复用，不再新建
                     entry.frequency++;
                     if (!freqLists.TryGetValue(entry.frequency, out var newFreqList))
                     {
-                        newFreqList = new LinkedList<TKey>();
+                        newFreqList = TakeBucket();
                         freqLists[entry.frequency] = newFreqList;
                     }
 
-                    entry.listNode = newFreqList.AddLast(key);
+                    newFreqList.AddLast(entry.listNode);
                     value = entry.value;
                     return true;
                 }
@@ -718,20 +798,22 @@ namespace JiksLib.Collections
 
                 var list = freqLists[entry.frequency];
                 list.Remove(entry.listNode);
-
                 if (list.Count == 0)
                 {
                     freqLists.Remove(entry.frequency);
-
-                    if (entry.frequency == minFrequency && freqLists.Count > 0)
-                    {
-                        while (!freqLists.ContainsKey(minFrequency))
-                            ++minFrequency;
-                    }
+                    RecycleBucket(list);
+                    if (entry.frequency == minFrequency)
+                        RecalculateMinFrequency();
                 }
 
                 cache.Remove(key);
                 value = entry.value;
+
+                // 条目与节点进入备用槽，下一次插入优先复用
+                entry.value = default!;
+                entry.frequency = 0;
+                entry.listNode.Value = default!;
+                spareEntry = entry;
                 return true;
             }
 
@@ -747,30 +829,54 @@ namespace JiksLib.Collections
                 bool evicted = false;
                 TKey evictedKey = default!;
                 TValue evictedValue = default!;
+                LfuEntry entry;
 
-                if (cache.Count >= capacity)
+                if (cache.Count >= capacity &&
+                    freqLists.TryGetValue(minFrequency, out var minList))
                 {
-                    var minList = freqLists[minFrequency];
-                    var oldest = minList.First!.Value;
-                    minList.RemoveFirst();
+                    var oldestNode = minList.First!;
+                    evictedKey = oldestNode.Value;
+                    var evictedEntry = cache[evictedKey];
+                    evictedValue = evictedEntry.value;
+                    minList.Remove(oldestNode);
                     if (minList.Count == 0)
+                    {
                         freqLists.Remove(minFrequency);
+                        RecycleBucket(minList);
+                    }
 
-                    evictedKey = oldest;
-                    evictedValue = cache[oldest].value;
-                    cache.Remove(oldest);
+                    cache.Remove(evictedKey);
+
+                    // 淘汰项的对象与节点原地复用给新键
+                    entry = evictedEntry;
+                    entry.value = value;
+                    entry.frequency = 1;
+                    entry.listNode = oldestNode;
+                    oldestNode.Value = key;
                     evicted = true;
+                }
+                else if (spareEntry != null)
+                {
+                    entry = spareEntry;
+                    spareEntry = null;
+                    entry.value = value;
+                    entry.frequency = 1;
+                    entry.listNode.Value = key;
+                }
+                else
+                {
+                    entry = new LfuEntry(value, 1, new LinkedListNode<TKey>(key));
                 }
 
                 minFrequency = 1;
                 if (!freqLists.TryGetValue(1, out var list))
                 {
-                    list = new LinkedList<TKey>();
+                    list = TakeBucket();
                     freqLists[1] = list;
                 }
 
-                var node = list.AddLast(key);
-                cache[key] = new LfuEntry(value, 1, node);
+                list.AddLast(entry.listNode);
+                cache[key] = entry;
 
                 // 先完成插入再通知：处理器重入缓存时看到的是完整且不超容量的状态
                 if (evicted)
@@ -790,6 +896,60 @@ namespace JiksLib.Collections
                 cache.Clear();
                 freqLists.Clear();
                 minFrequency = 0;
+
+                if (spareEntry != null)
+                {
+                    spareEntry.value = default!;
+                    spareEntry.frequency = 0;
+                    spareEntry.listNode.Value = default!;
+                }
+
+                spareBucket?.Clear();
+            }
+
+            /// <summary>
+            /// 取出可复用的空频率桶；没有备用桶时才新建。
+            /// </summary>
+            LinkedList<TKey> TakeBucket()
+            {
+                var bucket = spareBucket;
+                if (bucket == null)
+                    return new LinkedList<TKey>();
+
+                spareBucket = null;
+                return bucket;
+            }
+
+            /// <summary>
+            /// 回收已清空的频率桶。只保留一个备用桶，避免长期持有大量空对象。
+            /// </summary>
+            void RecycleBucket(LinkedList<TKey> bucket)
+            {
+                bucket.Clear();
+                if (spareBucket == null)
+                    spareBucket = bucket;
+            }
+
+            /// <summary>
+            /// 移除最小频率桶后重新确定最小频率。
+            /// 直接在现存桶的键上取最小值，避免频率跨度很大时逐个整数探测。
+            /// </summary>
+            void RecalculateMinFrequency()
+            {
+                if (freqLists.Count == 0)
+                {
+                    minFrequency = 0;
+                    return;
+                }
+
+                int min = int.MaxValue;
+                foreach (var frequency in freqLists.Keys)
+                {
+                    if (frequency < min)
+                        min = frequency;
+                }
+
+                minFrequency = min;
             }
 
             sealed class LfuEntry
@@ -812,6 +972,8 @@ namespace JiksLib.Collections
             readonly Dictionary<int, LinkedList<TKey>> freqLists = new();
             readonly int capacity;
             int minFrequency;
+            LinkedList<TKey>? spareBucket;
+            LfuEntry? spareEntry;
         }
     }
 }
