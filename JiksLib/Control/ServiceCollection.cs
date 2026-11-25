@@ -6,28 +6,29 @@ namespace JiksLib.Control
 {
     /// <summary>
     /// 服务集合
-    /// 以类型为键显式注册服务，支持沿 fallback 链向上查找；
-    /// 与旧版静态 ServiceLocator 不同，服务集合是普通对象，依赖通过构造函数显式传入。
+    /// 以类型为键注册服务，支持沿 fallback 链向上查找。
+    /// 与旧的静态 ServiceLocator 不同，服务集合是普通对象，依赖通过构造函数显式传入。
     /// 非线程安全：同一个集合及其 fallback 链只应在一个线程（通常是主线程）上使用。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 注册键是调用方显式指定的类型：<see cref="Add{T}(T)"/> 以 <c>typeof(T)</c> 为键，
-    /// 因此可以注册接口；<see cref="Add(object)"/> 以运行时类型为键。
-    /// 同一集合内重复注册同一键时，后注册的覆盖先注册的；旧实例若实现了
-    /// <see cref="IDisposable"/>，仍会在 <see cref="Dispose()"/> 时被释放。
+    /// 注册键是调用方显式指定的类型：<see cref="Register{T}(T, bool)"/> 以 <c>typeof(T)</c> 为键，
+    /// 因此可以注册接口；<see cref="Register(object, bool)"/> 以运行时类型为键。
+    /// 同一集合内重复注册同一键时，后注册的覆盖先注册的（以最后一次为准）；
+    /// 旧实例若实现了 <see cref="IDisposable"/> 且要求自动释放，仍会在 <see cref="Dispose()"/> 时被释放。
     /// </para>
     /// <para>
     /// 查找只做精确类型匹配，不做“唯一可赋值类型”推断，避免多实现时的歧义；
-    /// 需要按接口取用时，请在注册时使用 <see cref="Add{T}(T)"/> 指定接口类型。
+    /// 需要按接口取用时，请在注册时使用 <see cref="Register{T}(T, bool)"/> 指定接口类型。
     /// </para>
     /// <para>
-    /// 通过 <see cref="Add(object)"/> / <see cref="Add{T}(T)"/> 注册的服务由本集合持有，
-    /// <see cref="Dispose()"/> 会按注册的逆序释放其中实现了 <see cref="IDisposable"/> 的实例；
-    /// 使用 <see cref="AddExternal(object)"/> 注册的服务不会被释放。fallback 集合始终不会被释放。
+    /// <see cref="Register(object, bool)"/> / <see cref="Register{T}(T, bool)"/> 默认持有并释放
+    /// 实现了 <see cref="IDisposable"/> 的服务；传 <c>autoDispose: false</c> 表示由调用方负责释放。
+    /// <see cref="AttachDisposable"/> 与 <see cref="RunOnDispose"/> 用于追加额外的释放动作。
+    /// fallback 集合始终不会被本集合释放。
     /// </para>
     /// </remarks>
-    public class ServiceCollection : IDisposable
+    public abstract class ServiceCollection : IDisposable
     {
         /// <summary>
         /// 创建一个服务集合
@@ -36,104 +37,88 @@ namespace JiksLib.Control
         /// 查找失败时继续向上查找的集合；为 null 表示没有 fallback。
         /// fallback 的生命周期由调用方管理，本集合不会释放它。
         /// </param>
-        public ServiceCollection(ServiceCollection? fallback = null)
+        protected ServiceCollection(ServiceCollection? fallback = null)
         {
+            services = new();
+            disposableStack = new();
             this.fallback = fallback;
         }
 
         /// <summary>
-        /// 以运行时类型为键注册服务，并由本集合持有
+        /// 以运行时类型为键注册服务
+        /// 同一键重复注册时，后注册的覆盖先注册的。
         /// </summary>
         /// <param name="service">要注册的服务</param>
+        /// <param name="autoDispose">
+        /// 为 true 时，服务若实现 <see cref="IDisposable"/>，会在本集合释放时被释放
+        /// </param>
         /// <exception cref="ArgumentNullException">当 <paramref name="service"/> 为 null 时抛出</exception>
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        protected void Add(object service)
+        protected void Register(object service, bool autoDispose = true)
         {
-            service.ThrowIfNull(nameof(service));
-            Set(service.GetType(), service, owns: true);
+            if (service == null)
+                throw new ArgumentNullException(nameof(service));
+
+            RegisterCore(service.GetType(), service, autoDispose);
         }
 
         /// <summary>
-        /// 以 <c>typeof(T)</c> 为键注册服务，并由本集合持有
-        /// 需要按接口取用时使用这个重载。
+        /// 以 <c>typeof(T)</c> 为键注册服务
+        /// 需要按接口取用时使用这个重载；同一键重复注册时，后注册的覆盖先注册的。
         /// </summary>
         /// <typeparam name="T">注册键类型</typeparam>
-        /// <param name="service">要注册的服务，必须可赋值给 <typeparamref name="T"/></param>
+        /// <param name="service">要注册的服务</param>
+        /// <param name="autoDispose">
+        /// 为 true 时，服务若实现 <see cref="IDisposable"/>，会在本集合释放时被释放
+        /// </param>
         /// <exception cref="ArgumentNullException">当 <paramref name="service"/> 为 null 时抛出</exception>
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        protected void Add<T>(T service)
-            where T : class
+        protected void Register<T>(T service, bool autoDispose = true)
         {
-            service.ThrowIfNull(nameof(service));
-            Set(typeof(T), service, owns: true);
+            if (service == null)
+                throw new ArgumentNullException(nameof(service));
+
+            RegisterCore(typeof(T), service, autoDispose);
         }
 
         /// <summary>
-        /// 以指定类型为键注册服务，并由本集合持有
+        /// 追加一个在本集合释放时调用的对象
+        /// 释放顺序为注册顺序的逆序。
         /// </summary>
-        /// <param name="serviceType">注册键类型</param>
-        /// <param name="service">要注册的服务，必须可赋值给 <paramref name="serviceType"/></param>
-        /// <exception cref="ArgumentNullException">参数为 null 时抛出</exception>
+        /// <param name="disposable">要释放的对象</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="disposable"/> 为 null 时抛出</exception>
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        protected void Add(Type serviceType, object service)
+        protected void AttachDisposable(IDisposable disposable)
         {
-            service.ThrowIfNull(nameof(service));
-            serviceType.ThrowIfNull(nameof(serviceType));
-            Set(serviceType, service, owns: true);
+            disposable.ThrowIfNull(nameof(disposable));
+            ThrowIfDisposed();
+            disposableStack.Add(disposable);
         }
 
         /// <summary>
-        /// 以运行时类型为键注册服务，但不持有它
-        /// 适合注册由外部生命周期管理的单例（例如场景对象）。
+        /// 追加一个在本集合释放时执行的动作
+        /// 执行顺序为添加顺序的逆序。
         /// </summary>
-        /// <exception cref="ArgumentNullException">当 <paramref name="service"/> 为 null 时抛出</exception>
+        /// <param name="action">要执行的动作</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出</exception>
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        protected void AddExternal(object service)
+        protected void RunOnDispose(Action action)
         {
-            service.ThrowIfNull(nameof(service));
-            Set(service.GetType(), service, owns: false);
-        }
-
-        /// <summary>
-        /// 以 <c>typeof(T)</c> 为键注册服务，但不持有它
-        /// </summary>
-        /// <exception cref="ArgumentNullException">当 <paramref name="service"/> 为 null 时抛出</exception>
-        /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        protected void AddExternal<T>(T service)
-            where T : class
-        {
-            service.ThrowIfNull(nameof(service));
-            Set(typeof(T), service, owns: false);
-        }
-
-        /// <summary>
-        /// 获取服务；找不到时抛出异常
-        /// </summary>
-        /// <exception cref="InvalidOperationException">
-        /// 服务未注册，或注册的实例与请求类型不兼容时抛出
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
-        public T Get<T>()
-            where T : class
-        {
-            if (TryGet<T>(out var service))
-                return service!;
-
-            throw new InvalidOperationException(
-                $"Service not registered: {typeof(T)}.");
+            action.ThrowIfNull(nameof(action));
+            ThrowIfDisposed();
+            disposableStack.Add(action);
         }
 
         /// <summary>
         /// 尝试获取服务；沿 fallback 链查找
         /// </summary>
-        /// <param name="service">找到的服务；未找到时为 null</param>
+        /// <param name="service">找到的服务；未找到时为 default</param>
         /// <returns>是否找到服务</returns>
         /// <exception cref="InvalidOperationException">
         /// 注册的实例与请求类型不兼容时抛出
         /// </exception>
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
         public bool TryGet<T>(out T? service)
-            where T : class
         {
             ThrowIfDisposed();
 
@@ -154,14 +139,28 @@ namespace JiksLib.Control
                     $"Service registered for {typeof(T)} is not assignable to it.");
             }
 
-            service = null;
+            service = default;
             return false;
         }
 
         /// <summary>
-        /// 释放本集合持有的服务（按注册的逆序），并清空注册表。
-        /// 可重复调用；fallback 与 <see cref="AddExternal(object)"/> 注册的服务不会被释放。
-        /// 单个服务释放抛出的异常会被聚合，全部释放完后再抛出。
+        /// 获取服务；找不到时抛出异常
+        /// </summary>
+        /// <exception cref="InvalidOperationException">服务未注册时抛出</exception>
+        /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
+        public T Get<T>()
+        {
+            if (TryGet<T>(out var service))
+                return service!;
+
+            throw new InvalidOperationException(
+                $"Service not registered: {typeof(T)}.");
+        }
+
+        /// <summary>
+        /// 释放本集合持有的服务与追加的释放动作
+        /// 按注册/添加顺序的逆序执行；fallback 不会被释放。
+        /// 可重复调用，释放后不能再注册或查找。
         /// </summary>
         public void Dispose()
         {
@@ -183,32 +182,20 @@ namespace JiksLib.Control
             if (!disposing)
                 return;
 
-            List<Exception>? exceptions = null;
-
-            for (int i = ownedDisposables.Count - 1; i >= 0; i--)
+            try
             {
-                try
-                {
-                    ownedDisposables[i].Dispose();
-                }
-                catch (Exception exception)
-                {
-                    (exceptions ??= new()).Add(exception);
-                }
+                disposableStack.Dispose();
             }
-
-            ownedDisposables.Clear();
-            services.Clear();
-
-            if (exceptions != null)
-                throw new AggregateException(exceptions);
+            finally
+            {
+                services.Clear();
+                ownedDisposables.Clear();
+            }
         }
 
-        void Set(Type serviceType, object service, bool owns)
+        void RegisterCore(Type serviceType, object service, bool autoDispose)
         {
             ThrowIfDisposed();
-
-            serviceType.ThrowIfNull(nameof(serviceType));
 
             if (!serviceType.IsInstanceOfType(service))
                 throw new ArgumentException(
@@ -217,16 +204,18 @@ namespace JiksLib.Control
 
             services[serviceType] = service;
 
-            if (owns && service is IDisposable disposable)
-            {
-                for (int i = 0; i < ownedDisposables.Count; i++)
-                {
-                    if (ReferenceEquals(ownedDisposables[i], disposable))
-                        return;
-                }
+            if (!autoDispose || !(service is IDisposable disposable))
+                return;
 
-                ownedDisposables.Add(disposable);
+            // 同一个实例可能以多个键注册；只释放一次。
+            for (int i = 0; i < ownedDisposables.Count; i++)
+            {
+                if (ReferenceEquals(ownedDisposables[i], disposable))
+                    return;
             }
+
+            ownedDisposables.Add(disposable);
+            disposableStack.Add(disposable);
         }
 
         void ThrowIfDisposed()
@@ -239,9 +228,10 @@ namespace JiksLib.Control
 #endif
         }
 
-        readonly ServiceCollection? fallback;
-        readonly Dictionary<Type, object> services = new();
+        readonly Dictionary<Type, object> services;
+        readonly DisposableStack disposableStack;
         readonly List<IDisposable> ownedDisposables = new();
+        readonly ServiceCollection? fallback;
         bool disposed;
     }
 }

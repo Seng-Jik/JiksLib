@@ -15,19 +15,17 @@ namespace JiksLib.Test.Control
             {
             }
 
-            public void AddService(object service) => Add(service);
+            public void RegisterService(object service, bool autoDispose = true) =>
+                Register(service, autoDispose);
 
-            public void AddService<T>(T service)
-                where T : class => Add(service);
+            public void RegisterService<T>(T service, bool autoDispose = true) =>
+                Register(service, autoDispose);
 
-            public void AddService(Type serviceType, object service) =>
-                Add(serviceType, service);
+            public void Attach(IDisposable disposable) =>
+                AttachDisposable(disposable);
 
-            public void AddExternalService(object service) =>
-                AddExternal(service);
-
-            public void AddExternalService<T>(T service)
-                where T : class => AddExternal(service);
+            public void OnDispose(Action action) =>
+                RunOnDispose(action);
         }
 
         private interface ITestService
@@ -84,23 +82,23 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Add_ThenGet_ReturnsSameInstance()
+        public void Register_ObjectThenGet_ReturnsSameInstance()
         {
             using var collection = new TestCollection();
             var service = new List<int>();
 
-            collection.AddService(service);
+            collection.RegisterService(service);
 
             Assert.That(collection.Get<List<int>>(), Is.SameAs(service));
         }
 
         [Test]
-        public void AddInterface_GetByInterface_ReturnsInstance()
+        public void Register_InterfaceThenGetByInterface_ReturnsInstance()
         {
             using var collection = new TestCollection();
             var service = new TestService("a");
 
-            collection.AddService<ITestService>(service);
+            collection.RegisterService<ITestService>(service);
 
             Assert.That(collection.Get<ITestService>(), Is.SameAs(service));
         }
@@ -110,7 +108,7 @@ namespace JiksLib.Test.Control
         {
             using var parent = new TestCollection();
             var service = new TestService("parent");
-            parent.AddService<ITestService>(service);
+            parent.RegisterService<ITestService>(service);
 
             using var child = new TestCollection(parent);
 
@@ -121,44 +119,34 @@ namespace JiksLib.Test.Control
         public void Child_OverridesParent()
         {
             using var parent = new TestCollection();
-            parent.AddService<ITestService>(new TestService("parent"));
+            parent.RegisterService<ITestService>(new TestService("parent"));
 
             using var child = new TestCollection(parent);
             var own = new TestService("child");
-            child.AddService<ITestService>(own);
+            child.RegisterService<ITestService>(own);
 
             Assert.That(child.Get<ITestService>(), Is.SameAs(own));
         }
 
         [Test]
-        public void Add_NullService_ThrowsArgumentNullException()
+        public void Register_NullService_ThrowsArgumentNullException()
         {
             using var collection = new TestCollection();
 
             Assert.That(
-                () => collection.AddService(null!),
+                () => collection.RegisterService(null!),
                 Throws.TypeOf<ArgumentNullException>());
         }
 
         [Test]
-        public void Add_MismatchedType_ThrowsArgumentException()
-        {
-            using var collection = new TestCollection();
-
-            Assert.That(
-                () => collection.AddService(typeof(ITestService), new object()),
-                Throws.TypeOf<ArgumentException>());
-        }
-
-        [Test]
-        public void Add_DuplicateKey_LastRegistrationWins()
+        public void Register_DuplicateKey_LastRegistrationWins()
         {
             using var collection = new TestCollection();
             var first = new TestService("first");
             var second = new TestService("second");
 
-            collection.AddService<ITestService>(first);
-            collection.AddService<ITestService>(second);
+            collection.RegisterService<ITestService>(first);
+            collection.RegisterService<ITestService>(second);
 
             Assert.That(collection.Get<ITestService>(), Is.SameAs(second));
         }
@@ -169,8 +157,8 @@ namespace JiksLib.Test.Control
             var log = new List<string>();
             var collection = new TestCollection();
 
-            collection.AddService(new TrackingDisposable(log, "first"));
-            collection.AddService(new TrackingDisposable(log, "second"));
+            collection.RegisterService(new TrackingDisposable(log, "first"));
+            collection.RegisterService(new TrackingDisposable(log, "second"));
 
             collection.Dispose();
 
@@ -178,15 +166,45 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Dispose_DoesNotDisposeExternalService()
+        public void Dispose_WithAutoDisposeFalse_DoesNotDisposeService()
         {
             var log = new List<string>();
             var collection = new TestCollection();
 
-            collection.AddExternalService(new TrackingDisposable(log, "external"));
+            collection.RegisterService(
+                new TrackingDisposable(log, "external"),
+                autoDispose: false);
+
             collection.Dispose();
 
             Assert.That(log, Is.Empty);
+        }
+
+        [Test]
+        public void Dispose_AttachedDisposable_IsDisposed()
+        {
+            var log = new List<string>();
+            var collection = new TestCollection();
+
+            collection.Attach(new TrackingDisposable(log, "attached"));
+            collection.Dispose();
+
+            Assert.That(log, Is.EqualTo(new[] { "attached" }));
+        }
+
+        [Test]
+        public void Dispose_RunsActionsInReverseOrder()
+        {
+            var log = new List<string>();
+            var collection = new TestCollection();
+
+            collection.OnDispose(() => log.Add("action1"));
+            collection.Attach(new TrackingDisposable(log, "disposable"));
+            collection.OnDispose(() => log.Add("action2"));
+
+            collection.Dispose();
+
+            Assert.That(log, Is.EqualTo(new[] { "action2", "disposable", "action1" }));
         }
 
         [Test]
@@ -194,7 +212,7 @@ namespace JiksLib.Test.Control
         {
             var log = new List<string>();
             var parent = new TestCollection();
-            parent.AddService(new TrackingDisposable(log, "parent"));
+            parent.RegisterService(new TrackingDisposable(log, "parent"));
 
             using (var child = new TestCollection(parent))
                 child.Dispose();
@@ -212,8 +230,8 @@ namespace JiksLib.Test.Control
             var disposable = new TrackingDisposable(log, "once");
             var collection = new TestCollection();
 
-            collection.AddService(disposable);
-            collection.AddService<IDisposable>(disposable);
+            collection.RegisterService(disposable);
+            collection.RegisterService<IDisposable>(disposable);
 
             collection.Dispose();
 
@@ -224,7 +242,7 @@ namespace JiksLib.Test.Control
         public void Dispose_CanBeCalledMultipleTimes()
         {
             var collection = new TestCollection();
-            collection.AddService(new List<int>());
+            collection.RegisterService(new List<int>());
 
             collection.Dispose();
 
@@ -232,13 +250,24 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Add_AfterDispose_ThrowsObjectDisposedException()
+        public void Register_AfterDispose_ThrowsObjectDisposedException()
         {
             var collection = new TestCollection();
             collection.Dispose();
 
             Assert.That(
-                () => collection.AddService(new List<int>()),
+                () => collection.RegisterService(new List<int>()),
+                Throws.TypeOf<ObjectDisposedException>());
+        }
+
+        [Test]
+        public void Attach_AfterDispose_ThrowsObjectDisposedException()
+        {
+            var collection = new TestCollection();
+            collection.Dispose();
+
+            Assert.That(
+                () => collection.Attach(new ThrowingDisposable()),
                 Throws.TypeOf<ObjectDisposedException>());
         }
 
@@ -265,11 +294,22 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Dispose_AggregatesDisposeExceptions()
+        public void Dispose_SingleThrowingService_PropagatesException()
         {
             var collection = new TestCollection();
-            collection.AddService(new ThrowingDisposable());
-            collection.AddService(new ThrowingDisposable());
+            collection.RegisterService(new ThrowingDisposable());
+
+            Assert.That(
+                () => collection.Dispose(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void Dispose_MultipleThrowingServices_AggregatesExceptions()
+        {
+            var collection = new TestCollection();
+            collection.RegisterService(new ThrowingDisposable());
+            collection.RegisterService(new ThrowingDisposable());
 
             var exception = Assert.Throws<AggregateException>(
                 () => collection.Dispose());
@@ -283,11 +323,11 @@ namespace JiksLib.Test.Control
             var log = new List<string>();
             var collection = new TestCollection();
 
-            collection.AddService(new TrackingDisposable(log, "first"));
-            collection.AddService(new ThrowingDisposable());
-            collection.AddService(new TrackingDisposable(log, "last"));
+            collection.RegisterService(new TrackingDisposable(log, "first"));
+            collection.RegisterService(new ThrowingDisposable());
+            collection.RegisterService(new TrackingDisposable(log, "last"));
 
-            Assert.Throws<AggregateException>(() => collection.Dispose());
+            Assert.Throws<InvalidOperationException>(() => collection.Dispose());
 
             // 逆序释放：last → throwing → first；抛异常不阻止其余释放
             Assert.That(log, Is.EqualTo(new[] { "last", "first" }));
