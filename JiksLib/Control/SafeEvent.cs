@@ -321,36 +321,44 @@ namespace JiksLib.Control
 
                     // 只有存在空洞时才需要压缩；正常发布路径下不做 2N 次冗余写入。
                     // 发布期间不允许增删（不允许时抛异常、允许时排队），因此循环中列表不会变化。
-                    bool compact = this.@event.ListenerCount < listenersCount;
-                    int rewriteIndex = 0;
-
-                    for (int i = 0; i < listenersCount; ++i)
+                    if (this.@event.ListenerCount < listenersCount)
                     {
-                        var listener = listeners[i];
+                        int rewriteIndex = 0;
 
-                        if (listener == null)
-                            continue;
-
-                        if (compact)
+                        for (int i = 0; i < listenersCount; ++i)
+                        {
+                            var listener = listeners[i];
+                            if (listener == null) continue;
                             listeners[rewriteIndex] = listener;
+                            rewriteIndex++;
 
-                        rewriteIndex++;
-
-                        try
-                        {
-                            listener(@event);
+                            try
+                            {
+                                listener(@event);
+                            }
+                            catch (Exception ex)
+                            {
+                                exceptionsOutput?.Add(ex);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            exceptionsOutput?.Add(ex);
-                        }
-                    }
 
-                    if (compact)
-                    {
                         listeners.RemoveRange(
                             rewriteIndex,
                             listeners.Count - rewriteIndex);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < listenersCount; ++i)
+                        {
+                            try
+                            {
+                                listeners[i]!(@event);
+                            }
+                            catch (Exception ex)
+                            {
+                                exceptionsOutput?.Add(ex);
+                            }
+                        }
                     }
 
                     if (this.@event.recursiveInvokeQueue != null)
