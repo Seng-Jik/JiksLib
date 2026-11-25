@@ -1379,6 +1379,77 @@ namespace JiksLib.Test.Control
             Assert.That(fsm.AnyTimeTransitions, Is.Empty);
         }
 
+#if NET5_0_OR_GREATER
+        [Test]
+        public void CurrentTransitions_Foreach_DoesNotAllocate()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+            var stateD = new TestState("D");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddState(stateD);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            builder.AddTransition(stateA, TestTransition.GoToC, stateC);
+            builder.AddTransition(stateA, TestTransition.GoToD, stateD);
+            builder.AddTransition(stateA, TestTransition.AnotherTransition, stateB);
+
+            var fsm = builder.Build(default);
+
+            // 预热一次，排除 JIT / 静态初始化
+            int warmup = 0;
+            foreach (var pair in fsm.CurrentTransitions)
+                warmup++;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int count = 0;
+
+            foreach (var pair in fsm.CurrentTransitions)
+                count++;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(4));
+            Assert.That(count, Is.EqualTo(4));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AnyTimeTransitions_Foreach_DoesNotAllocate()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddAnyTimeTransition(TestTransition.GoToB, stateB);
+            builder.AddAnyTimeTransition(TestTransition.GoToC, stateC);
+
+            var fsm = builder.Build(default);
+
+            int warmup = 0;
+            foreach (var pair in fsm.AnyTimeTransitions)
+                warmup++;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int count = 0;
+
+            foreach (var pair in fsm.AnyTimeTransitions)
+                count++;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(2));
+            Assert.That(count, Is.EqualTo(2));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+#endif
+
         #endregion
     }
 }

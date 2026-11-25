@@ -18,6 +18,19 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
+        /// 将字符串包装为 <see cref="StringSegment"/> 视图
+        /// 不复制字符。
+        /// </summary>
+        /// <param name="s">字符串</param>
+        /// <returns>覆盖整个字符串的片段</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="s"/> 为 null 时抛出</exception>
+        public static StringSegment AsSegment(this string s)
+        {
+            s.ThrowIfNull(nameof(s));
+            return new StringSegment(s);
+        }
+
+        /// <summary>
         /// 创建一个零分配的切分器
         /// 与 <see cref="StringSegment.Tokenize(char)"/> 等价，便于直接对字符串使用。
         /// </summary>

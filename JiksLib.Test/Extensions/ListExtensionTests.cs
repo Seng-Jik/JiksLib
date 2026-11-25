@@ -1109,6 +1109,28 @@ namespace JiksLib.Test.Extensions
                 Throws.TypeOf<ArgumentNullException>());
         }
 
+        [Test]
+        public void AsSegment_Array_EnumeratesInOrder()
+        {
+            var array = new[] { 1, 2, 3 };
+            var values = new List<int>();
+
+            foreach (var item in array.AsSegment())
+                values.Add(item);
+
+            Assert.That(values, Is.EqualTo(array));
+        }
+
+        [Test]
+        public void AsSegment_Array_WithNull_ThrowsArgumentNullException()
+        {
+            int[]? array = null;
+
+            Assert.That(
+                () => array!.AsSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
 #if NET5_0_OR_GREATER
         [Test]
         public void AsSegment_Foreach_DoesNotAllocate()
@@ -1124,6 +1146,28 @@ namespace JiksLib.Test.Extensions
             int sum = 0;
 
             foreach (var item in list.AsSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsSegment_Array_Foreach_DoesNotAllocate()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+
+            int warmup = 0;
+            foreach (var item in array.AsSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in array.AsSegment())
                 sum += item;
 
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
