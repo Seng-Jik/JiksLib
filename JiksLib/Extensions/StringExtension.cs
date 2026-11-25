@@ -18,6 +18,22 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
+        /// 创建一个零分配的切分器
+        /// 与 <see cref="StringSegment.Tokenize(char)"/> 等价，便于直接对字符串使用。
+        /// </summary>
+        /// <param name="s">要切分的字符串</param>
+        /// <param name="separator">分隔符</param>
+        /// <returns>字符串片段切分器</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="s"/> 为 null 时抛出</exception>
+        public static StringSegment.Tokenizer Tokenize(
+            this string s,
+            char separator = ',')
+        {
+            s.ThrowIfNull(nameof(s));
+            return new StringSegment(s).Tokenize(separator);
+        }
+
+        /// <summary>
         /// 计算字符串的 BKDR 哈希值
         /// 乘子使用 16777619（FNV-1a 素数）：旧实现的 131 小于 char 值域，
         /// 会产生结构性碰撞（例如 "ab" 与 "\u3205"），因此不再使用。

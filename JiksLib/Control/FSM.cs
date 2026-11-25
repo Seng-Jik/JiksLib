@@ -284,6 +284,31 @@ namespace JiksLib.Control
         /// </summary>
         public TState CurrentState { get; private set; }
 
+        /// <summary>
+        /// 当前状态的全部出度转移（不含 AnyTimeTransition）
+        /// 返回的是状态机构建时转移表的只读视图，枚举顺序由字典决定；
+        /// 不要把它强转成可变字典后修改。
+        /// </summary>
+        public IEnumerable<KeyValuePair<TTransition, TState>> CurrentTransitions
+        {
+            get
+            {
+                IEnumerable<KeyValuePair<TTransition, TState>>? transitions =
+                    states[CurrentState];
+
+                return transitions ?? EmptyTransitions;
+            }
+        }
+
+        /// <summary>
+        /// 全部 AnyTimeTransition
+        /// 返回的是状态机构建时转移表的只读视图，枚举顺序由字典决定；
+        /// 不要把它强转成可变字典后修改。
+        /// </summary>
+        public IEnumerable<KeyValuePair<TTransition, TState>> AnyTimeTransitions =>
+            (IEnumerable<KeyValuePair<TTransition, TState>>?)anyTimeTransitions
+            ?? EmptyTransitions;
+
         public delegate void OnStateSwitchHandler(
             TState oldState,
             TTransition? transition,
@@ -437,5 +462,8 @@ namespace JiksLib.Control
         readonly Dictionary<TTransition, TState>? anyTimeTransitions = new();
         readonly TState? defaultState;
         readonly TState startState;
+
+        static readonly KeyValuePair<TTransition, TState>[] EmptyTransitions =
+            Array.Empty<KeyValuePair<TTransition, TState>>();
     }
 }

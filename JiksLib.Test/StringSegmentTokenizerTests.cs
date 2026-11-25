@@ -95,19 +95,6 @@ namespace JiksLib.Test
         }
 
         [Test]
-        public void Tokenizer_PublicConstructor_Works()
-        {
-            var segment = new StringSegment("a,b");
-            var tokenizer = new StringSegment.Tokenizer(segment, ',');
-
-            Assert.That(tokenizer.MoveNext(), Is.True);
-            Assert.That(tokenizer.Current.ToString(), Is.EqualTo("a"));
-            Assert.That(tokenizer.MoveNext(), Is.True);
-            Assert.That(tokenizer.Current.ToString(), Is.EqualTo("b"));
-            Assert.That(tokenizer.MoveNext(), Is.False);
-        }
-
-        [Test]
         public void Tokenizer_CurrentBeforeMoveNext_Throws()
         {
             var tokenizer = new StringSegment("a,b").Tokenize(',');

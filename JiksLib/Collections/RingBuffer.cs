@@ -71,17 +71,17 @@ namespace JiksLib.Collections
         public bool IsFull => count == buffer.Length;
 
         /// <summary>
+        /// 当写入导致最旧元素被覆盖时触发
+        /// 参数为被覆盖的元素。AddRange 会为每个被覆盖的旧元素各触发一次（从最旧到最新）；
+        /// 事件在缓冲区完成写入后触发，处理器抛出的异常会向外传播。
+        /// </summary>
+        public event Action<T>? OnOverwrite;
+
+        /// <summary>
         /// 写入一个元素
         /// 元素成为下标 0；若缓存已满，最旧的元素（末尾）被覆盖
         /// </summary>
-        public void Add(T item)
-        {
-            head = head == 0 ? buffer.Length - 1 : head - 1;
-            buffer[head] = item;
-
-            if (count < buffer.Length)
-                count++;
-        }
+        public void Add(T item) => AddCore(item, out _);
 
         /// <summary>
         /// 写入一个元素
@@ -94,16 +94,33 @@ namespace JiksLib.Collections
         /// <returns>是否发生了覆盖</returns>
         public bool Add(T item, out T? evicted)
         {
-            if (count == buffer.Length)
+            return AddCore(item, out evicted);
+        }
+
+        bool AddCore(T item, out T? evicted)
+        {
+            bool overwritten = count == buffer.Length;
+
+            if (overwritten)
             {
-                evicted = buffer[head == 0 ? buffer.Length - 1 : head - 1];
-                Add(item);
-                return true;
+                int oldestIndex = head == 0 ? buffer.Length - 1 : head - 1;
+                evicted = buffer[oldestIndex];
+            }
+            else
+            {
+                evicted = default;
             }
 
-            evicted = default;
-            Add(item);
-            return false;
+            head = head == 0 ? buffer.Length - 1 : head - 1;
+            buffer[head] = item;
+
+            if (count < buffer.Length)
+                count++;
+
+            if (overwritten)
+                OnOverwrite?.Invoke(evicted!);
+
+            return overwritten;
         }
 
         /// <summary>
@@ -120,6 +137,27 @@ namespace JiksLib.Collections
 
             if (items.Count == 0)
                 return;
+
+            // 事件处理器存在时才复制被覆盖的旧元素，避免给热路径增加无谓分配。
+            var onOverwrite = OnOverwrite;
+            T[]? overwrittenItems = null;
+            int overwrittenCount = 0;
+
+            if (onOverwrite != null && count > 0)
+            {
+                long overwritten = (long)count + items.Count - buffer.Length;
+                if (overwritten > 0)
+                {
+                    if (overwritten > count)
+                        overwritten = count;
+
+                    overwrittenCount = (int)overwritten;
+                    overwrittenItems = new T[overwrittenCount];
+
+                    for (int i = 0; i < overwrittenCount; i++)
+                        overwrittenItems[i] = buffer[PhysicalIndex(count - 1 - i)];
+                }
+            }
 
             if (items.Count < buffer.Length)
             {
@@ -157,6 +195,12 @@ namespace JiksLib.Collections
 
                 head = newHead;
                 count = buffer.Length;
+            }
+
+            if (overwrittenItems != null)
+            {
+                for (int i = 0; i < overwrittenCount; i++)
+                    onOverwrite!(overwrittenItems[i]);
             }
         }
 

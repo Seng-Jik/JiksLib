@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using JiksLib.Extensions;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace JiksLib.Test.Extensions
@@ -692,6 +693,64 @@ namespace JiksLib.Test.Extensions
             // Assert
             Assert.That(result, Is.True);
             Assert.That(remain, Is.EqualTo(""));
+        }
+
+        #endregion
+
+        #region Tokenize Tests
+
+        [Test]
+        public void Tokenize_SplitsStringOnSeparator()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,b,c".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "b", "c" }));
+        }
+
+        [Test]
+        public void Tokenize_DefaultSeparator_IsComma()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,b".Tokenize())
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "b" }));
+        }
+
+        [Test]
+        public void Tokenize_EmptyString_ReturnsSingleEmptyToken()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "" }));
+        }
+
+        [Test]
+        public void Tokenize_PreservesEmptyEntries()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,,c,".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "", "c", "" }));
+        }
+
+        [Test]
+        public void Tokenize_Null_ThrowsArgumentNullException()
+        {
+            string? value = null;
+
+            Assert.That(
+                () => value!.Tokenize(','),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         #endregion

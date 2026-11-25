@@ -1287,6 +1287,98 @@ namespace JiksLib.Test.Control
             Assert.That(stateA.OnEnterCallCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void CurrentTransitions_ReturnsOutgoingTransitionsOfCurrentState()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            builder.AddTransition(stateA, TestTransition.GoToC, stateC);
+
+            var fsm = builder.Build(default);
+
+            var transitions = new Dictionary<TestTransition, TestState>();
+            foreach (var pair in fsm.CurrentTransitions)
+                transitions.Add(pair.Key, pair.Value);
+
+            Assert.That(transitions.Count, Is.EqualTo(2));
+            Assert.That(transitions[TestTransition.GoToB], Is.SameAs(stateB));
+            Assert.That(transitions[TestTransition.GoToC], Is.SameAs(stateC));
+        }
+
+        [Test]
+        public void CurrentTransitions_ReflectsCurrentStateAfterSwitch()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddTransition(stateA, TestTransition.GoToB, stateB);
+            builder.AddTransition(stateB, TestTransition.GoToC, stateC);
+
+            var fsm = builder.Build(default);
+            Assert.That(fsm.Switch(TestTransition.GoToB), Is.True);
+
+            var transitions = new Dictionary<TestTransition, TestState>();
+            foreach (var pair in fsm.CurrentTransitions)
+                transitions.Add(pair.Key, pair.Value);
+
+            Assert.That(transitions.Count, Is.EqualTo(1));
+            Assert.That(transitions[TestTransition.GoToC], Is.SameAs(stateC));
+        }
+
+        [Test]
+        public void CurrentTransitions_WithNoOutgoingTransitions_IsEmpty()
+        {
+            var stateA = new TestState("A");
+            var fsm = new FSM<TestState, UnitType, TestTransition>.Builder(stateA)
+                .Build(default);
+
+            Assert.That(fsm.CurrentTransitions, Is.Empty);
+        }
+
+        [Test]
+        public void AnyTimeTransitions_ReturnsAllRegisteredTransitions()
+        {
+            var stateA = new TestState("A");
+            var stateB = new TestState("B");
+            var stateC = new TestState("C");
+
+            var builder = new FSM<TestState, UnitType, TestTransition>.Builder(stateA);
+            builder.AddState(stateB);
+            builder.AddState(stateC);
+            builder.AddAnyTimeTransition(TestTransition.GoToB, stateB);
+            builder.AddAnyTimeTransition(TestTransition.GoToC, stateC);
+
+            var fsm = builder.Build(default);
+
+            var transitions = new Dictionary<TestTransition, TestState>();
+            foreach (var pair in fsm.AnyTimeTransitions)
+                transitions.Add(pair.Key, pair.Value);
+
+            Assert.That(transitions.Count, Is.EqualTo(2));
+            Assert.That(transitions[TestTransition.GoToB], Is.SameAs(stateB));
+            Assert.That(transitions[TestTransition.GoToC], Is.SameAs(stateC));
+        }
+
+        [Test]
+        public void AnyTimeTransitions_WhenNoneRegistered_IsEmpty()
+        {
+            var stateA = new TestState("A");
+            var fsm = new FSM<TestState, UnitType, TestTransition>.Builder(stateA)
+                .Build(default);
+
+            Assert.That(fsm.AnyTimeTransitions, Is.Empty);
+        }
+
         #endregion
     }
 }

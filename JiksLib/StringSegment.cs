@@ -1309,7 +1309,7 @@ namespace JiksLib
             /// </summary>
             /// <param name="segment">要切分的片段</param>
             /// <param name="separator">分隔符</param>
-            public Tokenizer(StringSegment segment, char separator)
+            internal Tokenizer(StringSegment segment, char separator)
             {
                 this.segment = segment;
                 this.separator = separator;

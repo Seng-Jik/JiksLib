@@ -91,7 +91,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `OnceCell<T>` | 只能赋值一次的格子，读取未赋值内容或重复赋值都会抛异常，首次赋值时触发 `OnSet`。 | [OnceCell.cs](JiksLib/Collections/OnceCell.cs) |
 | `PriorityQueue<TElement, TPriority>` | 基于二叉堆的优先级队列，支持出入队、`Try*`、`DequeueEnqueue`、批量入队、按值移除与无序枚举；类型名刻意与 BCL 同名，用于为 Unity 2022 等旧运行时补齐该类型。 | [PriorityQueue.cs](JiksLib/Collections/PriorityQueue.cs) |
 | `ReadOnlyListSegment<T>` | 对 `IReadOnlyList` 的一段只读视图，零拷贝切片、值类型、默认值为空片段。 | [ReadOnlyListSegment.cs](JiksLib/Collections/ReadOnlyListSegment.cs) |
-| `RingBuffer<T>` | 定长环形缓存，下标 0 为最新元素，写满覆盖最旧元素，支持 `AddRange`、`TryPeekNewest/Oldest`、`CopyTo`、结构体枚举器。 | [RingBuffer.cs](JiksLib/Collections/RingBuffer.cs) |
+| `RingBuffer<T>` | 定长环形缓存，下标 0 为最新元素，写满覆盖最旧元素，支持 `AddRange`、`TryPeekNewest/Oldest`、`CopyTo`、结构体枚举器，覆盖时触发 `OnOverwrite`。 | [RingBuffer.cs](JiksLib/Collections/RingBuffer.cs) |
 | `SparseSet<T>` | 稀疏集，元素紧凑存放在数组中并以稀疏下标索引；`Add` / `RemoveAt` 平均 O(1)，通过 `InnerBuffer` 与结构体枚举器支持缓存友好的高频遍历。 | [SparseSet.cs](JiksLib/Collections/SparseSet.cs) |
 
 ### `JiksLib.Control`
@@ -103,8 +103,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `EventBus<TBaseEvent>` | 以类型为索引的事件总线，发布时沿运行时类型的继承链与接口链分发，监听器异常收集到输出列表中；`Publisher` 是发布端结构体。不支持泛型变体（协变/逆变）派发，监听器需注册在运行时类型或共同的 `TBaseEvent` 上。 | [EventBus.cs](JiksLib/Control/EventBus.cs) |
 | `ValueEventBus<TConstraint>` | 面向值类型事件的事件总线，避免发布时的装箱；`SubPublisher<TEvent>` 可提前绑定单一事件类型以进一步降低开销。 | [ValueEventBus.cs](JiksLib/Control/ValueEventBus.cs) |
 | `SafeEvent<TEvent>` / `ISafeEventPublisher<TEvent>` / `SafeEventHandler<TEvent>` | 单个事件的安全包装器：隔离监听器异常；默认拒绝发布期间增删监听器与递归发布，可配置为延迟增删和 FIFO 队列化递归发布。 | [SafeEvent.cs](JiksLib/Control/SafeEvent.cs) |
-| `EventFilter<TEventPublisher, TEvent>` | 在发布端过滤事件的装饰器，过滤函数可以修改事件，返回 `false` 则丢弃该事件。 | [EventFilter.cs](JiksLib/Control/EventFilter.cs) |
-| `FSM<TState, TStateArg, TTransition>` | 完整的有限状态机，通过 `Builder` 注册状态与转移（含任意状态转移和默认兜底状态），提供 `OnBuild`、`OnEnter`、`OnExit`、`OnReset` 生命周期与切换事件；`Builder` 只能构建一次，构建后只读，可用复制构造函数复制出可再次构建的副本。 | [FSM.cs](JiksLib/Control/FSM.cs) |
+| `FSM<TState, TStateArg, TTransition>` | 完整的有限状态机，通过 `Builder` 注册状态与转移（含任意状态转移和默认兜底状态），提供 `OnBuild`、`OnEnter`、`OnExit`、`OnReset` 生命周期与切换事件，可用 `CurrentTransitions` / `AnyTimeTransitions` 枚举转移；`Builder` 只能构建一次，构建后只读，可用复制构造函数复制出可再次构建的副本。 | [FSM.cs](JiksLib/Control/FSM.cs) |
 | `LightFSM<TState>` | 不带转移表的轻量状态机，只需实现 `IState` 的 `OnEnter` / `OnExit`，用 `Switch(nextState)` 切换。 | [LightFSM.cs](JiksLib/Control/LightFSM.cs) |
 | `ServiceLocator` | 静态服务定位器；通过 `Scope` 批量注册服务，`EnterScope` 返回需按逆序退出的 `IDisposable`。 | [ServiceLocator.cs](JiksLib/Control/ServiceLocator.cs) |
 | `UnitType` | 空结构体单元类型，用于填充泛型类或泛型方法中的“无参数”类型位。 | [UnitType.cs](JiksLib/Control/UnitType.cs) |
@@ -115,8 +114,8 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | --- | --- | --- |
 | `AnythingExtension` | 对所有类型生效的参数校验扩展：`ThrowIfNull` 在值为 `null` 时抛出异常并返回非空值。 | [AnythingExtension.cs](JiksLib/Extensions/AnythingExtension.cs) |
 | `AsReadOnlyExtension` | 把 `Dictionary`、`List`、数组、`HashSet`、`LinkedList` 转为对应的只读接口，同时完成 null 检查。 | [AsReadOnlyExtension.cs](JiksLib/Extensions/AsReadOnlyExtension.cs) |
-| `ListExtension` | 列表扩展：`RemoveO1`（用末元素填补空位的 O(1) 删除）、`PopBack`、`FindIndex`、`Shuffle`、`GetReversedEnumerable`、`RandomSelect` 与按权重抽取的 `RandomSelectIndex`。 | [ListExtension.cs](JiksLib/Extensions/ListExtension.cs) |
-| `StringExtension` | 字符串扩展：`Split0`（空串返回空数组）、`BKDRHash`、`StripPrefix` / `StripSuffix` / `StripPrefixSuffix`。 | [StringExtension.cs](JiksLib/Extensions/StringExtension.cs) |
+| `ListExtension` | 列表扩展：`RemoveO1`（用末元素填补空位的 O(1) 删除）、`PopBack`、`FindIndex`、`Shuffle`、`GetReversedEnumerable`、`AsSegment`（零分配枚举）、`RandomSelect` 与按权重抽取的 `RandomSelectIndex`。 | [ListExtension.cs](JiksLib/Extensions/ListExtension.cs) |
+| `StringExtension` | 字符串扩展：`Split0`（空串返回空数组）、`Tokenize`（零分配切分器）、`BKDRHash`、`StripPrefix` / `StripSuffix` / `StripPrefixSuffix`。 | [StringExtension.cs](JiksLib/Extensions/StringExtension.cs) |
 
 ### `JiksLib.IO`
 

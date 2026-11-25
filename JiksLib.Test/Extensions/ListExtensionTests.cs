@@ -1065,6 +1065,77 @@ namespace JiksLib.Test.Extensions
 
         #endregion
 
+        #region AsSegment Tests
+
+        [Test]
+        public void AsSegment_EnumeratesAllElementsInOrder()
+        {
+            IReadOnlyList<int> list = new List<int> { 1, 2, 3 };
+            var values = new List<int>();
+
+            foreach (var item in list.AsSegment())
+                values.Add(item);
+
+            Assert.That(values, Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void AsSegment_ReflectsElementChanges()
+        {
+            var list = new List<int> { 1, 2 };
+            var segment = list.AsSegment();
+
+            list[1] = 20;
+
+            Assert.That(segment.Count, Is.EqualTo(2));
+            Assert.That(segment[1], Is.EqualTo(20));
+        }
+
+        [Test]
+        public void AsSegment_WithEmptyList_IsEmpty()
+        {
+            IReadOnlyList<int> list = Array.Empty<int>();
+
+            Assert.That(list.AsSegment().IsEmpty, Is.True);
+        }
+
+        [Test]
+        public void AsSegment_WithNull_ThrowsArgumentNullException()
+        {
+            IReadOnlyList<int>? list = null;
+
+            Assert.That(
+                () => list!.AsSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void AsSegment_Foreach_DoesNotAllocate()
+        {
+            IReadOnlyList<int> list = new List<int> { 1, 2, 3, 4 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            int warmup = 0;
+            foreach (var item in list.AsSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in list.AsSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+#endif
+
+        #endregion
+
         #region Helper Class for Testing
 
         private class TestList<T> : IReadOnlyList<T>
