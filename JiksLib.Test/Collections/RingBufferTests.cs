@@ -1488,6 +1488,23 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
+        public void OnOverwrite_AddRange_FiresDuringWrite()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(3);
+            ring.AddRange(new[] { 1, 2, 3 });
+            var newestAtEvent = new List<int>();
+            ring.OnOverwrite += _ => newestAtEvent.Add(ring[0]);
+
+            // Act
+            ring.AddRange(new[] { 4, 5, 6 });
+
+            // Assert：边写边发，事件里看到的是对应元素刚写入后的状态
+            Assert.That(newestAtEvent, Is.EqualTo(new[] { 4, 5, 6 }));
+            AssertContents(ring, 6, 5, 4);
+        }
+
+        [Test]
         public void OnOverwrite_AddRange_LargerThanCapacity_FiresForExistingAndDroppedElements()
         {
             var ring = new RingBuffer<int>(3);
@@ -1557,6 +1574,48 @@ namespace JiksLib.Test.Collections
             ring.AddRange(new[] { 1, 2, 3 });
 
             Assert.That(fired, Is.Empty);
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void OnOverwrite_AddRange_WithSubscriber_DoesNotAllocate()
+        {
+            var ring = new RingBuffer<int>(4);
+            ring.AddRange(new[] { 1, 2, 3, 4 });
+            int firedCount = 0;
+            ring.OnOverwrite += _ => firedCount++;
+            var items = new[] { 5, 6, 7, 8 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            ring.AddRange(items);
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            ring.AddRange(items);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(firedCount, Is.EqualTo(8));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+#endif
+
+        [Test]
+        public void OnOverwrite_AddRange_HandlerThrows_KeepsPartiallyAppliedInput()
+        {
+            var ring = new RingBuffer<int>(2);
+            ring.AddRange(new[] { 1, 2 }); // 2, 1
+            int calls = 0;
+            ring.OnOverwrite += _ =>
+            {
+                if (++calls == 2)
+                    throw new InvalidOperationException("boom");
+            };
+
+            Assert.That(
+                () => ring.AddRange(new[] { 3, 4, 5 }),
+                Throws.TypeOf<InvalidOperationException>());
+
+            // 3、4 已写入，5 因异常未写入
+            AssertContents(ring, 4, 3);
         }
 
         [Test]

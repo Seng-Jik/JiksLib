@@ -72,10 +72,15 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 当写入导致最旧元素被覆盖时触发
-        /// 参数为被覆盖的元素。AddRange 会为每个被覆盖的元素各触发一次（从最旧到最新），
-        /// 包括本次输入中因超出容量而未被保留的元素（按输入顺序排在旧元素之后）；
-        /// 事件在缓冲区完成写入后触发，处理器抛出的异常会向外传播。
+        /// 参数为被覆盖的元素。AddRange 与逐个 <see cref="Add(T)"/> 的语义一致：
+        /// 元素按输入顺序写入，每覆盖一个元素就立即触发一次（从最旧到最新）。
         /// </summary>
+        /// <remarks>
+        /// 事件在该元素写入并更新 <see cref="Count"/> 与头部位置后立即触发，
+        /// 处理器抛出的异常会向外传播。AddRange 期间处理器观察到的是批次已应用的部分状态；
+        /// 若处理器抛异常，缓冲区会停留在已应用的部分输入上。
+        /// 处理器内重入修改缓冲区会改变后续元素的写入结果。
+        /// </remarks>
         public event Action<T>? OnOverwrite;
 
         /// <summary>
@@ -127,8 +132,8 @@ namespace JiksLib.Collections
         /// <summary>
         /// 写入一组元素
         /// 元素按给定顺序逐个写入，因此序列中最后一个元素最终位于下标 0；
-        /// 写入数量超过剩余空间时会覆盖最旧的元素，被覆盖的元素
-        /// （包括本次输入中因超出容量而未被保留的元素）通过 <see cref="OnOverwrite"/> 报告
+        /// 写入数量超过剩余空间时会覆盖最旧的元素，被覆盖的元素在写入过程中
+        /// 通过 <see cref="OnOverwrite"/> 报告
         /// </summary>
         /// <exception cref="ArgumentNullException">
         /// 当 <paramref name="items"/> 未引用数组时抛出
@@ -140,28 +145,14 @@ namespace JiksLib.Collections
             if (items.Count == 0)
                 return;
 
-            // 事件处理器存在时才复制被覆盖的旧元素，避免给热路径增加无谓分配。
-            var onOverwrite = OnOverwrite;
-            T[]? overwrittenItems = null;
-            int overwrittenCount = 0;
-            int droppedInputCount = 0;
-
-            if (onOverwrite != null)
+            // 有订阅者时按元素顺序逐个写入：覆盖事件必须在写入过程中触发，
+            // 与连续调用 Add 的语义一致，也因此不需要为保存旧元素分配快照。
+            if (OnOverwrite != null)
             {
-                long overwrittenTotal = (long)count + items.Count - buffer.Length;
-                if (overwrittenTotal > 0)
-                {
-                    overwrittenCount = (int)Math.Min(overwrittenTotal, count);
-                    droppedInputCount = (int)(overwrittenTotal - overwrittenCount);
+                for (int i = 0; i < items.Count; i++)
+                    AddCore(array[items.Offset + i], out _);
 
-                    if (overwrittenCount > 0)
-                    {
-                        overwrittenItems = new T[overwrittenCount];
-
-                        for (int i = 0; i < overwrittenCount; i++)
-                            overwrittenItems[i] = buffer[PhysicalIndex(count - 1 - i)];
-                    }
-                }
+                return;
             }
 
             if (items.Count < buffer.Length)
@@ -200,18 +191,6 @@ namespace JiksLib.Collections
 
                 head = newHead;
                 count = buffer.Length;
-            }
-
-            if (overwrittenItems != null)
-            {
-                for (int i = 0; i < overwrittenCount; i++)
-                    onOverwrite!(overwrittenItems[i]);
-            }
-
-            if (droppedInputCount > 0)
-            {
-                for (int i = 0; i < droppedInputCount; i++)
-                    onOverwrite!(array[items.Offset + i]);
             }
         }
 
