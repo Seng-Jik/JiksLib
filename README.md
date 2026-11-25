@@ -635,7 +635,7 @@ dotnet pack ./JiksLib/JiksLib.csproj --configuration Release --no-build --output
 
 ## 版本 v2.0.0
 
-当前版本：**2.0.0**（`PackageId` 为 `JiksLib`，MIT）。
+当前版本：**2.0.0**（`PackageId` 为 `JiksLib`，MIT）。完整的版本记录与迁移说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 | 维度 | 2.0.0 的状态 |
 | --- | --- |
