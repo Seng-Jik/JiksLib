@@ -10,7 +10,7 @@ JiksLib 把游戏开发中反复出现的一类底层工具收敛到一处：数
 - **少分配**：热路径尽量使用 `ArraySegment<byte>`、结构体枚举器和结构体事件发布器，减少装箱与临时对象；`ValueEventBus` 专为值类型事件设计，正是为了避免发布过程中的装箱。
 - **显式契约**：可能失败的操作提供 `Try*` 形式，参数校验统一走 `ThrowIfNull`，异常类型与消息明确。
 - **可验证**：`JiksLib.Test` 用 NUnit 覆盖各模块，`JiksLib.Benchmark` 用 BenchmarkDotNet 度量关键路径。
-- **主线程假设**：事件总线、`SafeEvent` 与 `ServiceLocator` 仅支持在主线程使用；多数集合非线程安全，需要并发访问时请自行加锁。
+- **主线程假设**：事件总线、`SafeEvent` 与 `ServiceCollection` 仅支持在主线程使用；多数集合非线程安全，需要并发访问时请自行加锁。
 
 ## 目标框架
 
@@ -105,7 +105,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `SafeEvent<TEvent>` / `ISafeEventPublisher<TEvent>` / `SafeEventHandler<TEvent>` | 单个事件的安全包装器：隔离监听器异常；默认拒绝发布期间增删监听器与递归发布，可配置为延迟增删和 FIFO 队列化递归发布。 | [SafeEvent.cs](JiksLib/Control/SafeEvent.cs) |
 | `FSM<TState, TStateArg, TTransition>` | 完整的有限状态机，通过 `Builder` 注册状态与转移（含任意状态转移和默认兜底状态），提供 `OnBuild`、`OnEnter`、`OnExit`、`OnReset` 生命周期与切换事件，可用 `CurrentTransitions` / `AnyTimeTransitions` 枚举转移；`Builder` 只能构建一次，构建后只读，可用复制构造函数复制出可再次构建的副本。 | [FSM.cs](JiksLib/Control/FSM.cs) |
 | `LightFSM<TState>` | 不带转移表的轻量状态机，只需实现 `IState` 的 `OnEnter` / `OnExit`，用 `Switch(nextState)` 切换。 | [LightFSM.cs](JiksLib/Control/LightFSM.cs) |
-| `ServiceLocator` | 静态服务定位器；通过 `Scope` 批量注册服务，`EnterScope` 返回需按逆序退出的 `IDisposable`。 | [ServiceLocator.cs](JiksLib/Control/ServiceLocator.cs) |
+| `ServiceCollection` | 实例化服务集合：子类在构造时注册服务，按类型查找并支持 fallback 链；`Dispose` 按逆序释放自己持有的服务。 | [ServiceCollection.cs](JiksLib/Control/ServiceCollection.cs) |
 | `UnitType` | 空结构体单元类型，用于填充泛型类或泛型方法中的“无参数”类型位。 | [UnitType.cs](JiksLib/Control/UnitType.cs) |
 
 ### `JiksLib.Extensions`
@@ -135,5 +135,5 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | 类型 | 说明 | 文件 |
 | --- | --- | --- |
 | `CsvParser` | 解析内存中 `string` / `StringSegment` 形式的 CSV；嵌套的 `CsvParser.Field` 保存原始切片 `Raw` 与 `HasEscapedQuotes`，`Value` / `ToString()` 才解转义。**枚举全程零分配**，只有读取含 `""` 转义的字段值时才新建一次字符串。`CsvParser` 实现 `IEnumerable<CsvParser.Row>`，`Row` 实现 `IEnumerable<CsvParser.Field>`（枚举器是嵌套的 `Row.Enumerator`，可直接用 LINQ）；`foreach` 走结构体枚举器，零装箱。 | [CsvParser.cs](JiksLib/Text/CsvParser.cs) |
-| `CsvReader` | 从 `Stream` 按需流式读取 CSV：`MoveNext` 只准备行，字段在枚举 `Row` 时才逐个解析并物化；跳过整行或未读字段时只扫描、不分配。行类型 `CsvReader.Row` 是单遍视图（枚举器是嵌套的 `Row.Enumerator`），推进到下一行后失效。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
+| `CsvReader` | 从 `Stream` 单遍流式读取 CSV：`ReadRow()` 推进到下一行，`ReadField()` / `TryReadField()` 逐个读取字段；未读字段在下一行时直接跳过，不物化、不分配。可修改分隔符以读取 TSV / DSV。 | [CsvReader.cs](JiksLib/Text/CsvReader.cs) |
 | `CsvWriter` | 按 RFC 4180 的引号/转义规则生成 CSV，记录分隔固定 CRLF；分隔符可配置以输出 TSV / DSV（此时不再是严格 RFC 4180），并支持强制给所有字段加引号。 | [CsvWriter.cs](JiksLib/Text/CsvWriter.cs) |
