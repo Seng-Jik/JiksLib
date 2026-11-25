@@ -224,10 +224,10 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Dispose_SameInstanceRegisteredTwice_DisposesOnce()
+        public void Dispose_SameInstanceRegisteredTwice_DisposesTwice()
         {
             var log = new List<string>();
-            var disposable = new TrackingDisposable(log, "once");
+            var disposable = new TrackingDisposable(log, "shared");
             var collection = new TestCollection();
 
             collection.RegisterService(disposable);
@@ -235,7 +235,8 @@ namespace JiksLib.Test.Control
 
             collection.Dispose();
 
-            Assert.That(log, Is.EqualTo(new[] { "once" }));
+            // 不做去重：每次注册都会入栈一次，因此同一实例会被释放两次。
+            Assert.That(log, Is.EqualTo(new[] { "shared", "shared" }));
         }
 
         [Test]
@@ -250,47 +251,50 @@ namespace JiksLib.Test.Control
         }
 
         [Test]
-        public void Register_AfterDispose_ThrowsObjectDisposedException()
+        public void Register_AfterDispose_CollectionRemainsUsable()
         {
             var collection = new TestCollection();
             collection.Dispose();
 
-            Assert.That(
-                () => collection.RegisterService(new List<int>()),
-                Throws.TypeOf<ObjectDisposedException>());
+            var service = new List<int>();
+            collection.RegisterService(service);
+
+            Assert.That(collection.Get<List<int>>(), Is.SameAs(service));
         }
 
         [Test]
-        public void Attach_AfterDispose_ThrowsObjectDisposedException()
+        public void Attach_AfterDispose_IsReleasedByNextDispose()
         {
+            var log = new List<string>();
             var collection = new TestCollection();
             collection.Dispose();
 
-            Assert.That(
-                () => collection.Attach(new ThrowingDisposable()),
-                Throws.TypeOf<ObjectDisposedException>());
+            collection.Attach(new TrackingDisposable(log, "reused"));
+            Assert.That(log, Is.Empty);
+
+            collection.Dispose();
+            Assert.That(log, Is.EqualTo(new[] { "reused" }));
         }
 
         [Test]
-        public void Get_AfterDispose_ThrowsObjectDisposedException()
+        public void Get_AfterDispose_ThrowsInvalidOperationException()
         {
             var collection = new TestCollection();
             collection.Dispose();
 
             Assert.That(
                 () => collection.Get<List<int>>(),
-                Throws.TypeOf<ObjectDisposedException>());
+                Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]
-        public void TryGet_AfterDispose_ThrowsObjectDisposedException()
+        public void TryGet_AfterDispose_ReturnsFalse()
         {
             var collection = new TestCollection();
             collection.Dispose();
 
-            Assert.That(
-                () => collection.TryGet<List<int>>(out _),
-                Throws.TypeOf<ObjectDisposedException>());
+            Assert.That(collection.TryGet<List<int>>(out var service), Is.False);
+            Assert.That(service, Is.Null);
         }
 
         [Test]

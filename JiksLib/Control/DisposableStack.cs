@@ -10,9 +10,17 @@ namespace JiksLib.Control
     /// 即使其中某个对象在释放时抛出异常，剩余对象仍会被释放，全部释放完成后才重新抛出异常
     /// Dispose 可安全地重复调用，栈为空时不会做任何事情
     /// Dispose 执行期间禁止调用 <see cref="Add(IDisposable)"/> / <see cref="Add(Action)"/>，
-    /// 否则抛 <see cref="InvalidOperationException"/>；Dispose 返回后可以继续作为空栈使用
+    /// 否则抛 <see cref="InvalidOperationException"/>
     /// 此类不是线程安全的，只应在同一个线程上使用
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Dispose 返回后可以安全地把它当成一个全新的空栈继续使用</b>：栈已被清空，
+    /// 可以立即再次 <see cref="Add(IDisposable)"/> / <see cref="Add(Action)"/>，
+    /// 新加入的项由下一次 Dispose 照常释放，不受上一次 Dispose 的影响。
+    /// 这是刻意保证的语义：调用方不需要、也不应该因为"已经释放过"而丢弃这个实例。
+    /// </para>
+    /// </remarks>
     public sealed class DisposableStack : IDisposable
     {
         /// <summary>
