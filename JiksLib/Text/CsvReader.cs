@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -14,17 +13,16 @@ namespace JiksLib.Text
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 字段是<b>按需读取</b>的：<see cref="Enumerator.MoveNext"/> 只准备一行，不读取记录内容；
-    /// 只有枚举 <see cref="Row"/> 的字段时才真正解析。因此：
+    /// 读取是<b>单遍、按需</b>的：<see cref="ReadRow"/> 只准备一行，不读取记录内容；
+    /// 只有调用 <see cref="ReadField"/> / <see cref="TryReadField"/> 时才真正解析字段。因此：
     /// </para>
     /// <list type="bullet">
     /// <item>跳过整行（不枚举字段）不会构造任何字符串，只做一次扫描；</item>
     /// <item>只读前几个字段（例如主键）时，剩余字段会在下一轮 MoveNext 时被直接跳过，不会物化。</item>
     /// </list>
     /// <para>
-    /// <see cref="Row"/> 是当前记录在流上的<b>单遍视图</b>：必须在同一次循环内枚举字段；
-    /// 推进到下一行后旧 Row 失效，再次枚举会抛 <see cref="InvalidOperationException"/>。
     /// 读取器本身不实现 <see cref="IEnumerable{T}"/>：底层是单遍流。
+    /// 每行必须在 <see cref="ReadRow"/> 之后读取字段；未读字段会在下一行开始时被直接跳过。
     /// </para>
     /// </remarks>
     public sealed class CsvReader : IDisposable
@@ -63,25 +61,75 @@ namespace JiksLib.Text
         }
 
         /// <summary>
-        /// 获取行枚举器
-        /// 结构体枚举器，配合 foreach 使用不产生分配
-        /// </summary>
-        public Enumerator GetEnumerator() => new(this);
-
-        /// <summary>
         /// 销毁读取器
         /// 构造时 <c>leaveOpen = false</c> 则同时销毁底层流
         /// </summary>
         public void Dispose()
         {
+            disposed = true;
             textReader.Dispose();
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
-        /// 当前行版本：推进到新行时递增，用于让过期 Row 报错
+        /// 校验读取器尚未被释放
         /// </summary>
-        internal int Version => version;
+        void ThrowIfDisposed()
+        {
+#if NET7_0_OR_GREATER
+            ObjectDisposedException.ThrowIf(disposed, this);
+#else
+            if (disposed)
+                throw new ObjectDisposedException(nameof(CsvReader));
+#endif
+        }
+
+        /// <summary>
+        /// 推进到下一行
+        /// 当前行还有未读字段时先跳过，不物化被跳过的内容。
+        /// </summary>
+        /// <returns>成功推进到一行时返回 true；流结束时返回 false</returns>
+        /// <exception cref="ObjectDisposedException">读取器已经被释放时抛出</exception>
+        public bool ReadRow()
+        {
+            ThrowIfDisposed();
+            return PrepareNextRow();
+        }
+
+        /// <summary>
+        /// 读取当前行的下一个字段
+        /// </summary>
+        /// <returns>字段内容</returns>
+        /// <exception cref="InvalidOperationException">
+        /// 尚未调用 <see cref="ReadRow"/>，或当前行的字段已经读完时抛出
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">读取器已经被释放时抛出</exception>
+        public string ReadField()
+        {
+            if (!TryReadField(out var field))
+                throw new InvalidOperationException(
+                    "No more fields in the current row. Call ReadRow() first.");
+
+            return field;
+        }
+
+        /// <summary>
+        /// 尝试读取当前行的下一个字段
+        /// </summary>
+        /// <param name="field">字段内容；当前行已经没有字段时为 <see cref="string.Empty"/></param>
+        /// <returns>读取到字段时返回 true；当前行已经没有字段时返回 false</returns>
+        /// <exception cref="InvalidOperationException">尚未调用 <see cref="ReadRow"/> 时抛出</exception>
+        /// <exception cref="ObjectDisposedException">读取器已经被释放时抛出</exception>
+        public bool TryReadField(out string field)
+        {
+            ThrowIfDisposed();
+
+            if (!rowStarted)
+                throw new InvalidOperationException(
+                    "Call ReadRow() before reading fields.");
+
+            return TryReadFieldCore(out field);
+        }
 
         /// <summary>
         /// 准备下一行；当前行还有未读字段时先跳过
@@ -97,15 +145,9 @@ namespace JiksLib.Text
             fieldIndex = 0;
 
             if (PeekChar() < 0)
-            {
-                // 推进到 EOF 同样要让先前返回的 Row 失效，
-                // 否则过期 Row 会静默返回空集合而不是抛出异常。
-                version++;
                 return false;
-            }
 
             rowStarted = true;
-            version++;
             return true;
         }
 
@@ -113,7 +155,7 @@ namespace JiksLib.Text
         /// 读取当前行的下一个字段；当前行已结束时返回 false
         /// 只物化这个字段本身，不会读取整条记录
         /// </summary>
-        internal bool TryReadField(out string field)
+        bool TryReadFieldCore(out string field)
         {
             field = string.Empty;
 
@@ -428,145 +470,11 @@ namespace JiksLib.Text
 
         int bufferIndex;
         int bufferLength;
-        int version;
+        bool disposed;
         int fieldIndex;
         bool rowStarted;
         bool rowFinished;
         bool endOfStream;
 
-        /// <summary>
-        /// 一行记录
-        /// 当前记录在流上的单遍视图，<c>foreach (var field in row)</c> 按顺序读取字段。
-        /// 实现 <see cref="IEnumerable{T}"/>（元素为 <see cref="string"/>），枚举器是嵌套的
-        /// <see cref="Row.Enumerator"/>。
-        /// </summary>
-        public readonly struct Row : IEnumerable<string>
-        {
-            internal Row(CsvReader reader, int version)
-            {
-                this.reader = reader;
-                this.version = version;
-            }
-
-            /// <summary>
-            /// 获取字段枚举器
-            /// 结构体枚举器，配合 foreach 使用不产生分配
-            /// </summary>
-            public Enumerator GetEnumerator() => new(reader, version);
-
-            /// <summary>
-            /// 通过 IEnumerable 遍历（会装箱结构体枚举器，仅用于 LINQ 等通用场景）
-            /// </summary>
-            IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-            readonly CsvReader reader;
-            readonly int version;
-
-            /// <summary>
-            /// 字段枚举器
-            /// 逐字段从流读取；结构体枚举器，配合 foreach 使用不产生分配。
-            /// 只物化被读取到的字段，跳过未读字段时不分配。
-            /// </summary>
-            public struct Enumerator : IEnumerator<string>
-            {
-                internal Enumerator(CsvReader reader, int version)
-                {
-                    this.reader = reader;
-                    this.version = version;
-                    current = string.Empty;
-                    finished = false;
-                }
-
-                /// <summary>
-                /// 当前字段
-                /// </summary>
-                public string Current => current;
-
-                object? IEnumerator.Current => Current;
-
-                /// <summary>
-                /// 移动到下一个字段
-                /// </summary>
-                /// <returns>还有字段时返回 true</returns>
-                public bool MoveNext()
-                {
-                    if (finished)
-                        return false;
-
-                    if (reader.Version != version)
-                        throw new InvalidOperationException(
-                            "The row is no longer current. Enumerate its fields before advancing the reader.");
-
-                    if (!reader.TryReadField(out current))
-                    {
-                        finished = true;
-                        return false;
-                    }
-
-                    return true;
-                }
-
-                /// <summary>
-                /// 不支持重置：请重新调用 GetEnumerator
-                /// </summary>
-                public void Reset() =>
-                    throw new NotSupportedException(
-                        "Reset is not supported on CsvReader.Row.Enumerator. Call GetEnumerator() again instead.");
-
-                public void Dispose() { }
-
-                readonly CsvReader reader;
-                readonly int version;
-                string current;
-                bool finished;
-            }
-        }
-
-        /// <summary>
-        /// 行枚举器
-        /// 结构体枚举器，配合 foreach 使用不产生分配
-        /// </summary>
-        public struct Enumerator : IEnumerator<Row>
-        {
-            internal Enumerator(CsvReader reader)
-            {
-                this.reader = reader;
-                current = default;
-            }
-
-            /// <summary>
-            /// 当前行
-            /// </summary>
-            public Row Current => current;
-
-            object? IEnumerator.Current => Current;
-
-            /// <summary>
-            /// 移动到下一条记录
-            /// </summary>
-            /// <returns>还有记录时返回 true</returns>
-            public bool MoveNext()
-            {
-                if (!reader.PrepareNextRow())
-                    return false;
-
-                current = new Row(reader, reader.Version);
-                return true;
-            }
-
-            /// <summary>
-            /// 不支持重置：请对 CsvReader 重新 GetEnumerator
-            /// </summary>
-            public void Reset() =>
-                throw new NotSupportedException(
-                    "Reset is not supported on CsvReader.Enumerator. Call CsvReader.GetEnumerator() instead.");
-
-            public void Dispose() { }
-
-            readonly CsvReader reader;
-            Row current;
-        }
     }
 }

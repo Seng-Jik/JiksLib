@@ -71,17 +71,23 @@ namespace JiksLib.Collections
         public bool IsFull => count == buffer.Length;
 
         /// <summary>
+        /// 当写入导致最旧元素被覆盖时触发
+        /// 参数为被覆盖的元素。AddRange 与逐个 <see cref="Add(T)"/> 的语义一致：
+        /// 元素按输入顺序写入，每覆盖一个元素就立即触发一次（从最旧到最新）。
+        /// </summary>
+        /// <remarks>
+        /// 事件在该元素写入并更新 <see cref="Count"/> 与头部位置后立即触发，
+        /// 处理器抛出的异常会向外传播。AddRange 期间处理器观察到的是批次已应用的部分状态；
+        /// 若处理器抛异常，缓冲区会停留在已应用的部分输入上。
+        /// 处理器内重入修改缓冲区会改变后续元素的写入结果。
+        /// </remarks>
+        public event Action<T>? OnOverwrite;
+
+        /// <summary>
         /// 写入一个元素
         /// 元素成为下标 0；若缓存已满，最旧的元素（末尾）被覆盖
         /// </summary>
-        public void Add(T item)
-        {
-            head = head == 0 ? buffer.Length - 1 : head - 1;
-            buffer[head] = item;
-
-            if (count < buffer.Length)
-                count++;
-        }
+        public void Add(T item) => AddCore(item, out _);
 
         /// <summary>
         /// 写入一个元素
@@ -94,22 +100,40 @@ namespace JiksLib.Collections
         /// <returns>是否发生了覆盖</returns>
         public bool Add(T item, out T? evicted)
         {
-            if (count == buffer.Length)
+            return AddCore(item, out evicted);
+        }
+
+        bool AddCore(T item, out T? evicted)
+        {
+            bool overwritten = count == buffer.Length;
+
+            if (overwritten)
             {
-                evicted = buffer[head == 0 ? buffer.Length - 1 : head - 1];
-                Add(item);
-                return true;
+                int oldestIndex = head == 0 ? buffer.Length - 1 : head - 1;
+                evicted = buffer[oldestIndex];
+            }
+            else
+            {
+                evicted = default;
             }
 
-            evicted = default;
-            Add(item);
-            return false;
+            head = head == 0 ? buffer.Length - 1 : head - 1;
+            buffer[head] = item;
+
+            if (count < buffer.Length)
+                count++;
+
+            if (overwritten)
+                OnOverwrite?.Invoke(evicted!);
+
+            return overwritten;
         }
 
         /// <summary>
         /// 写入一组元素
         /// 元素按给定顺序逐个写入，因此序列中最后一个元素最终位于下标 0；
-        /// 写入数量超过剩余空间时会覆盖最旧的元素
+        /// 写入数量超过剩余空间时会覆盖最旧的元素，被覆盖的元素在写入过程中
+        /// 通过 <see cref="OnOverwrite"/> 报告
         /// </summary>
         /// <exception cref="ArgumentNullException">
         /// 当 <paramref name="items"/> 未引用数组时抛出
@@ -120,6 +144,16 @@ namespace JiksLib.Collections
 
             if (items.Count == 0)
                 return;
+
+            // 有订阅者时按元素顺序逐个写入：覆盖事件必须在写入过程中触发，
+            // 与连续调用 Add 的语义一致，也因此不需要为保存旧元素分配快照。
+            if (OnOverwrite != null)
+            {
+                for (int i = 0; i < items.Count; i++)
+                    AddCore(array[items.Offset + i], out _);
+
+                return;
+            }
 
             if (items.Count < buffer.Length)
             {

@@ -1431,6 +1431,209 @@ namespace JiksLib.Test.Collections
 
         #endregion
 
+        #region OnOverwrite
+
+        [Test]
+        public void OnOverwrite_WhenNotFull_DoesNotFire()
+        {
+            var ring = new RingBuffer<int>(3);
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.Add(1);
+            ring.Add(2);
+
+            Assert.That(fired, Is.Empty);
+        }
+
+        [Test]
+        public void OnOverwrite_WhenFull_FiresWithOldestElement()
+        {
+            var ring = CreateFilled(3); // 3, 2, 1
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.Add(4);
+
+            Assert.That(fired, Is.EqualTo(new[] { 1 }));
+            AssertContents(ring, 4, 3, 2);
+        }
+
+        [Test]
+        public void OnOverwrite_AddWithEvicted_FiresOnce()
+        {
+            var ring = CreateFilled(2); // 2, 1
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            bool overwritten = ring.Add(3, out var evicted);
+
+            Assert.That(overwritten, Is.True);
+            Assert.That(evicted, Is.EqualTo(1));
+            Assert.That(fired, Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_PartialOverwrite_FiresOldestFirst()
+        {
+            var ring = new RingBuffer<int>(5);
+            ring.AddRange(new[] { 1, 2, 3, 4 }); // 4, 3, 2, 1
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 5, 6, 7 }); // 覆盖 1、2
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2 }));
+            AssertContents(ring, 7, 6, 5, 4, 3);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_FiresDuringWrite()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(3);
+            ring.AddRange(new[] { 1, 2, 3 });
+            var newestAtEvent = new List<int>();
+            ring.OnOverwrite += _ => newestAtEvent.Add(ring[0]);
+
+            // Act
+            ring.AddRange(new[] { 4, 5, 6 });
+
+            // Assert：边写边发，事件里看到的是对应元素刚写入后的状态
+            Assert.That(newestAtEvent, Is.EqualTo(new[] { 4, 5, 6 }));
+            AssertContents(ring, 6, 5, 4);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_LargerThanCapacity_FiresForExistingAndDroppedElements()
+        {
+            var ring = new RingBuffer<int>(3);
+            ring.AddRange(new[] { 1, 2, 3 }); // 3, 2, 1
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 4, 5, 6, 7 }); // 4 写入后又被 5 覆盖
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_ToEmptyBufferLargerThanCapacity_FiresForDroppedElements()
+        {
+            var ring = new RingBuffer<int>(3);
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7 });
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_ExactlyCapacity_FiresOnlyForExistingElements()
+        {
+            var ring = new RingBuffer<int>(3);
+            ring.AddRange(new[] { 1, 2, 3 });
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 4, 5, 6 });
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3 }));
+            AssertContents(ring, 6, 5, 4);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_OversizedEnumerable_MatchesArrayEvents()
+        {
+            var fromArray = new RingBuffer<int>(3);
+            var fromList = new RingBuffer<int>(3);
+            var arrayFired = new List<int>();
+            var listFired = new List<int>();
+            fromArray.OnOverwrite += arrayFired.Add;
+            fromList.OnOverwrite += listFired.Add;
+
+            fromArray.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7 });
+            fromList.AddRange(new List<int> { 1, 2, 3, 4, 5, 6, 7 });
+
+            Assert.That(arrayFired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            Assert.That(listFired, Is.EqualTo(arrayFired));
+            AssertContents(fromArray, 7, 6, 5);
+            AssertContents(fromList, 7, 6, 5);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_WhenNotFull_DoesNotFire()
+        {
+            var ring = new RingBuffer<int>(4);
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 1, 2, 3 });
+
+            Assert.That(fired, Is.Empty);
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void OnOverwrite_AddRange_WithSubscriber_DoesNotAllocate()
+        {
+            var ring = new RingBuffer<int>(4);
+            ring.AddRange(new[] { 1, 2, 3, 4 });
+            int firedCount = 0;
+            ring.OnOverwrite += _ => firedCount++;
+            var items = new[] { 5, 6, 7, 8 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            ring.AddRange(items);
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            ring.AddRange(items);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(firedCount, Is.EqualTo(8));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+#endif
+
+        [Test]
+        public void OnOverwrite_AddRange_HandlerThrows_KeepsPartiallyAppliedInput()
+        {
+            var ring = new RingBuffer<int>(2);
+            ring.AddRange(new[] { 1, 2 }); // 2, 1
+            int calls = 0;
+            ring.OnOverwrite += _ =>
+            {
+                if (++calls == 2)
+                    throw new InvalidOperationException("boom");
+            };
+
+            Assert.That(
+                () => ring.AddRange(new[] { 3, 4, 5 }),
+                Throws.TypeOf<InvalidOperationException>());
+
+            // 3、4 已写入，5 因异常未写入
+            AssertContents(ring, 4, 3);
+        }
+
+        [Test]
+        public void OnOverwrite_HandlerThrows_ExceptionPropagatesAfterWrite()
+        {
+            var ring = new RingBuffer<int>(1);
+            ring.Add(1);
+            ring.OnOverwrite += _ => throw new InvalidOperationException("boom");
+
+            Assert.That(
+                () => ring.Add(2),
+                Throws.TypeOf<InvalidOperationException>());
+
+            AssertContents(ring, 2);
+        }
+
+        #endregion
+
         #region Stress / Model
 
         [Test]

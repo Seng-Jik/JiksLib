@@ -1065,6 +1065,219 @@ namespace JiksLib.Test.Extensions
 
         #endregion
 
+        #region AsSegment Tests
+
+        [Test]
+        public void AsSegment_EnumeratesAllElementsInOrder()
+        {
+            IReadOnlyList<int> list = new List<int> { 1, 2, 3 };
+            var values = new List<int>();
+
+            foreach (var item in list.AsSegment())
+                values.Add(item);
+
+            Assert.That(values, Is.EqualTo(new[] { 1, 2, 3 }));
+        }
+
+        [Test]
+        public void AsSegment_ReflectsElementChanges()
+        {
+            var list = new List<int> { 1, 2 };
+            var segment = list.AsSegment();
+
+            list[1] = 20;
+
+            Assert.That(segment.Count, Is.EqualTo(2));
+            Assert.That(segment[1], Is.EqualTo(20));
+        }
+
+        [Test]
+        public void AsSegment_WithEmptyList_IsEmpty()
+        {
+            IReadOnlyList<int> list = Array.Empty<int>();
+
+            Assert.That(list.AsSegment().IsEmpty, Is.True);
+        }
+
+        [Test]
+        public void AsSegment_WithNull_ThrowsArgumentNullException()
+        {
+            IReadOnlyList<int>? list = null;
+
+            Assert.That(
+                () => list!.AsSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void AsSegment_Array_ReturnsArraySegment()
+        {
+            var array = new[] { 1, 2, 3 };
+
+            var segment = array.AsSegment();
+
+            Assert.That(segment.Array, Is.SameAs(array));
+            Assert.That(segment.Offset, Is.EqualTo(0));
+            Assert.That(segment.Count, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AsSegment_Array_WithNull_ThrowsArgumentNullException()
+        {
+            int[]? array = null;
+
+            Assert.That(
+                () => array!.AsSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_EnumeratesSegmentRange()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+            var segment = new ArraySegment<int>(array, 1, 2);
+
+            var values = new List<int>();
+            foreach (var item in segment.AsReadOnlyListSegment())
+                values.Add(item);
+
+            Assert.That(values, Is.EqualTo(new[] { 2, 3 }));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_DefaultSegment_ThrowsArgumentNullException()
+        {
+            var segment = default(ArraySegment<int>);
+
+            Assert.That(
+                () => segment.AsReadOnlyListSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_EmptyArray_IsEmpty()
+        {
+            var segment = Array.Empty<int>().AsSegment();
+
+            var view = segment.AsReadOnlyListSegment();
+
+            Assert.That(view.IsEmpty, Is.True);
+            Assert.That(view.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_WrapsWholeArrayWithoutCopy()
+        {
+            // Arrange
+            var array = new[] { 1, 2, 3 };
+
+            // Act
+            var segment = array.AsReadOnlyListSegment();
+
+            // Assert
+            Assert.That(segment.Source, Is.SameAs(array));
+            Assert.That(segment.Offset, Is.EqualTo(0));
+            Assert.That(segment.Count, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_ReflectsElementChanges()
+        {
+            // Arrange
+            var array = new[] { 1, 2, 3 };
+            var segment = array.AsReadOnlyListSegment();
+
+            // Act
+            array[1] = 20;
+
+            // Assert
+            Assert.That(segment[1], Is.EqualTo(20));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_WithNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            int[]? array = null;
+
+            // Act & Assert
+            Assert.That(
+                () => array!.AsReadOnlyListSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+#if NET5_0_OR_GREATER
+        [Test]
+        public void AsSegment_Foreach_DoesNotAllocate()
+        {
+            IReadOnlyList<int> list = new List<int> { 1, 2, 3, 4 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            int warmup = 0;
+            foreach (var item in list.AsSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in list.AsSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsSegment_Array_Foreach_DoesNotAllocate()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+
+            int warmup = 0;
+            foreach (var item in array.AsSegment().AsReadOnlyListSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in array.AsSegment().AsReadOnlyListSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_Foreach_DoesNotAllocate()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            int warmup = 0;
+            foreach (var item in array.AsReadOnlyListSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in array.AsReadOnlyListSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+#endif
+
+        #endregion
+
         #region Helper Class for Testing
 
         private class TestList<T> : IReadOnlyList<T>

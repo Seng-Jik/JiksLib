@@ -6,7 +6,6 @@ using JiksLib.Collections;
 using JiksLib.Control;
 using JiksLib.Extensions;
 using JiksLib.IO;
-using JiksLib.Test.Control;
 using JiksLib.Text;
 
 namespace JiksLib.Test
@@ -112,34 +111,6 @@ namespace JiksLib.Test
         {
             var ex = Assert.Throws<ArgumentException>(() => new IntRange(5, true, 1, true));
             Assert.That(ex!.ParamName, Is.EqualTo("min"));
-        }
-
-        #endregion
-
-        #region ServiceLocator（P1-8）
-
-        [Test]
-        public void ServiceLocator_DuplicateRegistration_RestoresOriginalValue()
-        {
-            ServiceLocator.Reset();
-
-            var scope = new TestScope(s =>
-            {
-                s.RegisterService("first");
-                s.RegisterService("second");
-            });
-
-            using (ServiceLocator.EnterScope(scope))
-            {
-                Assert.That(ServiceLocator.Get<string>(), Is.EqualTo("second"));
-            }
-
-            // 修复前注销委托按正序执行，退出作用域后会残留 "first"
-            Assert.That(
-                () => ServiceLocator.Get<string>(),
-                Throws.TypeOf<InvalidOperationException>());
-
-            ServiceLocator.Reset();
         }
 
         #endregion

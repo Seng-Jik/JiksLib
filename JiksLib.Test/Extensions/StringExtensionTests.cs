@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using JiksLib.Extensions;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace JiksLib.Test.Extensions
@@ -692,6 +693,99 @@ namespace JiksLib.Test.Extensions
             // Assert
             Assert.That(result, Is.True);
             Assert.That(remain, Is.EqualTo(""));
+        }
+
+        #endregion
+
+        #region AsSegment Tests
+
+        [Test]
+        public void AsSegment_ReturnsFullStringView()
+        {
+            const string value = "hello,world";
+
+            var segment = value.AsSegment();
+
+            Assert.That(segment.Length, Is.EqualTo(value.Length));
+            Assert.That(segment.Source, Is.SameAs(value));
+            Assert.That(segment.ToString(), Is.EqualTo(value));
+        }
+
+        [Test]
+        public void AsSegment_WithEmptyString_IsEmpty()
+        {
+            var segment = string.Empty.AsSegment();
+
+            Assert.That(segment.IsEmpty, Is.True);
+            Assert.That(segment.Length, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsSegment_Null_ThrowsArgumentNullException()
+        {
+            string? value = null;
+
+            Assert.That(
+                () => value!.AsSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        #endregion
+
+        #region Tokenize Tests
+
+        [Test]
+        public void Tokenize_SplitsStringOnSeparator()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,b,c".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "b", "c" }));
+        }
+
+        [Test]
+        public void Tokenize_DefaultSeparator_IsComma()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,b".Tokenize())
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "b" }));
+        }
+
+        [Test]
+        public void Tokenize_EmptyString_ReturnsSingleEmptyToken()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "" }));
+        }
+
+        [Test]
+        public void Tokenize_PreservesEmptyEntries()
+        {
+            var tokens = new List<string>();
+
+            foreach (var token in "a,,c,".Tokenize(','))
+                tokens.Add(token.ToString());
+
+            Assert.That(tokens, Is.EqualTo(new[] { "a", "", "c", "" }));
+        }
+
+        [Test]
+        public void Tokenize_Null_ThrowsArgumentNullException()
+        {
+            string? value = null;
+
+            Assert.That(
+                () => value!.Tokenize(','),
+                Throws.TypeOf<ArgumentNullException>());
         }
 
         #endregion

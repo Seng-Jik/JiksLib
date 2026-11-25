@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JiksLib.Collections;
 
 namespace JiksLib.Extensions
 {
@@ -119,6 +120,70 @@ namespace JiksLib.Extensions
 
             for (int i = ls.Count - 1; i >= 0; --i)
                 yield return ls[i];
+        }
+
+        /// <summary>
+        /// 获取只读列表的零分配枚举视图
+        /// 返回值复用 <see cref="ReadOnlyListSegment{T}"/> 的结构体枚举器，
+        /// 用 foreach 遍历不会产生分配（不会经过 <see cref="IEnumerator{T}"/> 接口）。
+        /// 片段覆盖构造时的整个列表区间，不复制元素；区间内元素内容的后续变化会反映到片段上。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="ls">只读列表</param>
+        /// <returns>覆盖整个列表的只读片段</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="ls"/> 为 null 时抛出</exception>
+        public static ReadOnlyListSegment<T> AsSegment<T>(this IReadOnlyList<T> ls)
+        {
+            ls.ThrowIfNull(nameof(ls));
+            return new ReadOnlyListSegment<T>(ls);
+        }
+
+        /// <summary>
+        /// 将数组包装为 <see cref="ArraySegment{T}"/>
+        /// 不复制元素。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="array">数组</param>
+        /// <returns>覆盖整个数组的片段</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="array"/> 为 null 时抛出</exception>
+        public static ArraySegment<T> AsSegment<T>(this T[] array)
+        {
+            array.ThrowIfNull(nameof(array));
+            return new ArraySegment<T>(array);
+        }
+
+        /// <summary>
+        /// 将数组包装为 <see cref="ReadOnlyListSegment{T}"/>
+        /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="array">数组</param>
+        /// <returns>覆盖整个数组的只读片段</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="array"/> 为 null 时抛出</exception>
+        public static ReadOnlyListSegment<T> AsReadOnlyListSegment<T>(this T[] array)
+        {
+            array.ThrowIfNull(nameof(array));
+            return new ReadOnlyListSegment<T>(array);
+        }
+
+        /// <summary>
+        /// 将 <see cref="ArraySegment{T}"/> 转换为 <see cref="ReadOnlyListSegment{T}"/>
+        /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="segment">数组片段</param>
+        /// <returns>覆盖该片段区间的只读片段</returns>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="segment"/> 没有引用数组（默认值）时抛出
+        /// </exception>
+        public static ReadOnlyListSegment<T> AsReadOnlyListSegment<T>(
+            this ArraySegment<T> segment)
+        {
+            var array = segment.Array.ThrowIfNull(nameof(segment));
+            return new ReadOnlyListSegment<T>(
+                array,
+                segment.Offset,
+                segment.Count);
         }
 
         /// <summary>

@@ -29,11 +29,11 @@ namespace JiksLib.Test.Text
 
             using var reader = new CsvReader(stream, encoding, leaveOpen: false, separator);
 
-            foreach (var row in reader)
+            while (reader.ReadRow())
             {
                 var fields = new List<string>();
 
-                foreach (var field in row)
+                while (reader.TryReadField(out var field))
                     fields.Add(field);
 
                 rows.Add(fields);
@@ -204,20 +204,106 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
-        public void Read_NestedForeach_YieldsRowsAndFields()
+        public void Read_RowAndFieldLoop_YieldsAllFields()
         {
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b\nc,d"));
             using var reader = new CsvReader(stream);
 
             var fields = new List<string>();
 
-            foreach (var row in reader)
+            while (reader.ReadRow())
             {
-                foreach (var field in row)
+                while (reader.TryReadField(out var field))
                     fields.Add(field);
             }
 
             Assert.That(fields, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+        }
+
+        [Test]
+        public void ReadField_WithoutReadRow_ThrowsInvalidOperationException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            Assert.That(
+                () => reader.ReadField(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void ReadField_AfterRowExhausted_ThrowsInvalidOperationException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            Assert.That(reader.ReadRow(), Is.True);
+            Assert.That(reader.ReadField(), Is.EqualTo("a"));
+            Assert.That(reader.ReadField(), Is.EqualTo("b"));
+
+            Assert.That(
+                () => reader.ReadField(),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void TryReadField_AfterRowExhausted_ReturnsFalse()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            Assert.That(reader.ReadRow(), Is.True);
+            Assert.That(reader.TryReadField(out var first), Is.True);
+            Assert.That(first, Is.EqualTo("a"));
+            Assert.That(reader.TryReadField(out var second), Is.True);
+            Assert.That(second, Is.EqualTo("b"));
+            Assert.That(reader.TryReadField(out _), Is.False);
+        }
+
+        [Test]
+        public void TryReadField_WithoutReadRow_ThrowsInvalidOperationException()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            using var reader = new CsvReader(stream);
+
+            Assert.That(
+                () => reader.TryReadField(out _),
+                Throws.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void ReadRow_AtEndOfStream_ReturnsFalse()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
+            using var reader = new CsvReader(stream);
+
+            Assert.That(reader.ReadRow(), Is.True);
+            Assert.That(reader.ReadRow(), Is.False);
+            Assert.That(reader.ReadRow(), Is.False);
+        }
+
+        [Test]
+        public void ReadRow_AfterDispose_ThrowsObjectDisposedException()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            var reader = new CsvReader(stream, leaveOpen: true);
+            reader.Dispose();
+
+            Assert.That(
+                () => reader.ReadRow(),
+                Throws.TypeOf<ObjectDisposedException>());
+        }
+
+        [Test]
+        public void ReadField_AfterDispose_ThrowsObjectDisposedException()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
+            var reader = new CsvReader(stream, leaveOpen: true);
+            reader.Dispose();
+
+            Assert.That(
+                () => reader.TryReadField(out _),
+                Throws.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
@@ -271,34 +357,6 @@ namespace JiksLib.Test.Text
         }
 
         [Test]
-        public void Reset_ThrowsNotSupportedException()
-        {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a"));
-            using var reader = new CsvReader(stream);
-
-            var enumerator = reader.GetEnumerator();
-
-            Assert.That(
-                () => enumerator.Reset(),
-                Throws.TypeOf<NotSupportedException>());
-        }
-
-        [Test]
-        public void Row_IsEnumerableOfString_SupportsLinq()
-        {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
-            using var reader = new CsvReader(stream);
-
-            var enumerator = reader.GetEnumerator();
-            Assert.That(enumerator.MoveNext(), Is.True);
-
-            var row = enumerator.Current;
-            var fields = ((IEnumerable<string>)row).ToArray();
-
-            Assert.That(fields, Is.EqualTo(new[] { "a", "b" }));
-        }
-
-        [Test]
         public void Read_OnlyFirstField_SkipsRest()
         {
             using var stream = new MemoryStream(
@@ -308,14 +366,8 @@ namespace JiksLib.Test.Text
 
             var keys = new List<string>();
 
-            foreach (var row in reader)
-            {
-                foreach (var field in row)
-                {
-                    keys.Add(field);
-                    break;   // 只读主键，剩余字段由下一次 MoveNext 跳过
-                }
-            }
+            while (reader.ReadRow())
+                keys.Add(reader.ReadField());   // 剩余字段由下一次 ReadRow 跳过
 
             Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
         }
@@ -330,14 +382,8 @@ namespace JiksLib.Test.Text
 
             var keys = new List<string>();
 
-            foreach (var row in reader)
-            {
-                foreach (var field in row)
-                {
-                    keys.Add(field);
-                    break;
-                }
-            }
+            while (reader.ReadRow())
+                keys.Add(reader.ReadField());
 
             Assert.That(keys, Is.EqualTo(new[] { "k1", "k2" }));
 
@@ -346,51 +392,6 @@ namespace JiksLib.Test.Text
 
             Assert.That(rows[0], Is.EqualTo(new[] { "k1", "x\ny", "z" }));
             Assert.That(rows[1], Is.EqualTo(new[] { "k2", "a\"b", "c" }));
-        }
-
-        [Test]
-        public void Row_AfterAdvance_ThrowsInvalidOperationException()
-        {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b\nc,d"));
-            using var reader = new CsvReader(stream);
-
-            var enumerator = reader.GetEnumerator();
-            Assert.That(enumerator.MoveNext(), Is.True);
-
-            var stale = enumerator.Current;
-            Assert.That(enumerator.MoveNext(), Is.True);
-
-            Assert.That(
-                () =>
-                {
-                    foreach (var _ in stale)
-                    {
-                    }
-                },
-                Throws.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void Row_AfterEof_ThrowsInvalidOperationException()
-        {
-            // 推进到 EOF 也必须让先前返回的 Row 失效，而不是静默返回空集合
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("a,b"));
-            using var reader = new CsvReader(stream);
-
-            var enumerator = reader.GetEnumerator();
-            Assert.That(enumerator.MoveNext(), Is.True);
-
-            var stale = enumerator.Current;
-            Assert.That(enumerator.MoveNext(), Is.False);
-
-            Assert.That(
-                () =>
-                {
-                    foreach (var _ in stale)
-                    {
-                    }
-                },
-                Throws.TypeOf<InvalidOperationException>());
         }
 
 #if NET5_0_OR_GREATER
@@ -407,7 +408,7 @@ namespace JiksLib.Test.Text
             {
                 int warmupCount = 0;
 
-                foreach (var row in warmupReader)
+                while (warmupReader.ReadRow())
                     warmupCount++;
 
                 Assert.That(warmupCount, Is.EqualTo(100));
@@ -420,16 +421,14 @@ namespace JiksLib.Test.Text
                 using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
                 using var reader = new CsvReader(stream);
 
-                var enumerator = reader.GetEnumerator();
-
                 // 先消费第一行，把 StreamReader 首次读取的分配排除在测量之外
-                Assert.That(enumerator.MoveNext(), Is.True);
+                Assert.That(reader.ReadRow(), Is.True);
 
                 long before = GC.GetAllocatedBytesForCurrentThread();
                 int count = 0;
 
-                // 不枚举字段：后续 99 行应只扫描、不分配
-                while (enumerator.MoveNext())
+                // 不读字段：后续 99 行应只扫描、不分配
+                while (reader.ReadRow())
                     count++;
 
                 long after = GC.GetAllocatedBytesForCurrentThread();

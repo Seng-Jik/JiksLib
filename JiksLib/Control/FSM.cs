@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using JiksLib.Extensions;
@@ -284,6 +285,68 @@ namespace JiksLib.Control
         /// </summary>
         public TState CurrentState { get; private set; }
 
+        /// <summary>
+        /// 当前状态的全部出度转移（不含 AnyTimeTransition）
+        /// 返回结构体枚举器，<c>foreach</c> 遍历不产生分配；枚举顺序由字典决定。
+        /// 这是构建时转移表的只读视图，不要试图修改。
+        /// </summary>
+        public TransitionEnumerator CurrentTransitions =>
+            new(states[CurrentState]);
+
+        /// <summary>
+        /// 全部 AnyTimeTransition
+        /// 返回结构体枚举器，<c>foreach</c> 遍历不产生分配；枚举顺序由字典决定。
+        /// 这是构建时转移表的只读视图，不要试图修改。
+        /// </summary>
+        public TransitionEnumerator AnyTimeTransitions =>
+            new(anyTimeTransitions);
+
+        /// <summary>
+        /// 转移表的零分配枚举器
+        /// 直接用于 <c>foreach</c> 时不会装箱；通过 <see cref="IEnumerable{T}"/> 使用时会装箱。
+        /// </summary>
+        public struct TransitionEnumerator :
+            IEnumerator<KeyValuePair<TTransition, TState>>,
+            IEnumerable<KeyValuePair<TTransition, TState>>
+        {
+            internal TransitionEnumerator(
+                Dictionary<TTransition, TState>? transitions)
+            {
+                this.transitions = transitions;
+                enumerator = transitions == null
+                    ? default
+                    : transitions.GetEnumerator();
+            }
+
+            public KeyValuePair<TTransition, TState> Current =>
+                enumerator.Current;
+
+            object? IEnumerator.Current => Current;
+
+            public bool MoveNext() =>
+                transitions != null && enumerator.MoveNext();
+
+            public void Reset()
+            {
+                enumerator = transitions == null
+                    ? default
+                    : transitions.GetEnumerator();
+            }
+
+            public void Dispose() => enumerator.Dispose();
+
+            public TransitionEnumerator GetEnumerator() => this;
+
+            IEnumerator<KeyValuePair<TTransition, TState>>
+                IEnumerable<KeyValuePair<TTransition, TState>>.GetEnumerator() =>
+                this;
+
+            IEnumerator IEnumerable.GetEnumerator() => this;
+
+            readonly Dictionary<TTransition, TState>? transitions;
+            Dictionary<TTransition, TState>.Enumerator enumerator;
+        }
+
         public delegate void OnStateSwitchHandler(
             TState oldState,
             TTransition? transition,
@@ -437,5 +500,6 @@ namespace JiksLib.Control
         readonly Dictionary<TTransition, TState>? anyTimeTransitions = new();
         readonly TState? defaultState;
         readonly TState startState;
+
     }
 }
