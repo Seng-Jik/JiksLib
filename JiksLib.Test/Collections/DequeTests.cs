@@ -1458,6 +1458,56 @@ namespace JiksLib.Test.Collections
             Assert.That(deque[0], Is.EqualTo(1));
         }
 
+        [Test]
+        public void AddRangeBack_Array_AppendsToBack()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            var items = new[] { 2, 3, 4 };
+
+            // Act
+            deque.AddRangeBack(items);
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(4));
+            for (int i = 0; i < 4; i++)
+                Assert.That(deque[i], Is.EqualTo(i + 1));
+        }
+
+        [Test]
+        public void AddRangeBack_ReadOnlyListSegment_AppendsToBack()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+            var source = new List<int> { 2, 3, 4 };
+
+            // Act
+            deque.AddRangeBack(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(4));
+            for (int i = 0; i < 4; i++)
+                Assert.That(deque[i], Is.EqualTo(i + 1));
+        }
+
+        [Test]
+        public void AddRangeBack_Enumerable_AppendsToBack()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+
+            // Act
+            deque.AddRangeBack(Enumerable.Range(2, 3));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(4));
+            for (int i = 0; i < 4; i++)
+                Assert.That(deque[i], Is.EqualTo(i + 1));
+        }
+
         #region AddRangeFront Tests
 
         [Test]
