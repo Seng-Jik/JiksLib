@@ -56,10 +56,10 @@ namespace JiksLib.Control
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
         protected void Register(object service, bool autoDispose = true)
         {
-            if (service == null)
-                throw new ArgumentNullException(nameof(service));
-
-            RegisterCore(service.GetType(), service, autoDispose);
+            RegisterCore(
+                service.ThrowIfNull(nameof(service)).GetType(),
+                service,
+                autoDispose);
         }
 
         /// <summary>
@@ -75,10 +75,12 @@ namespace JiksLib.Control
         /// <exception cref="ObjectDisposedException">集合已经被释放时抛出</exception>
         protected void Register<T>(T service, bool autoDispose = true)
         {
-            if (service == null)
-                throw new ArgumentNullException(nameof(service));
+            var checkedService = service.ThrowIfNull(nameof(service));
 
-            RegisterCore(typeof(T), service, autoDispose);
+            RegisterCore(
+                typeof(T),
+                checkedService!,
+                autoDispose);
         }
 
         /// <summary>
