@@ -72,7 +72,8 @@ namespace JiksLib.Collections
 
         /// <summary>
         /// 当写入导致最旧元素被覆盖时触发
-        /// 参数为被覆盖的元素。AddRange 会为每个被覆盖的旧元素各触发一次（从最旧到最新）；
+        /// 参数为被覆盖的元素。AddRange 会为每个被覆盖的元素各触发一次（从最旧到最新），
+        /// 包括本次输入中因超出容量而未被保留的元素（按输入顺序排在旧元素之后）；
         /// 事件在缓冲区完成写入后触发，处理器抛出的异常会向外传播。
         /// </summary>
         public event Action<T>? OnOverwrite;
@@ -126,7 +127,8 @@ namespace JiksLib.Collections
         /// <summary>
         /// 写入一组元素
         /// 元素按给定顺序逐个写入，因此序列中最后一个元素最终位于下标 0；
-        /// 写入数量超过剩余空间时会覆盖最旧的元素
+        /// 写入数量超过剩余空间时会覆盖最旧的元素，被覆盖的元素
+        /// （包括本次输入中因超出容量而未被保留的元素）通过 <see cref="OnOverwrite"/> 报告
         /// </summary>
         /// <exception cref="ArgumentNullException">
         /// 当 <paramref name="items"/> 未引用数组时抛出
@@ -142,20 +144,23 @@ namespace JiksLib.Collections
             var onOverwrite = OnOverwrite;
             T[]? overwrittenItems = null;
             int overwrittenCount = 0;
+            int droppedInputCount = 0;
 
-            if (onOverwrite != null && count > 0)
+            if (onOverwrite != null)
             {
-                long overwritten = (long)count + items.Count - buffer.Length;
-                if (overwritten > 0)
+                long overwrittenTotal = (long)count + items.Count - buffer.Length;
+                if (overwrittenTotal > 0)
                 {
-                    if (overwritten > count)
-                        overwritten = count;
+                    overwrittenCount = (int)Math.Min(overwrittenTotal, count);
+                    droppedInputCount = (int)(overwrittenTotal - overwrittenCount);
 
-                    overwrittenCount = (int)overwritten;
-                    overwrittenItems = new T[overwrittenCount];
+                    if (overwrittenCount > 0)
+                    {
+                        overwrittenItems = new T[overwrittenCount];
 
-                    for (int i = 0; i < overwrittenCount; i++)
-                        overwrittenItems[i] = buffer[PhysicalIndex(count - 1 - i)];
+                        for (int i = 0; i < overwrittenCount; i++)
+                            overwrittenItems[i] = buffer[PhysicalIndex(count - 1 - i)];
+                    }
                 }
             }
 
@@ -201,6 +206,12 @@ namespace JiksLib.Collections
             {
                 for (int i = 0; i < overwrittenCount; i++)
                     onOverwrite!(overwrittenItems[i]);
+            }
+
+            if (droppedInputCount > 0)
+            {
+                for (int i = 0; i < droppedInputCount; i++)
+                    onOverwrite!(array[items.Offset + i]);
             }
         }
 

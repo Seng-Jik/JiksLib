@@ -1488,17 +1488,63 @@ namespace JiksLib.Test.Collections
         }
 
         [Test]
-        public void OnOverwrite_AddRange_LargerThanCapacity_FiresForAllExistingElements()
+        public void OnOverwrite_AddRange_LargerThanCapacity_FiresForExistingAndDroppedElements()
         {
             var ring = new RingBuffer<int>(3);
             ring.AddRange(new[] { 1, 2, 3 }); // 3, 2, 1
             var fired = new List<int>();
             ring.OnOverwrite += fired.Add;
 
-            ring.AddRange(new[] { 4, 5, 6, 7 });
+            ring.AddRange(new[] { 4, 5, 6, 7 }); // 4 写入后又被 5 覆盖
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_ToEmptyBufferLargerThanCapacity_FiresForDroppedElements()
+        {
+            var ring = new RingBuffer<int>(3);
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7 });
+
+            Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_ExactlyCapacity_FiresOnlyForExistingElements()
+        {
+            var ring = new RingBuffer<int>(3);
+            ring.AddRange(new[] { 1, 2, 3 });
+            var fired = new List<int>();
+            ring.OnOverwrite += fired.Add;
+
+            ring.AddRange(new[] { 4, 5, 6 });
 
             Assert.That(fired, Is.EqualTo(new[] { 1, 2, 3 }));
-            AssertContents(ring, 7, 6, 5);
+            AssertContents(ring, 6, 5, 4);
+        }
+
+        [Test]
+        public void OnOverwrite_AddRange_OversizedEnumerable_MatchesArrayEvents()
+        {
+            var fromArray = new RingBuffer<int>(3);
+            var fromList = new RingBuffer<int>(3);
+            var arrayFired = new List<int>();
+            var listFired = new List<int>();
+            fromArray.OnOverwrite += arrayFired.Add;
+            fromList.OnOverwrite += listFired.Add;
+
+            fromArray.AddRange(new[] { 1, 2, 3, 4, 5, 6, 7 });
+            fromList.AddRange(new List<int> { 1, 2, 3, 4, 5, 6, 7 });
+
+            Assert.That(arrayFired, Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            Assert.That(listFired, Is.EqualTo(arrayFired));
+            AssertContents(fromArray, 7, 6, 5);
+            AssertContents(fromList, 7, 6, 5);
         }
 
         [Test]
