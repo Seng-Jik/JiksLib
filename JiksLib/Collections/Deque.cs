@@ -204,31 +204,6 @@ namespace JiksLib.Collections
         }
 
         /// <summary>
-        /// 添加一组元素到末尾
-        /// 与 <see cref="AddRange(ArraySegment{T})"/> 等价，提供与
-        /// <see cref="AddRangeFront(ArraySegment{T})"/> 对称的命名
-        /// </summary>
-        public void AddRangeBack(ArraySegment<T> items) => AddRange(items);
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// 与 <see cref="AddRange(T[])"/> 等价
-        /// </summary>
-        public void AddRangeBack(T[] items) => AddRange(items);
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// 与 <see cref="AddRange(ReadOnlyListSegment{T})"/> 等价
-        /// </summary>
-        public void AddRangeBack(ReadOnlyListSegment<T> items) => AddRange(items);
-
-        /// <summary>
-        /// 添加一组元素到末尾
-        /// 与 <see cref="AddRange(IEnumerable{T})"/> 等价
-        /// </summary>
-        public void AddRangeBack(IEnumerable<T> items) => AddRange(items);
-
-        /// <summary>
         /// 向前面添加元素
         /// </summary>
         public void AddFront(T x)
