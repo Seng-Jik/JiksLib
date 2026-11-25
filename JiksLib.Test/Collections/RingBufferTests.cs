@@ -787,6 +787,90 @@ namespace JiksLib.Test.Collections
                 ring.AddRange(default(ArraySegment<int>)));
         }
 
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverArray_UsesOffset()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(5);
+            var source = new[] { 99, 1, 2, 3, 98 };
+
+            // Act
+            ring.AddRange(new ReadOnlyListSegment<int>(source, 1, 3));
+
+            // Assert
+            AssertContents(ring, 3, 2, 1);
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverList_AddsInOrder()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(5);
+            var source = new List<int> { 99, 1, 2, 3, 98 };
+
+            // Act
+            ring.AddRange(new ReadOnlyListSegment<int>(source, 1, 3));
+
+            // Assert
+            AssertContents(ring, 3, 2, 1);
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverArray_LargerThanCapacity_KeepsLastElements()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(3);
+            var source = new[] { 1, 2, 3, 4, 5, 6, 7 };
+
+            // Act
+            ring.AddRange(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverList_LargerThanCapacity_KeepsLastElements()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(3);
+            var source = new List<int> { 1, 2, 3, 4, 5, 6, 7 };
+
+            // Act
+            ring.AddRange(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            AssertContents(ring, 7, 6, 5);
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_Empty_DoesNothing()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(3);
+            ring.Add(1);
+
+            // Act
+            ring.AddRange(new ReadOnlyListSegment<int>(Array.Empty<int>()));
+
+            // Assert
+            AssertContents(ring, 1);
+        }
+
+        [Test]
+        public void AddRange_EnumerableOfReadOnlyListSegment_UsesDirectPath()
+        {
+            // Arrange
+            var ring = new RingBuffer<int>(5);
+            var source = new List<int> { 1, 2, 3 };
+
+            // Act
+            ring.AddRange((IEnumerable<int>)new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            AssertContents(ring, 3, 2, 1);
+        }
+
         #endregion
 
         #region Search / Remove

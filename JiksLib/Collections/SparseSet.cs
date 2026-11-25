@@ -200,6 +200,16 @@ namespace JiksLib.Collections
                 throw new ArgumentException(
                     "Cannot add a SparseSet to itself.", nameof(items));
 
+            if (items is ReadOnlyListSegment<T> readOnlySegment)
+            {
+                AddRange(
+                    readOnlySegment,
+                    out outputIndexList,
+                    out outputIndexListBegin,
+                    out outputIndexCount);
+                return;
+            }
+
             outputIndexList = reversedIndexes;
             outputIndexListBegin = Count;
 
@@ -295,6 +305,62 @@ namespace JiksLib.Collections
             for (int i = 0; i < items.Count; ++i)
             {
                 int newIndex = Count++;
+
+                if (newIndex > MaxIndex)
+                {
+                    reversedIndexes.Add(newIndex);
+                    indexes.Add(newIndex);
+                    MaxIndex = newIndex;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 批量添加只读列表片段中的所有元素，并返回它们在稀疏集中的下标
+        /// </summary>
+        /// <remarks>
+        /// 等价于接收 <see cref="ArraySegment{T}"/> 的重载；片段底层是数组时走无拷贝的数组路径，
+        /// 否则按下标逐元素写入。
+        /// 下标区间的含义与失效条件见接收 <see cref="IEnumerable{T}"/> 的重载。
+        /// </remarks>
+        /// <param name="items">要添加的只读列表片段</param>
+        /// <param name="outputIndexList">新元素下标所在的内部列表</param>
+        /// <param name="outputIndexListBegin">新元素下标区间的起始位置</param>
+        /// <param name="outputIndexCount">新元素下标区间的长度</param>
+        public void AddRange(
+            ReadOnlyListSegment<T> items,
+            out IReadOnlyList<int> outputIndexList,
+            out int outputIndexListBegin,
+            out int outputIndexCount)
+        {
+            if (items.Count == 0)
+            {
+                outputIndexList = reversedIndexes;
+                outputIndexListBegin = Count;
+                outputIndexCount = 0;
+                return;
+            }
+
+            if (items.Source is T[] array)
+            {
+                AddRange(
+                    new ArraySegment<T>(array, items.Offset, items.Count),
+                    out outputIndexList,
+                    out outputIndexListBegin,
+                    out outputIndexCount);
+                return;
+            }
+
+            outputIndexList = reversedIndexes;
+            outputIndexListBegin = Count;
+            outputIndexCount = items.Count;
+
+            EnsureAdditionalCapacity(items.Count);
+
+            for (int i = 0; i < items.Count; ++i)
+            {
+                int newIndex = Count++;
+                InnerBuffer[newIndex] = items[i];
 
                 if (newIndex > MaxIndex)
                 {

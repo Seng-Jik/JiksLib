@@ -1384,6 +1384,80 @@ namespace JiksLib.Test.Collections
             Assert.That(deque[0], Is.EqualTo(100));
         }
 
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverArray_UsesOffset()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            var source = new[] { 99, 1, 2, 3, 98 };
+
+            // Act
+            deque.AddRange(new ReadOnlyListSegment<int>(source, 1, 3));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(3));
+            Assert.That(deque[0], Is.EqualTo(1));
+            Assert.That(deque[1], Is.EqualTo(2));
+            Assert.That(deque[2], Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverList_WrappedBuffer_AddsInOrder()
+        {
+            // Arrange
+            var deque = new Deque<int>(4);
+            deque.Add(1);
+            deque.Add(2);
+            deque.Add(3);
+            deque.Add(4);
+            deque.TryRemoveFront(out _);
+            deque.TryRemoveFront(out _); // front 移到 2，rear 已回绕到 0
+            var source = new List<int> { 10, 20 };
+
+            // Act
+            deque.AddRange(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(4));
+            Assert.That(deque[0], Is.EqualTo(3));
+            Assert.That(deque[1], Is.EqualTo(4));
+            Assert.That(deque[2], Is.EqualTo(10));
+            Assert.That(deque[3], Is.EqualTo(20));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverList_GrowsBuffer()
+        {
+            // Arrange
+            var deque = new Deque<int>(2);
+            deque.Add(1);
+            deque.Add(2);
+            var source = new List<int> { 3, 4, 5 };
+
+            // Act
+            deque.AddRange(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(5));
+            for (int i = 0; i < 5; i++)
+                Assert.That(deque[i], Is.EqualTo(i + 1));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_Empty_DoesNothing()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(1);
+
+            // Act
+            deque.AddRange(new ReadOnlyListSegment<int>(Array.Empty<int>()));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(1));
+            Assert.That(deque[0], Is.EqualTo(1));
+        }
+
         #region AddRangeFront Tests
 
         [Test]
@@ -1605,6 +1679,46 @@ namespace JiksLib.Test.Collections
             // Assert
             Assert.That(deque.Count, Is.EqualTo(1));
             Assert.That(deque[0], Is.EqualTo(100));
+        }
+
+        [Test]
+        public void AddRangeFront_ReadOnlyListSegment_OverArray_PrependsInOrder()
+        {
+            // Arrange
+            var deque = new Deque<int>();
+            deque.Add(7);
+            var source = new[] { 99, 1, 2, 3, 98 };
+
+            // Act
+            deque.AddRangeFront(new ReadOnlyListSegment<int>(source, 1, 3));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(4));
+            Assert.That(deque[0], Is.EqualTo(1));
+            Assert.That(deque[1], Is.EqualTo(2));
+            Assert.That(deque[2], Is.EqualTo(3));
+            Assert.That(deque[3], Is.EqualTo(7));
+        }
+
+        [Test]
+        public void AddRangeFront_ReadOnlyListSegment_OverList_GrowsBuffer()
+        {
+            // Arrange
+            var deque = new Deque<int>(2);
+            deque.Add(7);
+            deque.Add(8);
+            var source = new List<int> { 1, 2, 3 };
+
+            // Act
+            deque.AddRangeFront(new ReadOnlyListSegment<int>(source));
+
+            // Assert
+            Assert.That(deque.Count, Is.EqualTo(5));
+            Assert.That(deque[0], Is.EqualTo(1));
+            Assert.That(deque[1], Is.EqualTo(2));
+            Assert.That(deque[2], Is.EqualTo(3));
+            Assert.That(deque[3], Is.EqualTo(7));
+            Assert.That(deque[4], Is.EqualTo(8));
         }
 
         #endregion

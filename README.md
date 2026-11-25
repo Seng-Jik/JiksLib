@@ -90,7 +90,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | `MultiHashSet<T>` / `IReadOnlyMultiSet<T>` | 允许同一元素重复出现的哈希集合，`Add` / `Remove` 返回该元素当前的数量。 | [MultiHashSet.cs](JiksLib/Collections/MultiHashSet.cs)、[IReadOnlyMultiSet.cs](JiksLib/Collections/IReadOnlyMultiSet.cs) |
 | `OnceCell<T>` | 只能赋值一次的格子，读取未赋值内容或重复赋值都会抛异常，首次赋值时触发 `OnSet`。 | [OnceCell.cs](JiksLib/Collections/OnceCell.cs) |
 | `PriorityQueue<TElement, TPriority>` | 基于二叉堆的优先级队列，支持出入队、`Try*`、`DequeueEnqueue`、批量入队、按值移除与无序枚举；类型名刻意与 BCL 同名，用于为 Unity 2022 等旧运行时补齐该类型。 | [PriorityQueue.cs](JiksLib/Collections/PriorityQueue.cs) |
-| `ReadOnlyListSegment<T>` | 对 `IReadOnlyList` 的一段只读视图，零拷贝切片、值类型、默认值为空片段。 | [ReadOnlyListSegment.cs](JiksLib/Collections/ReadOnlyListSegment.cs) |
+| `ReadOnlyListSegment<T>` | 对 `IReadOnlyList` 的一段只读视图，零拷贝切片、值类型、默认值为空片段；可直接传给 `Deque`、`RingBuffer`、`SparseSet` 的 `AddRange`（不装箱、不复制）。 | [ReadOnlyListSegment.cs](JiksLib/Collections/ReadOnlyListSegment.cs) |
 | `RingBuffer<T>` | 定长环形缓存，下标 0 为最新元素，写满覆盖最旧元素，支持 `AddRange`、`TryPeekNewest/Oldest`、`CopyTo`、结构体枚举器，覆盖时触发 `OnOverwrite`。 | [RingBuffer.cs](JiksLib/Collections/RingBuffer.cs) |
 | `SparseSet<T>` | 稀疏集，元素紧凑存放在数组中并以稀疏下标索引；`Add` / `RemoveAt` 平均 O(1)，通过 `InnerBuffer` 与结构体枚举器支持缓存友好的高频遍历。 | [SparseSet.cs](JiksLib/Collections/SparseSet.cs) |
 

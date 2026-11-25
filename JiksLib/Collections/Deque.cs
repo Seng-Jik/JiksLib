@@ -121,6 +121,36 @@ namespace JiksLib.Collections
         /// <summary>
         /// 添加一组元素到末尾
         /// </summary>
+        /// <remarks>
+        /// 片段底层是数组时走无拷贝的数组路径，否则按下标逐元素写入。
+        /// </remarks>
+        public void AddRange(ReadOnlyListSegment<T> items)
+        {
+            if (items.Count == 0)
+                return;
+
+            if (items.Source is T[] array)
+            {
+                AddRange(new ArraySegment<T>(array, items.Offset, items.Count));
+                return;
+            }
+
+            if ((long)Count + items.Count > buffer.Length)
+                EnsureCapacity(Growth((long)Count + items.Count));
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                buffer[rear] = items[i];
+                rear++;
+                if (rear == buffer.Length) rear = 0;
+            }
+
+            Count += items.Count;
+        }
+
+        /// <summary>
+        /// 添加一组元素到末尾
+        /// </summary>
         public void AddRange(T[] items) => AddRange(new ArraySegment<T>(items));
 
         /// <summary>
@@ -140,6 +170,12 @@ namespace JiksLib.Collections
             if (items is ArraySegment<T> segment)
             {
                 AddRange(segment);
+                return;
+            }
+
+            if (items is ReadOnlyListSegment<T> readOnlySegment)
+            {
+                AddRange(readOnlySegment);
                 return;
             }
 
@@ -234,6 +270,35 @@ namespace JiksLib.Collections
         /// <summary>
         /// 添加一组元素到开头
         /// </summary>
+        /// <remarks>
+        /// 片段底层是数组时走无拷贝的数组路径，否则按下标逐元素写入。
+        /// </remarks>
+        public void AddRangeFront(ReadOnlyListSegment<T> items)
+        {
+            if (items.Count == 0)
+                return;
+
+            if (items.Source is T[] array)
+            {
+                AddRangeFront(new ArraySegment<T>(array, items.Offset, items.Count));
+                return;
+            }
+
+            if ((long)Count + items.Count > buffer.Length)
+                EnsureCapacity(Growth((long)Count + items.Count));
+
+            front -= items.Count;
+            if (front < 0) front += buffer.Length;
+
+            for (int i = 0; i < items.Count; i++)
+                buffer[(front + i) % buffer.Length] = items[i];
+
+            Count += items.Count;
+        }
+
+        /// <summary>
+        /// 添加一组元素到开头
+        /// </summary>
 
         public void AddRangeFront(T[] items) =>
             AddRangeFront(new ArraySegment<T>(items));
@@ -255,6 +320,12 @@ namespace JiksLib.Collections
             if (items is ArraySegment<T> segment)
             {
                 AddRangeFront(segment);
+                return;
+            }
+
+            if (items is ReadOnlyListSegment<T> readOnlySegment)
+            {
+                AddRangeFront(readOnlySegment);
                 return;
             }
 

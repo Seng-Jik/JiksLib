@@ -1527,6 +1527,108 @@ namespace JiksLib.Test.Collections
             Assert.That(set.Count, Is.EqualTo(2));
         }
 
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverArray_UsesOffsetAndReturnsIndexes()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(1);
+            var source = new[] { 99, 10, 20, 98 };
+
+            // Act
+            set.AddRange(
+                new ReadOnlyListSegment<int>(source, 1, 2),
+                out var indexList,
+                out var begin,
+                out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(3));
+            Assert.That(set[0], Is.EqualTo(1));
+            Assert.That(set[1], Is.EqualTo(10));
+            Assert.That(set[2], Is.EqualTo(20));
+            Assert.That(begin, Is.EqualTo(1));
+            Assert.That(count, Is.EqualTo(2));
+            Assert.That(indexList[begin], Is.EqualTo(1));
+            Assert.That(indexList[begin + 1], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_OverList_AddsElementsInOrder()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(1);
+            var source = new List<int> { 99, 10, 20, 98 };
+
+            // Act
+            set.AddRange(
+                new ReadOnlyListSegment<int>(source, 1, 2),
+                out var indexList,
+                out var begin,
+                out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(3));
+            Assert.That(set[0], Is.EqualTo(1));
+            Assert.That(set[1], Is.EqualTo(10));
+            Assert.That(set[2], Is.EqualTo(20));
+            Assert.That(count, Is.EqualTo(2));
+            Assert.That(indexList[begin], Is.EqualTo(1));
+            Assert.That(indexList[begin + 1], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_ReusesFreedIndexes()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(10);
+            set.Add(20);
+            set.Add(30);
+            set.Add(40);
+            set.RemoveAt(1); // 释放下标 1
+            var source = new List<int> { 50, 60 };
+
+            // Act
+            set.AddRange(
+                new ReadOnlyListSegment<int>(source),
+                out var indexList,
+                out var begin,
+                out _);
+
+            // Assert：下标 1 被复用，第二个新元素拿到下标 4
+            Assert.That(set.Count, Is.EqualTo(5));
+            Assert.That(set.MaxIndex, Is.EqualTo(4));
+            Assert.That(set[0], Is.EqualTo(10));
+            Assert.That(set[1], Is.EqualTo(50));
+            Assert.That(set[2], Is.EqualTo(30));
+            Assert.That(set[3], Is.EqualTo(40));
+            Assert.That(set[4], Is.EqualTo(60));
+            Assert.That(indexList[begin], Is.EqualTo(1));
+            Assert.That(indexList[begin + 1], Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AddRange_ReadOnlyListSegment_Empty_DoesNothing()
+        {
+            // Arrange
+            var set = new SparseSet<int>();
+            set.Add(1);
+
+            // Act
+            set.AddRange(
+                new ReadOnlyListSegment<int>(Array.Empty<int>()),
+                out _,
+                out var begin,
+                out var count);
+
+            // Assert
+            Assert.That(set.Count, Is.EqualTo(1));
+            Assert.That(begin, Is.EqualTo(1));
+            Assert.That(count, Is.EqualTo(0));
+        }
+
         #endregion
 
         #region ICollection<T> Interface Tests
