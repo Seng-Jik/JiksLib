@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Control.EventBusComparisonBenchmarks-20261125-185750</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                       </th><th>InvocationCount</th><th>UnrollFactor</th><th>ListenerCount</th><th>Mean    </th><th>Error  </th><th>StdDev </th><th>StdErr</th><th>Median </th><th>Min    </th><th>Q1     </th><th>Q3      </th><th>Max     </th><th>Op/s   </th><th>Gen0</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>PublishEvent_NoListeners_Comparison</td><td>Default</td><td>16</td><td>1</td><td>6.590 ns</td><td>0.1466 ns</td><td>0.2055 ns</td><td>0.0396 ns</td><td>6.519 ns</td><td>6.319 ns</td><td>6.464 ns</td><td>6.634 ns</td><td>7.066 ns</td><td>151,734,208.2</td><td>0.0023</td><td>24 B</td>
+</tr><tr><td>AddListeners_Comparison</td><td>1</td><td>1</td><td>1</td><td>3,286.022 ns</td><td>149.1568 ns</td><td>423.1331 ns</td><td>43.8769 ns</td><td>3,200.000 ns</td><td>2,100.000 ns</td><td>3,100.000 ns</td><td>3,600.000 ns</td><td>4,300.000 ns</td><td>304,319.4</td><td>-</td><td>656 B</td>
+</tr><tr><td>PublishEvent_Comparison</td><td>1</td><td>1</td><td>1</td><td>2,667.742 ns</td><td>217.4334 ns</td><td>616.8224 ns</td><td>63.9615 ns</td><td>2,600.000 ns</td><td>1,600.000 ns</td><td>2,200.000 ns</td><td>2,900.000 ns</td><td>4,200.000 ns</td><td>374,848.9</td><td>-</td><td>24 B</td>
+</tr><tr><td>PublishEvent_NoListeners_Comparison</td><td>Default</td><td>16</td><td>10</td><td>6.623 ns</td><td>0.1055 ns</td><td>0.0935 ns</td><td>0.0250 ns</td><td>6.613 ns</td><td>6.499 ns</td><td>6.531 ns</td><td>6.698 ns</td><td>6.770 ns</td><td>150,982,542.7</td><td>0.0023</td><td>24 B</td>
+</tr><tr><td>AddListeners_Comparison</td><td>1</td><td>1</td><td>10</td><td>5,973.684 ns</td><td>223.7012 ns</td><td>641.8409 ns</td><td>65.8515 ns</td><td>5,900.000 ns</td><td>4,700.000 ns</td><td>5,600.000 ns</td><td>6,400.000 ns</td><td>7,700.000 ns</td><td>167,400.9</td><td>-</td><td>1136 B</td>
+</tr><tr><td>PublishEvent_Comparison</td><td>1</td><td>1</td><td>10</td><td>3,365.591 ns</td><td>213.5052 ns</td><td>605.6787 ns</td><td>62.8060 ns</td><td>3,200.000 ns</td><td>2,400.000 ns</td><td>3,000.000 ns</td><td>3,700.000 ns</td><td>5,000.000 ns</td><td>297,124.6</td><td>-</td><td>24 B</td>
+</tr><tr><td>PublishEvent_NoListeners_Comparison</td><td>Default</td><td>16</td><td>100</td><td>7.471 ns</td><td>0.1664 ns</td><td>0.1850 ns</td><td>0.0424 ns</td><td>7.418 ns</td><td>7.237 ns</td><td>7.326 ns</td><td>7.583 ns</td><td>7.899 ns</td><td>133,859,116.6</td><td>0.0023</td><td>24 B</td>
+</tr><tr><td>AddListeners_Comparison</td><td>1</td><td>1</td><td>100</td><td>16,063.265 ns</td><td>792.4213 ns</td><td>2,311.5304 ns</td><td>233.4998 ns</td><td>15,050.000 ns</td><td>13,000.000 ns</td><td>14,400.000 ns</td><td>18,000.000 ns</td><td>21,600.000 ns</td><td>62,253.8</td><td>-</td><td>4864 B</td>
+</tr><tr><td>PublishEvent_Comparison</td><td>1</td><td>1</td><td>100</td><td>9,649.495 ns</td><td>527.6269 ns</td><td>1,547.4386 ns</td><td>155.5234 ns</td><td>9,900.000 ns</td><td>6,900.000 ns</td><td>8,750.000 ns</td><td>10,600.000 ns</td><td>13,000.000 ns</td><td>103,632.4</td><td>-</td><td>24 B</td>
+</tr><tr><td>PublishEvent_NoListeners_Comparison</td><td>Default</td><td>16</td><td>1000</td><td>6.653 ns</td><td>0.1561 ns</td><td>0.2137 ns</td><td>0.0419 ns</td><td>6.636 ns</td><td>6.311 ns</td><td>6.456 ns</td><td>6.807 ns</td><td>7.214 ns</td><td>150,307,309.2</td><td>0.0023</td><td>24 B</td>
+</tr><tr><td>AddListeners_Comparison</td><td>1</td><td>1</td><td>1000</td><td>100,545.055 ns</td><td>2,738.3413 ns</td><td>7,678.6032 ns</td><td>804.9363 ns</td><td>98,400.000 ns</td><td>91,600.000 ns</td><td>95,000.000 ns</td><td>102,700.000 ns</td><td>127,200.000 ns</td><td>9,945.8</td><td>-</td><td>33680 B</td>
+</tr><tr><td>PublishEvent_Comparison</td><td>1</td><td>1</td><td>1000</td><td>20,221.649 ns</td><td>956.1215 ns</td><td>2,773.8822 ns</td><td>281.6451 ns</td><td>19,300.000 ns</td><td>16,900.000 ns</td><td>18,100.000 ns</td><td>22,400.000 ns</td><td>27,700.000 ns</td><td>49,452.0</td><td>-</td><td>24 B</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -67,13 +67,14 @@ for ($i = 2; Test-Path $run; $i++) {
 
 ### `ai-comparison.md`
 
-与"上一次运行"的对比，模板见 `templates/ai-comparison.md`。要求：
+与基线的对比（默认最新版本基线，没有版本基线才回退到上一次运行），模板见 `templates/ai-comparison.md`。要求：
 
-- 第一行写明基线的**目录名**与选择依据；没有基线就明确写"首次基线，无上一次可对比"。
+- 第一行写明基线的**类型、名字与来源 run**（如 `vs 最新版本基线 v2.0.0（源 run 202611251855-791746c6）`）；没有基线就明确写"首次基线，无基线可对比"。
 - 先给判定，再给证据；判定只用四种：改善 / 退化 / 无明显变化 / 不可比。
 - 只比两边都有的基准；缺失项单列。
-- 分配量按精确值比；时间按 `references/metrics.md` 的阈值比。
-- 碎片/保留内存只与同一探针实现/宿主比；探针版本不同就写"不可比"。
+- 分配量按精确值比；时间按 `references/metrics.md` 的阈值比，且只在环境一致时算百分比。
+- 碎片/保留内存只与同一探针实现/宿主比（核对 `baseline.json.probe.sourceSha256`）；探针版本不同就写"不可比"。
+- 与版本基线比较时附 `git log <基线 commit>..HEAD` 与 `git diff --stat`，把差异关联到提交。
 
 ### `probe/`
 
@@ -130,7 +131,79 @@ for ($i = 2; Test-Path $run; $i++) {
 
 ## 4. 历史与清理
 
-- `artifacts/` 不提交，GitHub 上看不到历史；对比只在本地有效。
+- `artifacts/` 不提交，GitHub 上看不到历史；本地对比只在本地有效。
+- 版本基线在 `JiksLib.Benchmark/ArchivedResult/v<X.Y.Z>/` 里**入库**，不受 `git clean -xdf`、换机器、清 `artifacts` 影响；跨版本对比以它为准。
 - 不要自动删除旧 run。确需清理时，至少保留最近 5 次成功运行与每次"发版/关键改动"对应的 run。
-- `git clean -xdf` 会连基线一起删掉；执行前把要保留的 run 复制到仓库外。
+- 版本基线目录**不清理**：即使有了新版本基线，旧版本目录也保留（`ArchivedResult/README.md` 的清单按版本列出）。
 - `dotnet clean` 只清 `bin`/`obj` 类输出，不会动 `benchmark-result`；不要自己写脚本清 `artifacts` 根目录。
+
+## 5. 版本基线归档
+
+版本基线把"某个已定版代码状态"的完整性能数据固定到仓库里，作为之后所有运行的默认比较对象。它与日常 run 的区别只有存放位置和是否入库：**基线入库，日常 run 不入库**。
+
+### 5.1 目录与内容
+
+```text
+JiksLib.Benchmark/ArchivedResult/
+├── README.md                 # 归档规则与基线清单（每个版本一行）
+└── v2.0.0/
+    ├── baseline.json         # 基线元数据；基线选择只读它
+    ├── run.json              # 源 run 的原始元数据
+    ├── raw/                  # 源 run 的 BDN 报告（md / csv / html）、console.log、运行日志
+    ├── probe/memory.jsonl    # 源 run 的探针输出（3 场景 × 3 次）
+    ├── ai-evaluation.md      # 源 run 的评价：只改标题与路径，数字不动
+    └── ai-comparison.md      # 归档时的对比：作为历史记录保留
+```
+
+- 从源 run **完整复制**，不做裁剪：`console.log` 与运行日志是测量证据（警告、环境、被跳过的基准），即使体积大也保留。
+- `raw/`、`probe/`、`run.json` 只读，任何情况下不改写。
+- 目录名只允许 `v<major>.<minor>.<patch>` 形式，与 `baseline.json.version`、归档时 `JiksLib/JiksLib.csproj` 的 `<Version>` 三者一致；预发布版本（`-beta`）不进基线。
+- 一个版本一个目录；已发布的不覆盖、不删除，后续版本新建目录，并在新基线的 `supersedes` 里写上一个版本。
+
+### 5.2 `baseline.json`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `schemaVersion` | number | 目前为 `1` |
+| `kind` | string | 固定 `version-baseline` |
+| `version` | string | `X.Y.Z`，必须等于目录名与 `libraryVersion` |
+| `libraryVersion` | string | 归档时的库版本（`<Version>`） |
+| `archivedAt` | string | 归档时间，ISO 8601 带时区；版本相同时用它打破平局 |
+| `sourceRun` | string | 源 run 目录名（`yyyyMMddHHmm-commit8`） |
+| `sourceCommit` / `sourceCommitSubject` / `sourceBranch` | string | 源 run 的提交信息 |
+| `sourceStartedAt` / `sourceFinishedAt` | string | 源 run 的起止时间 |
+| `sourceDirty` / `sourceDirtyFiles` | boolean / string[] | 源 run 是否 dirty；dirty 时必须逐个列出脏文件 |
+| `sourceDirtyNote` | string | dirty 时必填：证明被测源码未变（例如只改了 README / 版本号，且 BDN 构建早于修改） |
+| `scope` | object | `command`、`filter`、`configuration`、`targetFramework`、`job`、`benchmarkTypes`（类数）、`benchmarks`（行数） |
+| `probe` | object | `implementation`、`sourceSha256`（`FootprintProbe.cs` 的 SHA-256，小写）、`scenarios`、`trialsPerScenario` |
+| `environment` | object | `dotnet`、`os`、`cpu`、`memoryGB` |
+| `comparison` | object | `defaultFor`、`timingRequiresSameEnvironment`、`timingEnvironmentKeys`、`allocationComparableAcrossMachines`、`fragmentationRequiresSameProbeSha256` |
+| `supersedes` | string / null | 被本基线取代的版本（通常为上一个），没有则 `null` |
+| `notes` | string | 已知异常（如无法切换电源计划）、来源说明；没有就空字符串 |
+
+模板：`templates/baseline.json`。
+
+### 5.3 选择与创建
+
+- 选择算法（最新语义版本优先、无基线才回退上一次运行）见 `SKILL.md` §4。
+- 创建时机、源 run 的硬性条件、复制/写元数据/校验/更新清单的步骤见 `SKILL.md` §5。
+- 源 run 必须是一次**全量**成功运行（`filter: "*"`、跑过内置探针、`comparable: true`）；局部 filter、失败运行、`Job.Dry` 结果都不能当版本基线。
+- 校验：`raw/`、`probe/`、`run.json` 与源 run 逐字节一致；`baseline.json` 可被 `ConvertFrom-Json` 解析；目录名、`version`、`libraryVersion` 三者一致。
+- 提交：`git add JiksLib.Benchmark/ArchivedResult`。`.gitignore` 为归档目录里的 `*.log` 留了例外（`!/JiksLib.Benchmark/ArchivedResult/**/*.log`），否则 `console.log` 会被忽略。
+
+### 5.4 归档后怎么比
+
+- **默认比较对象**：最新版本基线。日常 run 的 `ai-comparison.md` 第一行写 `vs 最新版本基线 vX.Y.Z`，并注明源 run 与 `sourceCommit`。
+- **时间**：只有 `baseline.json.environment` 的 CPU / OS / dotnet 与本次 `run.json` 一致时才换算百分比；否则写"不可比"，不给百分比。
+- **分配量**：确定性指标，可精确比较；跨版本差异要在 `git log <基线 commit>..HEAD` 里找对应改动。
+- **碎片 / 保留内存**：`baseline.json.probe.sourceSha256` 与当前 `FootprintProbe.cs` 哈希一致才算百分比；不一致只能并列绝对值作参考。
+- **基准集合**：只比交集；版本升级新增的基准在"仅本次"单列，删除的基准在"仅基线"单列，都不要当 0。
+- `scripts/compare-baseline.ps1` 默认就按本节规则选最新版本基线、逐行配对并给出初步判定。
+
+### 5.5 已归档的基线
+
+| 版本 | 源 run | 提交 | 规模 | 环境 |
+| --- | --- | --- | --- | --- |
+| `v2.0.0` | `202611251855-791746c6` | `791746c6` | 16 类 / 341 用例 + 3 探针场景 | .NET 10.0.15，Windows 11 26H2，i5-12600KF |
+
+清单同时维护在 `JiksLib.Benchmark/ArchivedResult/README.md`；两边不一致时以该 README 为准。

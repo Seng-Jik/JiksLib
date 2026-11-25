@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "version-baseline",
+  "version": "2.0.0",
+  "libraryVersion": "2.0.0",
+  "archivedAt": "2026-11-25T20:44:19+08:00",
+  "sourceRun": "202611251855-791746c6",
+  "sourceCommit": "791746c6",
+  "sourceCommitSubject": "<git log -1 --format=%s>",
+  "sourceBranch": "main",
+  "sourceStartedAt": "2026-11-25T18:55:33+08:00",
+  "sourceFinishedAt": "2026-11-25T19:17:51+08:00",
+  "sourceDirty": false,
+  "sourceDirtyFiles": [],
+  "sourceDirtyNote": "",
+  "scope": {
+    "command": "dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- --filter '*' --allStats --artifacts <run>/raw",
+    "filter": "*",
+    "configuration": "Release",
+    "targetFramework": "net10.0",
+    "job": "SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1) + MemoryDiagnoser",
+    "benchmarkTypes": 16,
+    "benchmarks": 341
+  },
+  "probe": {
+    "implementation": "JiksLib.Benchmark/Probes/FootprintProbe.cs",
+    "sourceSha256": "<sha256 lowercase>",
+    "scenarios": [
+      "sparse-set-reserved",
+      "sparse-set-growth",
+      "eventbus-listeners"
+    ],
+    "trialsPerScenario": 3
+  },
+  "environment": {
+    "dotnet": "<SDK / host runtime>",
+    "os": "<OS 与 build>",
+    "cpu": "<CPU 型号与核数>",
+    "memoryGB": 0
+  },
+  "comparison": {
+    "defaultFor": "vX.Y.Z 之后的所有性能运行",
+    "timingRequiresSameEnvironment": true,
+    "timingEnvironmentKeys": [
+      "environment.cpu",
+      "environment.os",
+      "environment.dotnet",
+      "scope.job",
+      "scope.targetFramework",
+      "scope.filter"
+    ],
+    "allocationComparableAcrossMachines": true,
+    "fragmentationRequiresSameProbeSha256": true
+  },
+  "supersedes": null,
+  "notes": ""
+}

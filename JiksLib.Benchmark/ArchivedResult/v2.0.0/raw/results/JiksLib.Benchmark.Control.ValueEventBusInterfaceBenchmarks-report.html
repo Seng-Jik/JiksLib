@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Control.ValueEventBusInterfaceBenchmarks-20261125-185912</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  InvocationCount=1  
+UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                          </th><th>ListenerCount</th><th>Mean</th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Median</th><th>Min    </th><th>Q1  </th><th>Q3  </th><th>Max </th><th>Op/s </th><th>Ratio</th><th>RatioSD</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>PublishViaInterface_NoListeners</td><td>1</td><td>1,138.0 ns</td><td>79.34 ns</td><td>223.8 ns</td><td>23.33 ns</td><td>1,100.0 ns</td><td>600.0000 ns</td><td>1,000.0 ns</td><td>1,200.0 ns</td><td>1,700.0 ns</td><td>878,701.1</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>PublishViaInterface_WithListeners</td><td>1</td><td>1,973.4 ns</td><td>123.83 ns</td><td>353.3 ns</td><td>36.44 ns</td><td>1,950.0 ns</td><td>1,050.0000 ns</td><td>1,750.0 ns</td><td>2,225.0 ns</td><td>2,850.0 ns</td><td>506,738.5</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>PublishDirect_NoListeners</td><td>1</td><td>217.2 ns</td><td>36.79 ns</td><td>107.9 ns</td><td>10.84 ns</td><td>200.0 ns</td><td>0.0000 ns</td><td>100.0 ns</td><td>300.0 ns</td><td>600.0 ns</td><td>4,604,651.2</td><td>?</td><td>?</td><td>-</td><td>?</td>
+</tr><tr><td>PublishDirect_WithListeners</td><td>1</td><td>1,138.3 ns</td><td>114.34 ns</td><td>326.2 ns</td><td>33.65 ns</td><td>1,150.0 ns</td><td>550.0000 ns</td><td>850.0 ns</td><td>1,350.0 ns</td><td>1,950.0 ns</td><td>878,504.7</td><td>?</td><td>?</td><td>-</td><td>?</td>
+</tr><tr><td>PublishMultipleEventTypes_ViaInterface</td><td>1</td><td>1,505.3 ns</td><td>137.77 ns</td><td>395.3 ns</td><td>40.56 ns</td><td>1,500.0 ns</td><td>700.0000 ns</td><td>1,200.0 ns</td><td>1,700.0 ns</td><td>2,600.0 ns</td><td>664,335.7</td><td>?</td><td>?</td><td>72 B</td><td>?</td>
+</tr><tr><td>TupleAccessPerformance</td><td>1</td><td>1,428.7 ns</td><td>116.49 ns</td><td>332.3 ns</td><td>34.28 ns</td><td>1,400.0 ns</td><td>800.0000 ns</td><td>1,200.0 ns</td><td>1,600.0 ns</td><td>2,200.0 ns</td><td>699,925.5</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>InterfaceConversionOverhead</td><td>1</td><td>1,690.9 ns</td><td>131.38 ns</td><td>361.9 ns</td><td>38.58 ns</td><td>1,650.0 ns</td><td>1,000.0000 ns</td><td>1,500.0 ns</td><td>1,900.0 ns</td><td>2,700.0 ns</td><td>591,397.8</td><td>?</td><td>?</td><td>480 B</td><td>?</td>
+</tr><tr><td>DictionaryLookupWithTuple</td><td>1</td><td>1,215.3 ns</td><td>119.40 ns</td><td>348.3 ns</td><td>35.18 ns</td><td>1,200.0 ns</td><td>600.0000 ns</td><td>900.0 ns</td><td>1,400.0 ns</td><td>2,100.0 ns</td><td>822,838.0</td><td>?</td><td>?</td><td>120 B</td><td>?</td>
+</tr><tr><td>PublishViaInterface_NoListeners</td><td>10</td><td>1,236.3 ns</td><td>103.02 ns</td><td>288.9 ns</td><td>30.28 ns</td><td>1,200.0 ns</td><td>700.0000 ns</td><td>1,000.0 ns</td><td>1,300.0 ns</td><td>2,100.0 ns</td><td>808,888.9</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>PublishViaInterface_WithListeners</td><td>10</td><td>2,187.4 ns</td><td>144.98 ns</td><td>416.0 ns</td><td>42.68 ns</td><td>2,100.0 ns</td><td>1,400.0000 ns</td><td>1,900.0 ns</td><td>2,350.0 ns</td><td>3,300.0 ns</td><td>457,170.4</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>PublishDirect_NoListeners</td><td>10</td><td>153.8 ns</td><td>38.74 ns</td><td>109.9 ns</td><td>11.40 ns</td><td>100.0 ns</td><td>0.0000 ns</td><td>100.0 ns</td><td>200.0 ns</td><td>400.0 ns</td><td>6,503,496.5</td><td>?</td><td>?</td><td>-</td><td>?</td>
+</tr><tr><td>PublishDirect_WithListeners</td><td>10</td><td>1,401.0 ns</td><td>102.50 ns</td><td>297.4 ns</td><td>30.19 ns</td><td>1,300.0 ns</td><td>900.0000 ns</td><td>1,200.0 ns</td><td>1,600.0 ns</td><td>2,200.0 ns</td><td>713,760.1</td><td>?</td><td>?</td><td>-</td><td>?</td>
+</tr><tr><td>PublishMultipleEventTypes_ViaInterface</td><td>10</td><td>1,357.0 ns</td><td>113.32 ns</td><td>321.5 ns</td><td>33.34 ns</td><td>1,300.0 ns</td><td>700.0000 ns</td><td>1,100.0 ns</td><td>1,500.0 ns</td><td>2,300.0 ns</td><td>736,925.5</td><td>?</td><td>?</td><td>72 B</td><td>?</td>
+</tr><tr><td>TupleAccessPerformance</td><td>10</td><td>1,261.5 ns</td><td>93.46 ns</td><td>269.6 ns</td><td>27.52 ns</td><td>1,200.0 ns</td><td>900.0000 ns</td><td>1,000.0 ns</td><td>1,400.0 ns</td><td>1,900.0 ns</td><td>792,733.3</td><td>?</td><td>?</td><td>24 B</td><td>?</td>
+</tr><tr><td>InterfaceConversionOverhead</td><td>10</td><td>1,789.4 ns</td><td>102.99 ns</td><td>293.8 ns</td><td>30.31 ns</td><td>1,700.0 ns</td><td>1,400.0000 ns</td><td>1,600.0 ns</td><td>1,900.0 ns</td><td>2,600.0 ns</td><td>558,858.5</td><td>?</td><td>?</td><td>480 B</td><td>?</td>
+</tr><tr><td>DictionaryLookupWithTuple</td><td>10</td><td>1,629.5 ns</td><td>105.89 ns</td><td>303.8 ns</td><td>31.17 ns</td><td>1,600.0 ns</td><td>1,000.0000 ns</td><td>1,400.0 ns</td><td>1,800.0 ns</td><td>2,400.0 ns</td><td>613,695.1</td><td>?</td><td>?</td><td>120 B</td><td>?</td>
+</tr><tr><td>PublishViaInterface_NoListeners</td><td>100</td><td>1,217.2 ns</td><td>101.53 ns</td><td>288.0 ns</td><td>29.87 ns</td><td>1,200.0 ns</td><td>700.0000 ns</td><td>1,000.0 ns</td><td>1,400.0 ns</td><td>1,900.0 ns</td><td>821,554.8</td><td>5.72</td><td>3.22</td><td>24 B</td><td>NA</td>
+</tr><tr><td>PublishViaInterface_WithListeners</td><td>100</td><td>3,908.2 ns</td><td>213.30 ns</td><td>622.2 ns</td><td>62.85 ns</td><td>3,850.0 ns</td><td>2,800.0000 ns</td><td>3,400.0 ns</td><td>4,300.0 ns</td><td>5,400.0 ns</td><td>255,874.7</td><td>18.35</td><td>9.72</td><td>24 B</td><td>NA</td>
+</tr><tr><td>PublishDirect_NoListeners</td><td>100</td><td>261.6 ns</td><td>43.99 ns</td><td>126.2 ns</td><td>12.95 ns</td><td>250.0 ns</td><td>50.0000 ns</td><td>150.0 ns</td><td>350.0 ns</td><td>650.0 ns</td><td>3,822,937.6</td><td>1.23</td><td>0.90</td><td>-</td><td>NA</td>
+</tr><tr><td>PublishDirect_WithListeners</td><td>100</td><td>2,247.4 ns</td><td>133.23 ns</td><td>386.5 ns</td><td>39.24 ns</td><td>2,000.0 ns</td><td>1,700.0000 ns</td><td>2,000.0 ns</td><td>2,600.0 ns</td><td>3,500.0 ns</td><td>444,954.1</td><td>10.55</td><td>5.64</td><td>-</td><td>NA</td>
+</tr><tr><td>PublishMultipleEventTypes_ViaInterface</td><td>100</td><td>1,162.1 ns</td><td>73.00 ns</td><td>209.4 ns</td><td>21.49 ns</td><td>1,100.0 ns</td><td>700.0000 ns</td><td>1,000.0 ns</td><td>1,300.0 ns</td><td>1,700.0 ns</td><td>860,507.2</td><td>5.46</td><td>2.93</td><td>72 B</td><td>NA</td>
+</tr><tr><td>TupleAccessPerformance</td><td>100</td><td>1,255.4 ns</td><td>72.71 ns</td><td>205.1 ns</td><td>21.38 ns</td><td>1,150.0 ns</td><td>950.0000 ns</td><td>1,150.0 ns</td><td>1,350.0 ns</td><td>1,850.0 ns</td><td>796,536.8</td><td>5.89</td><td>3.13</td><td>24 B</td><td>NA</td>
+</tr><tr><td>InterfaceConversionOverhead</td><td>100</td><td>1,595.9 ns</td><td>99.99 ns</td><td>290.1 ns</td><td>29.45 ns</td><td>1,500.0 ns</td><td>1,000.0000 ns</td><td>1,400.0 ns</td><td>1,700.0 ns</td><td>2,300.0 ns</td><td>626,615.0</td><td>7.49</td><td>4.03</td><td>480 B</td><td>NA</td>
+</tr><tr><td>DictionaryLookupWithTuple</td><td>100</td><td>1,366.0 ns</td><td>80.67 ns</td><td>234.0 ns</td><td>23.76 ns</td><td>1,300.0 ns</td><td>900.0000 ns</td><td>1,200.0 ns</td><td>1,500.0 ns</td><td>2,000.0 ns</td><td>732,075.5</td><td>6.41</td><td>3.43</td><td>120 B</td><td>NA</td>
+</tr></tbody></table>
+</body>
+</html>

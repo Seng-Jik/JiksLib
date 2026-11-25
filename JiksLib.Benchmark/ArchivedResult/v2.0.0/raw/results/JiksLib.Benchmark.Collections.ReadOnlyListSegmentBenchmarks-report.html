@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Collections.ReadOnlyListSegmentBenchmarks-20261125-190423</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  
+</code></pre>
+
+<table>
+<thead><tr><th>Method           </th><th>Mean </th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Min  </th><th>Q1   </th><th>Median</th><th>Q3   </th><th>Max  </th><th>Op/s     </th><th>Gen0</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>ArrayIndexer</td><td>311.1866 ns</td><td>2.7809 ns</td><td>2.6012 ns</td><td>0.6716 ns</td><td>306.5128 ns</td><td>309.4974 ns</td><td>310.3095 ns</td><td>313.5675 ns</td><td>315.8484 ns</td><td>3,213,505.5</td><td>-</td><td>-</td>
+</tr><tr><td>ListIndexer</td><td>445.7505 ns</td><td>3.6332 ns</td><td>3.0339 ns</td><td>0.8415 ns</td><td>441.0015 ns</td><td>443.6042 ns</td><td>445.0334 ns</td><td>448.8328 ns</td><td>449.9707 ns</td><td>2,243,407.5</td><td>-</td><td>-</td>
+</tr><tr><td>ArraySegmentIndexer</td><td>454.8964 ns</td><td>2.9467 ns</td><td>2.7564 ns</td><td>0.7117 ns</td><td>451.5034 ns</td><td>453.2906 ns</td><td>453.7103 ns</td><td>457.3579 ns</td><td>460.1880 ns</td><td>2,198,302.6</td><td>-</td><td>-</td>
+</tr><tr><td>SegmentOverArrayIndexer</td><td>576.1294 ns</td><td>7.1020 ns</td><td>6.6432 ns</td><td>1.7153 ns</td><td>567.6498 ns</td><td>569.8255 ns</td><td>575.3857 ns</td><td>582.0456 ns</td><td>586.3037 ns</td><td>1,735,721.2</td><td>-</td><td>-</td>
+</tr><tr><td>SegmentOverListIndexer</td><td>640.7229 ns</td><td>7.5466 ns</td><td>7.0591 ns</td><td>1.8227 ns</td><td>629.7001 ns</td><td>636.0926 ns</td><td>639.3224 ns</td><td>644.0430 ns</td><td>654.9930 ns</td><td>1,560,737.1</td><td>-</td><td>-</td>
+</tr><tr><td>ListForeach</td><td>405.9514 ns</td><td>2.4773 ns</td><td>2.1961 ns</td><td>0.5869 ns</td><td>401.7921 ns</td><td>404.8496 ns</td><td>405.9343 ns</td><td>407.4192 ns</td><td>409.9532 ns</td><td>2,463,349.2</td><td>-</td><td>-</td>
+</tr><tr><td>SegmentForeach</td><td>456.6004 ns</td><td>4.1405 ns</td><td>3.8731 ns</td><td>1.0000 ns</td><td>450.2750 ns</td><td>453.5471 ns</td><td>457.2708 ns</td><td>459.0309 ns</td><td>463.1251 ns</td><td>2,190,098.9</td><td>-</td><td>-</td>
+</tr><tr><td>ArrayCopy</td><td>27.0651 ns</td><td>0.5178 ns</td><td>0.8932 ns</td><td>0.1449 ns</td><td>25.7946 ns</td><td>26.3488 ns</td><td>26.7584 ns</td><td>27.4363 ns</td><td>29.3511 ns</td><td>36,947,963.9</td><td>-</td><td>-</td>
+</tr><tr><td>ListCopyTo</td><td>27.7427 ns</td><td>0.5531 ns</td><td>0.5918 ns</td><td>0.1395 ns</td><td>26.8658 ns</td><td>27.2572 ns</td><td>27.6902 ns</td><td>28.0774 ns</td><td>29.2802 ns</td><td>36,045,571.2</td><td>-</td><td>-</td>
+</tr><tr><td>SegmentCopyTo</td><td>29.6964 ns</td><td>0.4377 ns</td><td>0.3880 ns</td><td>0.1037 ns</td><td>28.9829 ns</td><td>29.4629 ns</td><td>29.7976 ns</td><td>29.9403 ns</td><td>30.3602 ns</td><td>33,674,134.0</td><td>-</td><td>-</td>
+</tr><tr><td>ManualSliceToArray</td><td>103.3933 ns</td><td>2.3033 ns</td><td>6.7188 ns</td><td>0.6787 ns</td><td>95.4104 ns</td><td>97.8980 ns</td><td>101.8090 ns</td><td>107.5565 ns</td><td>121.9849 ns</td><td>9,671,806.3</td><td>0.1981</td><td>2072 B</td>
+</tr><tr><td>SegmentToArray</td><td>99.1249 ns</td><td>1.0870 ns</td><td>1.0168 ns</td><td>0.2625 ns</td><td>97.6612 ns</td><td>98.4819 ns</td><td>98.9889 ns</td><td>99.8138 ns</td><td>101.2423 ns</td><td>10,088,282.7</td><td>0.1981</td><td>2072 B</td>
+</tr><tr><td>ArraySegmentSlice</td><td>0.7846 ns</td><td>0.0046 ns</td><td>0.0038 ns</td><td>0.0011 ns</td><td>0.7777 ns</td><td>0.7822 ns</td><td>0.7839 ns</td><td>0.7855 ns</td><td>0.7939 ns</td><td>1,274,510,401.2</td><td>-</td><td>-</td>
+</tr><tr><td>SegmentSlice</td><td>1.7114 ns</td><td>0.0212 ns</td><td>0.0198 ns</td><td>0.0051 ns</td><td>1.6760 ns</td><td>1.6987 ns</td><td>1.7144 ns</td><td>1.7261 ns</td><td>1.7431 ns</td><td>584,326,593.3</td><td>-</td><td>-</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Collections.RingBufferBenchmarks-20261125-190414</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  InvocationCount=1  
+UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method             </th><th>Capacity</th><th>Mean </th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Median</th><th>Min     </th><th>Q1   </th><th>Q3   </th><th>Max  </th><th>Op/s </th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>Add_Fill</td><td>16</td><td>439.1 ns</td><td>30.17 ns</td><td>85.11 ns</td><td>8.87 ns</td><td>400.0 ns</td><td>300.0000 ns</td><td>400.0 ns</td><td>500.0 ns</td><td>600.0 ns</td><td>2,277,227.7</td><td>-</td>
+</tr><tr><td>Add_Overwrite</td><td>16</td><td>385.2 ns</td><td>31.17 ns</td><td>87.40 ns</td><td>9.16 ns</td><td>350.0 ns</td><td>250.0000 ns</td><td>350.0 ns</td><td>450.0 ns</td><td>550.0 ns</td><td>2,596,291.0</td><td>-</td>
+</tr><tr><td>Add_WithEvicted_Overwrite</td><td>16</td><td>428.0 ns</td><td>40.93 ns</td><td>120.67 ns</td><td>12.07 ns</td><td>400.0 ns</td><td>300.0000 ns</td><td>300.0 ns</td><td>500.0 ns</td><td>800.0 ns</td><td>2,336,448.6</td><td>-</td>
+</tr><tr><td>AddRange_ArraySegment</td><td>16</td><td>308.2 ns</td><td>38.75 ns</td><td>112.43 ns</td><td>11.42 ns</td><td>300.0 ns</td><td>200.0000 ns</td><td>200.0 ns</td><td>400.0 ns</td><td>700.0 ns</td><td>3,244,147.2</td><td>-</td>
+</tr><tr><td>Indexer_Sequential</td><td>16</td><td>234.4 ns</td><td>21.53 ns</td><td>62.12 ns</td><td>6.34 ns</td><td>250.0 ns</td><td>150.0000 ns</td><td>150.0 ns</td><td>250.0 ns</td><td>350.0 ns</td><td>4,266,666.7</td><td>-</td>
+</tr><tr><td>Enumerate</td><td>16</td><td>260.0 ns</td><td>22.69 ns</td><td>63.25 ns</td><td>6.67 ns</td><td>300.0 ns</td><td>200.0000 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>3,846,153.8</td><td>-</td>
+</tr><tr><td>CopyTo</td><td>16</td><td>344.0 ns</td><td>36.14 ns</td><td>101.33 ns</td><td>10.62 ns</td><td>300.0 ns</td><td>100.0000 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>500.0 ns</td><td>2,907,348.2</td><td>-</td>
+</tr><tr><td>ToArray</td><td>16</td><td>650.0 ns</td><td>60.27 ns</td><td>170.00 ns</td><td>17.72 ns</td><td>700.0 ns</td><td>300.0000 ns</td><td>600.0 ns</td><td>700.0 ns</td><td>1,100.0 ns</td><td>1,538,461.5</td><td>88 B</td>
+</tr><tr><td>TryRemoveNewest_All</td><td>16</td><td>172.0 ns</td><td>22.27 ns</td><td>63.19 ns</td><td>6.55 ns</td><td>200.0 ns</td><td>100.0000 ns</td><td>100.0 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>5,812,500.0</td><td>-</td>
+</tr><tr><td>TryRemoveOldest_All</td><td>16</td><td>146.2 ns</td><td>24.54 ns</td><td>68.81 ns</td><td>7.21 ns</td><td>100.0 ns</td><td>0.0000 ns</td><td>100.0 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>6,842,105.3</td><td>-</td>
+</tr><tr><td>Clear</td><td>16</td><td>236.6 ns</td><td>31.09 ns</td><td>88.20 ns</td><td>9.15 ns</td><td>200.0 ns</td><td>100.0000 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>4,227,272.7</td><td>-</td>
+</tr><tr><td>Deque_Add_Fill</td><td>16</td><td>467.7 ns</td><td>40.99 ns</td><td>120.23 ns</td><td>12.08 ns</td><td>500.0 ns</td><td>200.0000 ns</td><td>400.0 ns</td><td>600.0 ns</td><td>700.0 ns</td><td>2,138,228.9</td><td>-</td>
+</tr><tr><td>Deque_Indexer_Sequential</td><td>16</td><td>273.6 ns</td><td>25.40 ns</td><td>71.24 ns</td><td>7.47 ns</td><td>300.0 ns</td><td>200.0000 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>3,654,618.5</td><td>-</td>
+</tr><tr><td>Deque_TryRemoveFront_All</td><td>16</td><td>372.6 ns</td><td>23.54 ns</td><td>67.54 ns</td><td>6.93 ns</td><td>400.0 ns</td><td>200.0000 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>500.0 ns</td><td>2,683,615.8</td><td>-</td>
+</tr><tr><td>Add_Fill</td><td>256</td><td>3,022.0 ns</td><td>133.81 ns</td><td>394.55 ns</td><td>39.46 ns</td><td>2,900.0 ns</td><td>2,400.0000 ns</td><td>2,700.0 ns</td><td>3,500.0 ns</td><td>3,700.0 ns</td><td>330,906.7</td><td>-</td>
+</tr><tr><td>Add_Overwrite</td><td>256</td><td>3,129.0 ns</td><td>151.08 ns</td><td>445.47 ns</td><td>44.55 ns</td><td>3,000.0 ns</td><td>2,500.0000 ns</td><td>2,800.0 ns</td><td>3,425.0 ns</td><td>4,200.0 ns</td><td>319,590.9</td><td>-</td>
+</tr><tr><td>Add_WithEvicted_Overwrite</td><td>256</td><td>3,185.6 ns</td><td>154.23 ns</td><td>447.44 ns</td><td>45.43 ns</td><td>3,200.0 ns</td><td>2,400.0000 ns</td><td>3,000.0 ns</td><td>3,600.0 ns</td><td>4,000.0 ns</td><td>313,915.9</td><td>-</td>
+</tr><tr><td>AddRange_ArraySegment</td><td>256</td><td>2,317.2 ns</td><td>144.34 ns</td><td>423.31 ns</td><td>42.54 ns</td><td>2,200.0 ns</td><td>1,700.0000 ns</td><td>2,000.0 ns</td><td>2,750.0 ns</td><td>3,400.0 ns</td><td>431,560.6</td><td>-</td>
+</tr><tr><td>Indexer_Sequential</td><td>256</td><td>2,631.3 ns</td><td>161.38 ns</td><td>473.30 ns</td><td>47.57 ns</td><td>2,600.0 ns</td><td>1,900.0000 ns</td><td>2,250.0 ns</td><td>3,100.0 ns</td><td>3,700.0 ns</td><td>380,038.4</td><td>-</td>
+</tr><tr><td>Enumerate</td><td>256</td><td>2,420.0 ns</td><td>147.56 ns</td><td>435.08 ns</td><td>43.51 ns</td><td>2,300.0 ns</td><td>1,900.0000 ns</td><td>2,100.0 ns</td><td>2,900.0 ns</td><td>3,400.0 ns</td><td>413,223.1</td><td>-</td>
+</tr><tr><td>CopyTo</td><td>256</td><td>514.7 ns</td><td>44.60 ns</td><td>127.97 ns</td><td>13.13 ns</td><td>500.0 ns</td><td>300.0000 ns</td><td>400.0 ns</td><td>600.0 ns</td><td>900.0 ns</td><td>1,942,740.3</td><td>-</td>
+</tr><tr><td>ToArray</td><td>256</td><td>771.9 ns</td><td>58.85 ns</td><td>163.06 ns</td><td>17.28 ns</td><td>800.0 ns</td><td>400.0000 ns</td><td>700.0 ns</td><td>900.0 ns</td><td>1,100.0 ns</td><td>1,295,487.6</td><td>1048 B</td>
+</tr><tr><td>TryRemoveNewest_All</td><td>256</td><td>2,490.9 ns</td><td>155.42 ns</td><td>455.82 ns</td><td>45.81 ns</td><td>2,300.0 ns</td><td>1,900.0000 ns</td><td>2,100.0 ns</td><td>3,000.0 ns</td><td>3,600.0 ns</td><td>401,459.9</td><td>-</td>
+</tr><tr><td>TryRemoveOldest_All</td><td>256</td><td>2,369.0 ns</td><td>155.21 ns</td><td>457.64 ns</td><td>45.76 ns</td><td>2,250.0 ns</td><td>1,850.0000 ns</td><td>1,950.0 ns</td><td>2,850.0 ns</td><td>3,550.0 ns</td><td>422,119.0</td><td>-</td>
+</tr><tr><td>Clear</td><td>256</td><td>213.2 ns</td><td>34.54 ns</td><td>96.85 ns</td><td>10.15 ns</td><td>200.0 ns</td><td>0.0000 ns</td><td>200.0 ns</td><td>300.0 ns</td><td>400.0 ns</td><td>4,690,721.6</td><td>-</td>
+</tr><tr><td>Deque_Add_Fill</td><td>256</td><td>2,971.7 ns</td><td>167.54 ns</td><td>491.36 ns</td><td>49.38 ns</td><td>2,900.0 ns</td><td>2,200.0000 ns</td><td>2,600.0 ns</td><td>3,400.0 ns</td><td>4,300.0 ns</td><td>336,505.8</td><td>-</td>
+</tr><tr><td>Deque_Indexer_Sequential</td><td>256</td><td>2,511.2 ns</td><td>141.01 ns</td><td>411.34 ns</td><td>41.55 ns</td><td>2,350.0 ns</td><td>1,950.0000 ns</td><td>2,150.0 ns</td><td>2,950.0 ns</td><td>3,550.0 ns</td><td>398,212.1</td><td>-</td>
+</tr><tr><td>Deque_TryRemoveFront_All</td><td>256</td><td>2,723.2 ns</td><td>157.67 ns</td><td>462.43 ns</td><td>46.48 ns</td><td>2,600.0 ns</td><td>2,100.0000 ns</td><td>2,400.0 ns</td><td>3,200.0 ns</td><td>3,800.0 ns</td><td>367,210.7</td><td>-</td>
+</tr><tr><td>Add_Fill</td><td>4096</td><td>13,802.1 ns</td><td>476.17 ns</td><td>1,366.23 ns</td><td>140.17 ns</td><td>13,400.0 ns</td><td>11,800.0000 ns</td><td>12,700.0 ns</td><td>14,700.0 ns</td><td>17,600.0 ns</td><td>72,452.7</td><td>-</td>
+</tr><tr><td>Add_Overwrite</td><td>4096</td><td>14,947.8 ns</td><td>406.10 ns</td><td>1,145.41 ns</td><td>119.42 ns</td><td>14,650.0 ns</td><td>13,200.0000 ns</td><td>14,100.0 ns</td><td>15,500.0 ns</td><td>18,200.0 ns</td><td>66,899.4</td><td>-</td>
+</tr><tr><td>Add_WithEvicted_Overwrite</td><td>4096</td><td>15,261.7 ns</td><td>464.14 ns</td><td>1,324.22 ns</td><td>136.58 ns</td><td>14,800.0 ns</td><td>13,700.0000 ns</td><td>14,300.0 ns</td><td>16,200.0 ns</td><td>19,500.0 ns</td><td>65,523.5</td><td>-</td>
+</tr><tr><td>AddRange_ArraySegment</td><td>4096</td><td>8,214.6 ns</td><td>488.68 ns</td><td>1,409.96 ns</td><td>143.90 ns</td><td>7,700.0 ns</td><td>6,500.0000 ns</td><td>7,200.0 ns</td><td>9,100.0 ns</td><td>12,200.0 ns</td><td>121,734.7</td><td>-</td>
+</tr><tr><td>Indexer_Sequential</td><td>4096</td><td>10,749.5 ns</td><td>371.78 ns</td><td>1,066.70 ns</td><td>109.44 ns</td><td>10,500.0 ns</td><td>9,300.0000 ns</td><td>10,000.0 ns</td><td>11,250.0 ns</td><td>14,000.0 ns</td><td>93,027.8</td><td>-</td>
+</tr><tr><td>Enumerate</td><td>4096</td><td>9,282.3 ns</td><td>344.39 ns</td><td>1,010.03 ns</td><td>101.51 ns</td><td>8,950.0 ns</td><td>7,950.0000 ns</td><td>8,450.0 ns</td><td>10,100.0 ns</td><td>11,650.0 ns</td><td>107,731.7</td><td>-</td>
+</tr><tr><td>CopyTo</td><td>4096</td><td>1,149.5 ns</td><td>68.29 ns</td><td>193.72 ns</td><td>20.09 ns</td><td>1,100.0 ns</td><td>700.0000 ns</td><td>1,000.0 ns</td><td>1,200.0 ns</td><td>1,700.0 ns</td><td>869,971.9</td><td>-</td>
+</tr><tr><td>ToArray</td><td>4096</td><td>4,377.1 ns</td><td>935.71 ns</td><td>2,699.73 ns</td><td>275.54 ns</td><td>5,900.0 ns</td><td>800.0000 ns</td><td>1,475.0 ns</td><td>6,200.0 ns</td><td>11,500.0 ns</td><td>228,462.6</td><td>16408 B</td>
+</tr><tr><td>TryRemoveNewest_All</td><td>4096</td><td>9,903.3 ns</td><td>354.76 ns</td><td>1,000.60 ns</td><td>104.32 ns</td><td>9,600.0 ns</td><td>8,600.0000 ns</td><td>9,200.0 ns</td><td>10,225.0 ns</td><td>12,500.0 ns</td><td>100,976.8</td><td>-</td>
+</tr><tr><td>TryRemoveOldest_All</td><td>4096</td><td>9,537.4 ns</td><td>325.62 ns</td><td>913.07 ns</td><td>95.72 ns</td><td>9,400.0 ns</td><td>8,100.0000 ns</td><td>8,800.0 ns</td><td>10,050.0 ns</td><td>11,900.0 ns</td><td>104,850.8</td><td>-</td>
+</tr><tr><td>Clear</td><td>4096</td><td>741.9 ns</td><td>75.02 ns</td><td>212.81 ns</td><td>22.07 ns</td><td>800.0 ns</td><td>400.0000 ns</td><td>600.0 ns</td><td>900.0 ns</td><td>1,300.0 ns</td><td>1,347,826.1</td><td>-</td>
+</tr><tr><td>Deque_Add_Fill</td><td>4096</td><td>14,482.7 ns</td><td>542.39 ns</td><td>1,582.18 ns</td><td>159.82 ns</td><td>14,500.0 ns</td><td>12,300.0000 ns</td><td>13,100.0 ns</td><td>15,400.0 ns</td><td>19,100.0 ns</td><td>69,048.1</td><td>-</td>
+</tr><tr><td>Deque_Indexer_Sequential</td><td>4096</td><td>12,424.7 ns</td><td>379.40 ns</td><td>1,076.29 ns</td><td>111.61 ns</td><td>12,100.0 ns</td><td>11,100.0000 ns</td><td>11,600.0 ns</td><td>13,300.0 ns</td><td>15,800.0 ns</td><td>80,484.6</td><td>-</td>
+</tr><tr><td>Deque_TryRemoveFront_All</td><td>4096</td><td>20,806.8 ns</td><td>417.42 ns</td><td>1,149.69 ns</td><td>122.56 ns</td><td>20,500.0 ns</td><td>19,100.0000 ns</td><td>19,900.0 ns</td><td>21,600.0 ns</td><td>24,200.0 ns</td><td>48,061.2</td><td>-</td>
+</tr></tbody></table>
+</body>
+</html>

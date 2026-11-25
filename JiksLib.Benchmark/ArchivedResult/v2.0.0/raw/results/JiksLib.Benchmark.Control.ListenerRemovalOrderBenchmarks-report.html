@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Control.ListenerRemovalOrderBenchmarks-20261125-185605</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  InvocationCount=1  
+UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method               </th><th>ListenerCount</th><th>Mean</th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Median</th><th>Min </th><th>Q1  </th><th>Q3 </th><th>Max</th><th>Op/s</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>RemoveForward_EventBus</td><td>1</td><td>1.064 &mu;s</td><td>0.0998 &mu;s</td><td>0.2799 &mu;s</td><td>0.0293 &mu;s</td><td>1.0000 &mu;s</td><td>0.7000 &mu;s</td><td>0.8500 &mu;s</td><td>1.200 &mu;s</td><td>1.900 &mu;s</td><td>940,082.6</td><td>-</td>
+</tr><tr><td>RemoveReverse_EventBus</td><td>1</td><td>1.133 &mu;s</td><td>0.1058 &mu;s</td><td>0.2984 &mu;s</td><td>0.0311 &mu;s</td><td>1.1000 &mu;s</td><td>0.5000 &mu;s</td><td>0.9000 &mu;s</td><td>1.300 &mu;s</td><td>1.900 &mu;s</td><td>882,917.5</td><td>-</td>
+</tr><tr><td>RemoveForward_ValueEventBus</td><td>1</td><td>1.281 &mu;s</td><td>0.1204 &mu;s</td><td>0.3358 &mu;s</td><td>0.0354 &mu;s</td><td>1.2500 &mu;s</td><td>0.7500 &mu;s</td><td>1.0500 &mu;s</td><td>1.450 &mu;s</td><td>2.250 &mu;s</td><td>780,572.4</td><td>-</td>
+</tr><tr><td>RemoveReverse_ValueEventBus</td><td>1</td><td>1.027 &mu;s</td><td>0.0907 &mu;s</td><td>0.2588 &mu;s</td><td>0.0267 &mu;s</td><td>0.9500 &mu;s</td><td>0.5500 &mu;s</td><td>0.8500 &mu;s</td><td>1.150 &mu;s</td><td>1.850 &mu;s</td><td>974,093.3</td><td>-</td>
+</tr><tr><td>RemoveForward_EventBus</td><td>10</td><td>1.830 &mu;s</td><td>0.1103 &mu;s</td><td>0.3112 &mu;s</td><td>0.0324 &mu;s</td><td>1.8000 &mu;s</td><td>1.3000 &mu;s</td><td>1.6000 &mu;s</td><td>2.000 &mu;s</td><td>2.700 &mu;s</td><td>546,318.3</td><td>-</td>
+</tr><tr><td>RemoveReverse_EventBus</td><td>10</td><td>1.737 &mu;s</td><td>0.0645 &mu;s</td><td>0.1734 &mu;s</td><td>0.0189 &mu;s</td><td>1.8000 &mu;s</td><td>1.3000 &mu;s</td><td>1.7000 &mu;s</td><td>1.800 &mu;s</td><td>2.200 &mu;s</td><td>575,736.8</td><td>-</td>
+</tr><tr><td>RemoveForward_ValueEventBus</td><td>10</td><td>1.644 &mu;s</td><td>0.0622 &mu;s</td><td>0.1692 &mu;s</td><td>0.0182 &mu;s</td><td>1.6000 &mu;s</td><td>1.3000 &mu;s</td><td>1.5000 &mu;s</td><td>1.700 &mu;s</td><td>2.100 &mu;s</td><td>608,203.7</td><td>-</td>
+</tr><tr><td>RemoveReverse_ValueEventBus</td><td>10</td><td>1.502 &mu;s</td><td>0.0806 &mu;s</td><td>0.2273 &mu;s</td><td>0.0237 &mu;s</td><td>1.5000 &mu;s</td><td>1.1000 &mu;s</td><td>1.4000 &mu;s</td><td>1.600 &mu;s</td><td>2.100 &mu;s</td><td>665,701.9</td><td>-</td>
+</tr><tr><td>RemoveForward_EventBus</td><td>100</td><td>7.992 &mu;s</td><td>0.3884 &mu;s</td><td>1.1451 &mu;s</td><td>0.1145 &mu;s</td><td>8.1500 &mu;s</td><td>6.0500 &mu;s</td><td>6.8250 &mu;s</td><td>8.850 &mu;s</td><td>10.450 &mu;s</td><td>125,125.1</td><td>-</td>
+</tr><tr><td>RemoveReverse_EventBus</td><td>100</td><td>8.212 &mu;s</td><td>0.3960 &mu;s</td><td>1.1613 &mu;s</td><td>0.1167 &mu;s</td><td>8.2000 &mu;s</td><td>6.3000 &mu;s</td><td>7.6000 &mu;s</td><td>9.200 &mu;s</td><td>11.600 &mu;s</td><td>121,771.2</td><td>-</td>
+</tr><tr><td>RemoveForward_ValueEventBus</td><td>100</td><td>7.870 &mu;s</td><td>0.4367 &mu;s</td><td>1.2875 &mu;s</td><td>0.1288 &mu;s</td><td>8.0000 &mu;s</td><td>5.8000 &mu;s</td><td>6.6750 &mu;s</td><td>9.000 &mu;s</td><td>12.300 &mu;s</td><td>127,064.8</td><td>-</td>
+</tr><tr><td>RemoveReverse_ValueEventBus</td><td>100</td><td>7.760 &mu;s</td><td>0.3950 &mu;s</td><td>1.1270 &mu;s</td><td>0.1162 &mu;s</td><td>7.9500 &mu;s</td><td>5.8000 &mu;s</td><td>6.6500 &mu;s</td><td>8.675 &mu;s</td><td>10.800 &mu;s</td><td>128,873.0</td><td>-</td>
+</tr><tr><td>RemoveForward_EventBus</td><td>1000</td><td>62.949 &mu;s</td><td>1.8815 &mu;s</td><td>5.2448 &mu;s</td><td>0.5529 &mu;s</td><td>61.3000 &mu;s</td><td>56.9000 &mu;s</td><td>59.2250 &mu;s</td><td>66.075 &mu;s</td><td>80.500 &mu;s</td><td>15,885.9</td><td>-</td>
+</tr><tr><td>RemoveReverse_EventBus</td><td>1000</td><td>61.600 &mu;s</td><td>1.4310 &mu;s</td><td>4.0826 &mu;s</td><td>0.4211 &mu;s</td><td>61.0500 &mu;s</td><td>56.7000 &mu;s</td><td>58.1250 &mu;s</td><td>63.200 &mu;s</td><td>72.400 &mu;s</td><td>16,233.8</td><td>-</td>
+</tr><tr><td>RemoveForward_ValueEventBus</td><td>1000</td><td>61.216 &mu;s</td><td>1.2903 &mu;s</td><td>3.6394 &mu;s</td><td>0.3794 &mu;s</td><td>60.5000 &mu;s</td><td>56.1000 &mu;s</td><td>58.1000 &mu;s</td><td>63.775 &mu;s</td><td>73.000 &mu;s</td><td>16,335.5</td><td>-</td>
+</tr><tr><td>RemoveReverse_ValueEventBus</td><td>1000</td><td>60.367 &mu;s</td><td>1.3278 &mu;s</td><td>3.7452 &mu;s</td><td>0.3905 &mu;s</td><td>59.6500 &mu;s</td><td>55.1000 &mu;s</td><td>57.1000 &mu;s</td><td>62.000 &mu;s</td><td>70.600 &mu;s</td><td>16,565.2</td><td>-</td>
+</tr></tbody></table>
+</body>
+</html>

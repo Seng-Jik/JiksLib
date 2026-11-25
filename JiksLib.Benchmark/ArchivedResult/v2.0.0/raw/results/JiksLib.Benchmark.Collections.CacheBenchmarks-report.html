@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Collections.CacheBenchmarks-20261125-185944</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  
+</code></pre>
+
+<table>
+<thead><tr><th>Method    </th><th>Algorithm</th><th>Mean</th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Min</th><th>Q1 </th><th>Median</th><th>Q3 </th><th>Max</th><th>Op/s   </th><th>Ratio</th><th>RatioSD</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>AccessHit</td><td>LRU</td><td>2.175 ns</td><td>0.0594 ns</td><td>0.0526 ns</td><td>0.0141 ns</td><td>2.111 ns</td><td>2.133 ns</td><td>2.174 ns</td><td>2.205 ns</td><td>2.305 ns</td><td>459,779,420.7</td><td>1.00</td><td>0.03</td><td>-</td><td>NA</td>
+</tr><tr><td>GetCachedDefault</td><td>LRU</td><td>2.828 ns</td><td>0.1142 ns</td><td>0.3239 ns</td><td>0.0336 ns</td><td>2.457 ns</td><td>2.561 ns</td><td>2.744 ns</td><td>2.969 ns</td><td>3.615 ns</td><td>353,594,308.6</td><td>1.30</td><td>0.15</td><td>-</td><td>NA</td>
+</tr><tr><td>GetCachedPeek</td><td>LRU</td><td>1.833 ns</td><td>0.0192 ns</td><td>0.0160 ns</td><td>0.0044 ns</td><td>1.805 ns</td><td>1.828 ns</td><td>1.830 ns</td><td>1.840 ns</td><td>1.866 ns</td><td>545,654,659.2</td><td>0.84</td><td>0.02</td><td>-</td><td>NA</td>
+</tr><tr><td>AccessHit</td><td>LFU</td><td>20.923 ns</td><td>0.2840 ns</td><td>0.2657 ns</td><td>0.0686 ns</td><td>20.462 ns</td><td>20.798 ns</td><td>20.859 ns</td><td>21.087 ns</td><td>21.516 ns</td><td>47,795,180.7</td><td>1.00</td><td>0.02</td><td>-</td><td>NA</td>
+</tr><tr><td>GetCachedDefault</td><td>LFU</td><td>21.848 ns</td><td>0.1532 ns</td><td>0.1433 ns</td><td>0.0370 ns</td><td>21.597 ns</td><td>21.742 ns</td><td>21.855 ns</td><td>21.965 ns</td><td>22.076 ns</td><td>45,770,992.9</td><td>1.04</td><td>0.01</td><td>-</td><td>NA</td>
+</tr><tr><td>GetCachedPeek</td><td>LFU</td><td>1.924 ns</td><td>0.0126 ns</td><td>0.0098 ns</td><td>0.0028 ns</td><td>1.908 ns</td><td>1.916 ns</td><td>1.925 ns</td><td>1.931 ns</td><td>1.940 ns</td><td>519,739,350.2</td><td>0.09</td><td>0.00</td><td>-</td><td>NA</td>
+</tr></tbody></table>
+</body>
+</html>

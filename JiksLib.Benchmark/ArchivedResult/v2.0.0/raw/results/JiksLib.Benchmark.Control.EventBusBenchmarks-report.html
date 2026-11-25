@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Control.EventBusBenchmarks-20261125-185554</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  InvocationCount=1  
+UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                         </th><th>ListenerCount</th><th>Mean  </th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Median</th><th>Min   </th><th>Q1    </th><th>Q3    </th><th>Max   </th><th>Op/s </th><th>Ratio</th><th>RatioSD</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>AddListeners</td><td>1</td><td>3,729.0 ns</td><td>248.64 ns</td><td>705.3 ns</td><td>73.14 ns</td><td>3,600.0 ns</td><td>2,400.0 ns</td><td>3,200.0 ns</td><td>4,100.0 ns</td><td>5,600.0 ns</td><td>268,166.1</td><td>1.03</td><td>0.27</td><td>328 B</td><td>1.00</td>
+</tr><tr><td>AddListeners_WithWarmup</td><td>1</td><td>1,599.0 ns</td><td>131.96 ns</td><td>382.8 ns</td><td>38.87 ns</td><td>1,600.0 ns</td><td>900.0 ns</td><td>1,300.0 ns</td><td>1,900.0 ns</td><td>2,600.0 ns</td><td>625,403.0</td><td>0.44</td><td>0.13</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListenerOnly</td><td>1</td><td>2,555.6 ns</td><td>163.39 ns</td><td>455.5 ns</td><td>48.01 ns</td><td>2,500.0 ns</td><td>1,700.0 ns</td><td>2,300.0 ns</td><td>2,700.0 ns</td><td>4,000.0 ns</td><td>391,304.3</td><td>0.71</td><td>0.18</td><td>328 B</td><td>1.00</td>
+</tr><tr><td>RemoveListenerOnly</td><td>1</td><td>1,334.7 ns</td><td>114.11 ns</td><td>327.4 ns</td><td>33.59 ns</td><td>1,300.0 ns</td><td>800.0 ns</td><td>1,100.0 ns</td><td>1,500.0 ns</td><td>2,200.0 ns</td><td>749,211.4</td><td>0.37</td><td>0.11</td><td>-</td><td>0.00</td>
+</tr><tr><td>RemoveListeners</td><td>1</td><td>3,042.6 ns</td><td>217.49 ns</td><td>620.5 ns</td><td>64.00 ns</td><td>3,000.0 ns</td><td>1,900.0 ns</td><td>2,700.0 ns</td><td>3,500.0 ns</td><td>4,700.0 ns</td><td>328,671.3</td><td>0.84</td><td>0.23</td><td>328 B</td><td>1.00</td>
+</tr><tr><td>PublishEvent_NoListeners</td><td>1</td><td>969.1 ns</td><td>111.55 ns</td><td>318.3 ns</td><td>32.83 ns</td><td>900.0 ns</td><td>400.0 ns</td><td>725.0 ns</td><td>1,200.0 ns</td><td>1,800.0 ns</td><td>1,031,833.2</td><td>0.27</td><td>0.10</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_WithListeners</td><td>1</td><td>1,698.9 ns</td><td>135.28 ns</td><td>383.8 ns</td><td>39.80 ns</td><td>1,600.0 ns</td><td>1,200.0 ns</td><td>1,400.0 ns</td><td>1,800.0 ns</td><td>2,800.0 ns</td><td>588,607.6</td><td>0.47</td><td>0.14</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishDerivedEvent_WithBaseListeners</td><td>1</td><td>2,017.2 ns</td><td>190.16 ns</td><td>557.7 ns</td><td>56.05 ns</td><td>2,000.0 ns</td><td>1,000.0 ns</td><td>1,600.0 ns</td><td>2,350.0 ns</td><td>3,500.0 ns</td><td>495,743.6</td><td>0.56</td><td>0.18</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_MixedListeners</td><td>1</td><td>1,988.3 ns</td><td>125.47 ns</td><td>358.0 ns</td><td>36.92 ns</td><td>1,900.0 ns</td><td>1,300.0 ns</td><td>1,800.0 ns</td><td>2,200.0 ns</td><td>3,000.0 ns</td><td>502,942.8</td><td>0.55</td><td>0.14</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListeners</td><td>10</td><td>5,259.6 ns</td><td>198.09 ns</td><td>565.2 ns</td><td>58.29 ns</td><td>5,000.0 ns</td><td>4,500.0 ns</td><td>4,900.0 ns</td><td>5,575.0 ns</td><td>6,900.0 ns</td><td>190,129.4</td><td>1.01</td><td>0.15</td><td>568 B</td><td>1.00</td>
+</tr><tr><td>AddListeners_WithWarmup</td><td>10</td><td>2,919.1 ns</td><td>121.99 ns</td><td>348.0 ns</td><td>35.90 ns</td><td>2,900.0 ns</td><td>2,400.0 ns</td><td>2,600.0 ns</td><td>3,000.0 ns</td><td>3,800.0 ns</td><td>342,565.6</td><td>0.56</td><td>0.09</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListenerOnly</td><td>10</td><td>3,255.3 ns</td><td>206.35 ns</td><td>588.7 ns</td><td>60.72 ns</td><td>3,200.0 ns</td><td>2,300.0 ns</td><td>2,800.0 ns</td><td>3,575.0 ns</td><td>5,000.0 ns</td><td>307,189.5</td><td>0.63</td><td>0.13</td><td>568 B</td><td>1.00</td>
+</tr><tr><td>RemoveListenerOnly</td><td>10</td><td>2,992.7 ns</td><td>206.81 ns</td><td>596.7 ns</td><td>60.90 ns</td><td>2,900.0 ns</td><td>2,200.0 ns</td><td>2,500.0 ns</td><td>3,325.0 ns</td><td>4,600.0 ns</td><td>334,145.5</td><td>0.57</td><td>0.13</td><td>-</td><td>0.00</td>
+</tr><tr><td>RemoveListeners</td><td>10</td><td>6,002.1 ns</td><td>347.37 ns</td><td>1,007.8 ns</td><td>102.32 ns</td><td>5,800.0 ns</td><td>3,900.0 ns</td><td>5,200.0 ns</td><td>6,600.0 ns</td><td>8,800.0 ns</td><td>166,609.4</td><td>1.15</td><td>0.22</td><td>568 B</td><td>1.00</td>
+</tr><tr><td>PublishEvent_NoListeners</td><td>10</td><td>797.9 ns</td><td>75.40 ns</td><td>216.3 ns</td><td>22.20 ns</td><td>700.0 ns</td><td>500.0 ns</td><td>600.0 ns</td><td>900.0 ns</td><td>1,300.0 ns</td><td>1,253,298.2</td><td>0.15</td><td>0.04</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_WithListeners</td><td>10</td><td>1,647.8 ns</td><td>85.07 ns</td><td>237.1 ns</td><td>25.00 ns</td><td>1,600.0 ns</td><td>1,300.0 ns</td><td>1,500.0 ns</td><td>1,775.0 ns</td><td>2,300.0 ns</td><td>606,878.0</td><td>0.32</td><td>0.05</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishDerivedEvent_WithBaseListeners</td><td>10</td><td>2,086.3 ns</td><td>178.78 ns</td><td>512.9 ns</td><td>52.63 ns</td><td>1,900.0 ns</td><td>1,500.0 ns</td><td>1,700.0 ns</td><td>2,400.0 ns</td><td>3,500.0 ns</td><td>479,313.8</td><td>0.40</td><td>0.11</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_MixedListeners</td><td>10</td><td>2,439.6 ns</td><td>131.39 ns</td><td>368.4 ns</td><td>38.62 ns</td><td>2,400.0 ns</td><td>1,700.0 ns</td><td>2,200.0 ns</td><td>2,600.0 ns</td><td>3,300.0 ns</td><td>409,909.9</td><td>0.47</td><td>0.08</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListeners</td><td>100</td><td>18,544.0 ns</td><td>603.44 ns</td><td>1,779.2 ns</td><td>177.92 ns</td><td>18,800.0 ns</td><td>14,100.0 ns</td><td>17,725.0 ns</td><td>19,800.0 ns</td><td>22,800.0 ns</td><td>53,925.8</td><td>1.01</td><td>0.14</td><td>2432 B</td><td>1.00</td>
+</tr><tr><td>AddListeners_WithWarmup</td><td>100</td><td>16,966.7 ns</td><td>664.81 ns</td><td>1,949.8 ns</td><td>195.96 ns</td><td>17,600.0 ns</td><td>13,200.0 ns</td><td>14,850.0 ns</td><td>18,250.0 ns</td><td>21,000.0 ns</td><td>58,939.1</td><td>0.92</td><td>0.14</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListenerOnly</td><td>100</td><td>9,389.4 ns</td><td>424.83 ns</td><td>1,212.1 ns</td><td>125.02 ns</td><td>9,000.0 ns</td><td>7,300.0 ns</td><td>8,400.0 ns</td><td>10,400.0 ns</td><td>13,500.0 ns</td><td>106,503.5</td><td>0.51</td><td>0.08</td><td>2432 B</td><td>1.00</td>
+</tr><tr><td>RemoveListenerOnly</td><td>100</td><td>9,460.1 ns</td><td>463.37 ns</td><td>1,359.0 ns</td><td>136.58 ns</td><td>9,350.0 ns</td><td>7,150.0 ns</td><td>8,200.0 ns</td><td>10,700.0 ns</td><td>11,850.0 ns</td><td>105,707.1</td><td>0.52</td><td>0.09</td><td>-</td><td>0.00</td>
+</tr><tr><td>RemoveListeners</td><td>100</td><td>18,769.4 ns</td><td>740.02 ns</td><td>2,158.7 ns</td><td>218.06 ns</td><td>19,350.0 ns</td><td>14,250.0 ns</td><td>16,925.0 ns</td><td>20,150.0 ns</td><td>24,150.0 ns</td><td>53,278.2</td><td>1.02</td><td>0.16</td><td>2432 B</td><td>1.00</td>
+</tr><tr><td>PublishEvent_NoListeners</td><td>100</td><td>838.8 ns</td><td>69.72 ns</td><td>203.4 ns</td><td>20.55 ns</td><td>800.0 ns</td><td>500.0 ns</td><td>700.0 ns</td><td>900.0 ns</td><td>1,400.0 ns</td><td>1,192,214.1</td><td>0.05</td><td>0.01</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_WithListeners</td><td>100</td><td>2,935.4 ns</td><td>178.15 ns</td><td>514.0 ns</td><td>52.46 ns</td><td>2,900.0 ns</td><td>2,000.0 ns</td><td>2,500.0 ns</td><td>3,300.0 ns</td><td>4,300.0 ns</td><td>340,667.1</td><td>0.16</td><td>0.03</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishDerivedEvent_WithBaseListeners</td><td>100</td><td>3,280.8 ns</td><td>159.38 ns</td><td>467.4 ns</td><td>46.98 ns</td><td>3,300.0 ns</td><td>2,300.0 ns</td><td>2,900.0 ns</td><td>3,600.0 ns</td><td>4,600.0 ns</td><td>304,803.0</td><td>0.18</td><td>0.03</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_MixedListeners</td><td>100</td><td>6,831.2 ns</td><td>233.48 ns</td><td>662.3 ns</td><td>68.68 ns</td><td>6,900.0 ns</td><td>5,200.0 ns</td><td>6,600.0 ns</td><td>7,200.0 ns</td><td>8,300.0 ns</td><td>146,387.5</td><td>0.37</td><td>0.05</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListeners</td><td>1000</td><td>115,492.0 ns</td><td>2,299.12 ns</td><td>6,293.8 ns</td><td>674.77 ns</td><td>114,000.0 ns</td><td>107,500.0 ns</td><td>110,250.0 ns</td><td>117,050.0 ns</td><td>133,900.0 ns</td><td>8,658.6</td><td>1.003</td><td>0.07</td><td>16840 B</td><td>1.00</td>
+</tr><tr><td>AddListeners_WithWarmup</td><td>1000</td><td>116,020.2 ns</td><td>2,311.89 ns</td><td>5,025.9 ns</td><td>665.69 ns</td><td>114,150.0 ns</td><td>107,950.0 ns</td><td>113,150.0 ns</td><td>120,450.0 ns</td><td>131,950.0 ns</td><td>8,619.2</td><td>1.007</td><td>0.07</td><td>-</td><td>0.00</td>
+</tr><tr><td>AddListenerOnly</td><td>1000</td><td>61,552.2 ns</td><td>1,642.04 ns</td><td>4,604.5 ns</td><td>482.68 ns</td><td>60,650.0 ns</td><td>55,950.0 ns</td><td>58,050.0 ns</td><td>64,400.0 ns</td><td>77,450.0 ns</td><td>16,246.4</td><td>0.534</td><td>0.05</td><td>16840 B</td><td>1.00</td>
+</tr><tr><td>RemoveListenerOnly</td><td>1000</td><td>73,114.6 ns</td><td>1,463.77 ns</td><td>3,881.7 ns</td><td>428.66 ns</td><td>71,900.0 ns</td><td>67,700.0 ns</td><td>70,325.0 ns</td><td>74,975.0 ns</td><td>83,100.0 ns</td><td>13,677.2</td><td>0.635</td><td>0.05</td><td>-</td><td>0.00</td>
+</tr><tr><td>RemoveListeners</td><td>1000</td><td>117,830.1 ns</td><td>2,834.41 ns</td><td>8,040.8 ns</td><td>833.79 ns</td><td>115,100.0 ns</td><td>109,000.0 ns</td><td>111,700.0 ns</td><td>123,900.0 ns</td><td>143,600.0 ns</td><td>8,486.8</td><td>1.023</td><td>0.09</td><td>16840 B</td><td>1.00</td>
+</tr><tr><td>PublishEvent_NoListeners</td><td>1000</td><td>840.4 ns</td><td>51.53 ns</td><td>142.8 ns</td><td>15.14 ns</td><td>800.0 ns</td><td>500.0 ns</td><td>800.0 ns</td><td>900.0 ns</td><td>1,200.0 ns</td><td>1,189,839.6</td><td>0.007</td><td>0.00</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_WithListeners</td><td>1000</td><td>17,645.7 ns</td><td>514.07 ns</td><td>1,466.7 ns</td><td>151.28 ns</td><td>17,500.0 ns</td><td>13,900.0 ns</td><td>16,500.0 ns</td><td>18,300.0 ns</td><td>21,200.0 ns</td><td>56,670.9</td><td>0.153</td><td>0.01</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishDerivedEvent_WithBaseListeners</td><td>1000</td><td>17,372.2 ns</td><td>600.34 ns</td><td>1,741.7 ns</td><td>176.84 ns</td><td>17,000.0 ns</td><td>14,900.0 ns</td><td>16,000.0 ns</td><td>18,500.0 ns</td><td>22,300.0 ns</td><td>57,563.3</td><td>0.151</td><td>0.02</td><td>-</td><td>0.00</td>
+</tr><tr><td>PublishEvent_MixedListeners</td><td>1000</td><td>42,835.7 ns</td><td>857.77 ns</td><td>2,087.9 ns</td><td>249.55 ns</td><td>42,900.0 ns</td><td>38,800.0 ns</td><td>41,300.0 ns</td><td>44,200.0 ns</td><td>48,400.0 ns</td><td>23,345.0</td><td>0.372</td><td>0.03</td><td>-</td><td>0.00</td>
+</tr></tbody></table>
+</body>
+</html>

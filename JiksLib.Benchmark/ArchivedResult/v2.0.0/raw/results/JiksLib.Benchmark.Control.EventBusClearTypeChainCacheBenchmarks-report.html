@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>JiksLib.Benchmark.Control.EventBusClearTypeChainCacheBenchmarks-20261125-185737</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26300.9974)
+12th Gen Intel Core i5-12600KF 3.70GHz, 1 CPU, 16 logical and 10 physical cores
+.NET SDK 11.0.100
+  [Host]    : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+  .NET 10.0 : .NET 10.0.15 (10.0.15, 10.0.1526.53008), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>Job=.NET 10.0  Runtime=.NET 10.0  InvocationCount=1  
+UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                   </th><th>Mean</th><th>Error</th><th>StdDev</th><th>StdErr</th><th>Min</th><th>Q1</th><th>Median</th><th>Q3</th><th>Max</th><th>Op/s</th><th>Ratio</th><th>RatioSD</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>PublishWithPrewarmedCache</td><td>1.850 &mu;s</td><td>0.1559 &mu;s</td><td>0.4447 &mu;s</td><td>0.0459 &mu;s</td><td>1.200 &mu;s</td><td>1.500 &mu;s</td><td>1.800 &mu;s</td><td>2.075 &mu;s</td><td>3.000 &mu;s</td><td>540,540.5</td><td>1.06</td><td>0.35</td><td>32 B</td><td>1.00</td>
+</tr><tr><td>PublishAfterClearTypeChainCache</td><td>3.870 &mu;s</td><td>0.3408 &mu;s</td><td>0.9888 &mu;s</td><td>0.1004 &mu;s</td><td>1.800 &mu;s</td><td>3.100 &mu;s</td><td>3.700 &mu;s</td><td>4.500 &mu;s</td><td>6.600 &mu;s</td><td>258,391.0</td><td>2.21</td><td>0.76</td><td>32 B</td><td>1.00</td>
+</tr></tbody></table>
+</body>
+</html>

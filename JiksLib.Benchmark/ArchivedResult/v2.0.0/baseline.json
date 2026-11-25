@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "version-baseline",
+  "version": "2.0.0",
+  "libraryVersion": "2.0.0",
+  "archivedAt": "2026-11-25T20:44:19+08:00",
+  "sourceRun": "202611251855-791746c6",
+  "sourceCommit": "791746c6",
+  "sourceCommitSubject": "执行性能优化",
+  "sourceBranch": "main",
+  "sourceStartedAt": "2026-11-25T18:55:33+08:00",
+  "sourceFinishedAt": "2026-11-25T19:17:51+08:00",
+  "sourceDirty": true,
+  "sourceDirtyFiles": [
+    "README.md",
+    "JiksLib/JiksLib.csproj"
+  ],
+  "sourceDirtyNote": "运行开始 git status 为空；运行中 README.md（19:03）与 JiksLib/JiksLib.csproj（19:11，Version 1.0.0→2.0.0）被外部修改，故 dirty=true。被测源码与基准工程未变，BDN 生成工程在 18:55 构建，早于两处修改；测量值对应 791746c6 的源码，可作为 v2.0.0 基线。",
+  "scope": {
+    "command": "dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- --filter '*' --allStats --artifacts <run>/raw",
+    "filter": "*",
+    "configuration": "Release",
+    "targetFramework": "net10.0",
+    "job": "SimpleJob(RuntimeMoniker.Net10_0)（部分类另带 invocationCount: 1）+ MemoryDiagnoser",
+    "benchmarkTypes": 16,
+    "benchmarks": 341
+  },
+  "probe": {
+    "implementation": "JiksLib.Benchmark/Probes/FootprintProbe.cs",
+    "sourceSha256": "03895f8587629d6ca1365a684cba07e74ba00bab327599b368911a305975d21c",
+    "scenarios": [
+      "sparse-set-reserved",
+      "sparse-set-growth",
+      "eventbus-listeners"
+    ],
+    "trialsPerScenario": 3
+  },
+  "environment": {
+    "dotnet": "SDK 11.0.100 / host runtime 10.0.15",
+    "os": "Windows 11 26H2 (build 26300.9974)",
+    "cpu": "12th Gen Intel Core i5-12600KF 3.70GHz (10 physical / 16 logical)",
+    "memoryGB": 15.8
+  },
+  "comparison": {
+    "defaultFor": "v2.0.0 之后的所有性能运行",
+    "timingRequiresSameEnvironment": true,
+    "timingEnvironmentKeys": [
+      "environment.cpu",
+      "environment.os",
+      "environment.dotnet",
+      "scope.job",
+      "scope.targetFramework",
+      "scope.filter"
+    ],
+    "allocationComparableAcrossMachines": true,
+    "fragmentationRequiresSameProbeSha256": true
+  },
+  "supersedes": null,
+  "notes": "由 202611251855-791746c6 完整复制归档（raw/probe/run.json/ai-evaluation.md/ai-comparison.md 原样保留），是本仓库第一个版本基线。BDN 报告 Cannot setup power plan，绝对时间可能偏保守，分配量不受影响。"
+}

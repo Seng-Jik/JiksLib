@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "status": "success",
+  "startedAt": "2026-11-25T18:55:33+08:00",
+  "finishedAt": "2026-11-25T19:17:51+08:00",
+  "commit": "791746c6",
+  "commitSubject": "执行性能优化",
+  "branch": "main",
+  "dirty": true,
+  "dirtyFiles": [
+    "README.md",
+    "JiksLib/JiksLib.csproj"
+  ],
+  "comparable": true,
+  "probe": "builtin",
+  "command": "dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f net10.0 -- --filter '*' --allStats --artifacts D:\\JiksLib\\artifacts\\benchmark-result\\202611251855-791746c6\\raw",
+  "configuration": "Release",
+  "targetFramework": "net10.0",
+  "job": "SimpleJob(RuntimeMoniker.Net10_0)（部分类另带 invocationCount: 1）+ MemoryDiagnoser",
+  "filter": "*",
+  "benchmarkTypes": [
+    "JiksLib.Benchmark.Collections.CacheBenchmarks",
+    "JiksLib.Benchmark.Collections.CacheEvictionBenchmarks",
+    "JiksLib.Benchmark.Collections.ReadOnlyListSegmentBenchmarks",
+    "JiksLib.Benchmark.Collections.RingBufferBenchmarks",
+    "JiksLib.Benchmark.Collections.SparseSetBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusClearTypeChainCacheBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusComparisonBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusTypeChainBenchmarks",
+    "JiksLib.Benchmark.Control.EventBusWarmupComparisonBenchmarks",
+    "JiksLib.Benchmark.Control.ListenerRemovalOrderBenchmarks",
+    "JiksLib.Benchmark.Control.SafeEventBenchmarks",
+    "JiksLib.Benchmark.Control.SafeEventRecursiveBenchmarks",
+    "JiksLib.Benchmark.Control.ValueEventBusBenchmarks",
+    "JiksLib.Benchmark.Control.ValueEventBusInterfaceBenchmarks",
+    "JiksLib.Benchmark.Text.StringSegmentBenchmarks"
+  ],
+  "environment": {
+    "dotnet": "SDK 11.0.100 / host runtime 10.0.15",
+    "os": "Windows 11 26H2 (build 26300.9974)",
+    "cpu": "12th Gen Intel Core i5-12600KF 3.70GHz (10 physical / 16 logical)",
+    "memoryGB": 15.8
+  },
+  "pruned": [],
+  "notes": "dotnet run 退出码 0；341 个基准全部执行（16 类），Global total time 22:07，raw/results 无 issues。TMP/TEMP 已重定向到 D:\\JiksLib\\artifacts\\tmp，否则 MSBuild 在 D:\\.dev-home\\tmp 下创建临时目录会 Access denied（上一次失败 run 的原因）；该目录运行结束后已删除。运行开始时 git status 为空；运行中 README.md（19:03）与 JiksLib/JiksLib.csproj（19:11，Version 1.0.0→2.0.0）被外部修改，故 dirty=true，但被测源码与基准工程未变，且 BDN 生成工程的构建发生在 18:55，早于两处修改。BDN 报告 Cannot setup power plan（未能切换高性能电源计划），绝对时间可能偏保守，分配量不受影响。probe 为 3 场景 × 3 进程，见 probe/memory.jsonl。raw/ 中无 BDN 生成工程残留；构建故障复现用的临时目录已清理。"
+}

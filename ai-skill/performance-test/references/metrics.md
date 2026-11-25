@@ -102,6 +102,12 @@ BDN 完全没有碎片化数据。可用口径：
 - 分配量是确定性指标，任何增加都要解释；时间差异在阈值内就老实写"无显著差异"，不要为了有结论而拔高。
 - 判定只在两边 job、TFM、参数、机器一致时才下；否则一律"不可比"并写清哪里不一致。
 
+与版本基线比较时额外三条：
+
+- 基线元数据读 `JiksLib.Benchmark/ArchivedResult/vX.Y.Z/baseline.json`：时间只在 `environment` 的 CPU / OS / dotnet 与本次 `run.json` 一致时换算百分比；不一致就写"不可比（环境不同）"，只比分配量与定性结论。
+- 分配量可跨机器、跨版本按精确值比；版本间的差异要能用 `git log <sourceCommit>..HEAD` 解释，解释不了的标"待复跑"，不要硬编原因。
+- 碎片 / 保留内存要求 `probe.sourceSha256` 与当前 `FootprintProbe.cs` 的 SHA-256 一致；不一致时百分比无意义，只能并列绝对值作历史参考。
+
 ## 7. 探针（碎片化与总体占用）
 
 BDN 不测这两项。探针已固化在 `JiksLib.Benchmark` 里：`JiksLib.Benchmark/Probes/FootprintProbe.cs`，通过 `probe` 子命令调用，**不要每次再写临时工程**。
@@ -128,6 +134,7 @@ dotnet run --no-build --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Re
 - 同一场景跑 3 个独立进程，取中位数；同一进程里连测多个场景会互相污染（堆、LOH、JIT），不要那样做。
 - **碎片率是进程级指标**：宿主程序集、JIT、堆布局都会影响它。探针实现或宿主一变，旧数据只能作历史参考，不能算百分比（实测：同一逻辑从临时工程搬进基准项目后，`sparse-set-growth` 从 43.93% 变成 32.64%，而保留/分配逐字节不变）。
 - 输出写到 `<run>/probe/memory.jsonl`（一行一条），并在 `ai-evaluation.md` 里写明场景、N、重复次数、探针版本。
+- 归档到版本基线后，`probe/memory.jsonl` 就是规范的对照数据；下一次比较前先核对 `baseline.json.probe.sourceSha256` 与当前探针源码哈希是否一致。
 
 扩展场景：在 `FootprintProbe.ScenarioNames` 里加名字，在 `Measure` 的 `switch` 里加构造分支（保持"一次只构造一个场景"），必要时加规模常量。场景只应依赖 JiksLib，不要写业务代码。
 

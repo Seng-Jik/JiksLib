@@ -1,3 +1,7 @@
 # 全仓统一 UTF-8（无 BOM）+ LF。
 # 由 Git 在存储与检出时统一换行，避免不同平台/编辑器产生整文件 diff。
 * text=auto eol=lf
+
+# 性能基线的原始测量数据按字节保存，不做换行规范化（console.log / 报告是测量证据）。
+JiksLib.Benchmark/ArchivedResult/**/raw/** -text
+JiksLib.Benchmark/ArchivedResult/**/probe/** -text

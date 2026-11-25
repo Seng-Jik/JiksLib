@@ -3,6 +3,7 @@
 ## 1. 前置检查
 
 - 仓库根目录执行；`dotnet --version` 应为 .NET 10 SDK（job 固定 `RuntimeMoniker.Net10_0`）。
+- 对比对象默认是**最新版本基线**（`JiksLib.Benchmark/ArchivedResult/`）；开局先看它是否存在，以及 `baseline.json.environment` 是否与本机一致（不一致就只能比分配量）。
 - 插电、高性能电源计划；关掉浏览器、编译、杀毒扫描等重负载。时间对比只在同一台机器上做。
 - 不要在共享 CI、虚拟机、云主机上产出要对比的时间数据；这些环境只适合看分配量。
 - 首次运行包含 restore/build，耗时长但不影响测量值；不要在运行中途改代码。
@@ -74,6 +75,8 @@ dotnet run --project JiksLib.Benchmark/JiksLib.Benchmark.csproj -c Release -f ne
 
 `--info` 只打印 BDN 的环境信息（OS、CPU、.NET 版本）然后退出，适合抄进 `environment`，不会跑基准。
 
+`baseline.json` 里的 `scope`、`environment`、`probe.sourceSha256` 可以直接复制到 `ai-comparison.md` 的可比性表，避免手抄出错。
+
 ## 6. 内存/碎片探针
 
 碎片化与保留内存由 `JiksLib.Benchmark` 内置的 `probe` 子命令测量（实现：`JiksLib.Benchmark/Probes/FootprintProbe.cs`）。每个进程只测一个场景，所以每个场景跑 3 个进程取中位数：
@@ -136,11 +139,42 @@ public class XxxBenchmarks
 | 仓库根出现 `BenchmarkDotNet.Artifacts` | 忘了 `--artifacts`，删掉重跑 |
 | 同一目录重复运行 | 报告被覆盖，前后结果混在一起：删掉该目录，重新建目录跑 |
 | `probe` 返回 3 | 用 net48 目标运行了探针；改用 `-f net10.0` |
+| MSBuild / `dotnet` 报临时目录 `Access denied` | 把 `TMP` / `TEMP` 指到仓库内可写目录（如 `artifacts/tmp`，先建好），跑完删除；`run.json` 的 `notes` 记下该设置 |
 
 ## 9. 运行后收尾
 
 1. 确认 `raw/results/` 有报告、`raw/console.log` 完整。
 2. 需要碎片/保留内存时，确认 `probe/memory.jsonl` 有 3 场景 × 3 次的记录。
 3. 可以删除 `raw/` 下 BDN 生成的临时工程与构建输出（可重建），在 `run.json` 的 `pruned` 记录；`results/` 与日志保留。
-4. 写 `run.json`（含是否跑探针）、`ai-evaluation.md`、`ai-comparison.md`。
-5. 跑一遍 `SKILL.md` §7 的检查清单。
+4. 写 `run.json`（含是否跑探针）、`ai-evaluation.md`、`ai-comparison.md`；对比表可先用 `scripts/compare-baseline.ps1` 生成，再人工解释。
+5. 跑一遍 `SKILL.md` §8 的检查清单。
+
+## 10. 版本基线归档
+
+定版时执行。规则见 `SKILL.md` §5，`baseline.json` 字段见 `references/result-layout.md` §5。命令顺序：
+
+```powershell
+$version = "2.0.0"
+$src = "artifacts/benchmark-result/202611251855-791746c6"
+$dst = "JiksLib.Benchmark/ArchivedResult/v$version"
+
+# 1. 复制（不覆盖已有版本目录）
+if (Test-Path $dst) { throw "基线目录已存在：$dst" }
+Copy-Item $src $dst -Recurse
+
+# 2. 探针源码哈希，写进 baseline.json 的 probe.sourceSha256
+(Get-FileHash JiksLib.Benchmark/Probes/FootprintProbe.cs -Algorithm SHA256).Hash.ToLower()
+
+# 3. raw/probe/run.json 与源 run 逐字节比对，应无输出
+foreach ($rel in 'raw','probe','run.json') {
+  $a = Get-ChildItem (Join-Path $src $rel) -Recurse -File |
+    ForEach-Object { $_.FullName.Substring((Resolve-Path $src).Path.Length) + '|' + (Get-FileHash $_.FullName).Hash }
+  $b = Get-ChildItem (Join-Path $dst $rel) -Recurse -File |
+    ForEach-Object { $_.FullName.Substring((Resolve-Path $dst).Path.Length) + '|' + (Get-FileHash $_.FullName).Hash }
+  Compare-Object $a $b
+}
+```
+
+- 只改归档副本里 `ai-evaluation.md` / `ai-comparison.md` 的标题与目录行，数字与结论不动。
+- 写 `baseline.json`，更新 `JiksLib.Benchmark/ArchivedResult/README.md` 的基线表。
+- `git add JiksLib.Benchmark/ArchivedResult`；确认 `git status` 里没有 `artifacts/`。`.gitignore` 已为归档日志留例外。

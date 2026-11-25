@@ -16,6 +16,9 @@
 TestResults/
 BenchmarkDotNet.Artifacts/
 
+# 版本性能基线归档需要保留 console.log 与 BDN 运行日志作为测量证据
+!/JiksLib.Benchmark/ArchivedResult/**/*.log
+
 # NuGet 包与还原目录
 *.nupkg
 *.snupkg
