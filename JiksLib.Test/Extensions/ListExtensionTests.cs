@@ -1110,15 +1110,15 @@ namespace JiksLib.Test.Extensions
         }
 
         [Test]
-        public void AsSegment_Array_EnumeratesInOrder()
+        public void AsSegment_Array_ReturnsArraySegment()
         {
             var array = new[] { 1, 2, 3 };
-            var values = new List<int>();
 
-            foreach (var item in array.AsSegment())
-                values.Add(item);
+            var segment = array.AsSegment();
 
-            Assert.That(values, Is.EqualTo(array));
+            Assert.That(segment.Array, Is.SameAs(array));
+            Assert.That(segment.Offset, Is.EqualTo(0));
+            Assert.That(segment.Count, Is.EqualTo(3));
         }
 
         [Test]
@@ -1129,6 +1129,40 @@ namespace JiksLib.Test.Extensions
             Assert.That(
                 () => array!.AsSegment(),
                 Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_EnumeratesSegmentRange()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+            var segment = new ArraySegment<int>(array, 1, 2);
+
+            var values = new List<int>();
+            foreach (var item in segment.AsReadOnlyListSegment())
+                values.Add(item);
+
+            Assert.That(values, Is.EqualTo(new[] { 2, 3 }));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_DefaultSegment_ThrowsArgumentNullException()
+        {
+            var segment = default(ArraySegment<int>);
+
+            Assert.That(
+                () => segment.AsReadOnlyListSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_EmptyArray_IsEmpty()
+        {
+            var segment = Array.Empty<int>().AsSegment();
+
+            var view = segment.AsReadOnlyListSegment();
+
+            Assert.That(view.IsEmpty, Is.True);
+            Assert.That(view.Count, Is.EqualTo(0));
         }
 
 #if NET5_0_OR_GREATER
@@ -1161,13 +1195,13 @@ namespace JiksLib.Test.Extensions
             var array = new[] { 1, 2, 3, 4 };
 
             int warmup = 0;
-            foreach (var item in array.AsSegment())
+            foreach (var item in array.AsSegment().AsReadOnlyListSegment())
                 warmup += item;
 
             long before = GC.GetAllocatedBytesForCurrentThread();
             int sum = 0;
 
-            foreach (var item in array.AsSegment())
+            foreach (var item in array.AsSegment().AsReadOnlyListSegment())
                 sum += item;
 
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;

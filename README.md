@@ -114,7 +114,7 @@ artifacts/benchmark-result/202611140357-1a2b3c4d/
 | --- | --- | --- |
 | `AnythingExtension` | 对所有类型生效的参数校验扩展：`ThrowIfNull` 在值为 `null` 时抛出异常并返回非空值。 | [AnythingExtension.cs](JiksLib/Extensions/AnythingExtension.cs) |
 | `AsReadOnlyExtension` | 把 `Dictionary`、`List`、数组、`HashSet`、`LinkedList` 转为对应的只读接口，同时完成 null 检查。 | [AsReadOnlyExtension.cs](JiksLib/Extensions/AsReadOnlyExtension.cs) |
-| `ListExtension` | 列表扩展：`RemoveO1`（用末元素填补空位的 O(1) 删除）、`PopBack`、`FindIndex`、`Shuffle`、`GetReversedEnumerable`、`AsSegment`（零分配枚举）、`RandomSelect` 与按权重抽取的 `RandomSelectIndex`。 | [ListExtension.cs](JiksLib/Extensions/ListExtension.cs) |
+| `ListExtension` | 列表扩展：`RemoveO1`（用末元素填补空位的 O(1) 删除）、`PopBack`、`FindIndex`、`Shuffle`、`GetReversedEnumerable`、`AsSegment`（数组 → `ArraySegment`）、`AsReadOnlyListSegment`（零分配枚举）、`RandomSelect` 与按权重抽取的 `RandomSelectIndex`。 | [ListExtension.cs](JiksLib/Extensions/ListExtension.cs) |
 | `StringExtension` | 字符串扩展：`Split0`（空串返回空数组）、`AsSegment`（零拷贝片段视图）、`Tokenize`（零分配切分器）、`BKDRHash`、`StripPrefix` / `StripSuffix` / `StripPrefixSuffix`。 | [StringExtension.cs](JiksLib/Extensions/StringExtension.cs) |
 
 ### `JiksLib.IO`

@@ -139,17 +139,37 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
-        /// 将数组包装为 <see cref="ReadOnlyListSegment{T}"/> 视图
-        /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
+        /// 将数组包装为 <see cref="ArraySegment{T}"/>
+        /// 不复制元素。
         /// </summary>
         /// <typeparam name="T">元素类型</typeparam>
         /// <param name="array">数组</param>
-        /// <returns>覆盖整个数组的只读片段</returns>
+        /// <returns>覆盖整个数组的片段</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="array"/> 为 null 时抛出</exception>
-        public static ReadOnlyListSegment<T> AsSegment<T>(this T[] array)
+        public static ArraySegment<T> AsSegment<T>(this T[] array)
         {
             array.ThrowIfNull(nameof(array));
-            return new ReadOnlyListSegment<T>(array);
+            return new ArraySegment<T>(array);
+        }
+
+        /// <summary>
+        /// 将 <see cref="ArraySegment{T}"/> 转换为 <see cref="ReadOnlyListSegment{T}"/>
+        /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="segment">数组片段</param>
+        /// <returns>覆盖该片段区间的只读片段</returns>
+        /// <exception cref="ArgumentNullException">
+        /// 当 <paramref name="segment"/> 没有引用数组（默认值）时抛出
+        /// </exception>
+        public static ReadOnlyListSegment<T> AsReadOnlyListSegment<T>(
+            this ArraySegment<T> segment)
+        {
+            var array = segment.Array.ThrowIfNull(nameof(segment));
+            return new ReadOnlyListSegment<T>(
+                array,
+                segment.Offset,
+                segment.Count);
         }
 
         /// <summary>
