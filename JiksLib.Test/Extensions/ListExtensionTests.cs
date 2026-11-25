@@ -1165,6 +1165,47 @@ namespace JiksLib.Test.Extensions
             Assert.That(view.Count, Is.EqualTo(0));
         }
 
+        [Test]
+        public void AsReadOnlyListSegment_Array_WrapsWholeArrayWithoutCopy()
+        {
+            // Arrange
+            var array = new[] { 1, 2, 3 };
+
+            // Act
+            var segment = array.AsReadOnlyListSegment();
+
+            // Assert
+            Assert.That(segment.Source, Is.SameAs(array));
+            Assert.That(segment.Offset, Is.EqualTo(0));
+            Assert.That(segment.Count, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_ReflectsElementChanges()
+        {
+            // Arrange
+            var array = new[] { 1, 2, 3 };
+            var segment = array.AsReadOnlyListSegment();
+
+            // Act
+            array[1] = 20;
+
+            // Assert
+            Assert.That(segment[1], Is.EqualTo(20));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_WithNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            int[]? array = null;
+
+            // Act & Assert
+            Assert.That(
+                () => array!.AsReadOnlyListSegment(),
+                Throws.TypeOf<ArgumentNullException>());
+        }
+
 #if NET5_0_OR_GREATER
         [Test]
         public void AsSegment_Foreach_DoesNotAllocate()
@@ -1202,6 +1243,29 @@ namespace JiksLib.Test.Extensions
             int sum = 0;
 
             foreach (var item in array.AsSegment().AsReadOnlyListSegment())
+                sum += item;
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.That(warmup, Is.EqualTo(10));
+            Assert.That(sum, Is.EqualTo(10));
+            Assert.That(allocated, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AsReadOnlyListSegment_Array_Foreach_DoesNotAllocate()
+        {
+            var array = new[] { 1, 2, 3, 4 };
+
+            // 先跑一次，排除 JIT / 静态初始化带来的首次分配
+            int warmup = 0;
+            foreach (var item in array.AsReadOnlyListSegment())
+                warmup += item;
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int sum = 0;
+
+            foreach (var item in array.AsReadOnlyListSegment())
                 sum += item;
 
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;

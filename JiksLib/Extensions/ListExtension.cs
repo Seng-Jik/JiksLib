@@ -153,6 +153,20 @@ namespace JiksLib.Extensions
         }
 
         /// <summary>
+        /// 将数组包装为 <see cref="ReadOnlyListSegment{T}"/>
+        /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="array">数组</param>
+        /// <returns>覆盖整个数组的只读片段</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="array"/> 为 null 时抛出</exception>
+        public static ReadOnlyListSegment<T> AsReadOnlyListSegment<T>(this T[] array)
+        {
+            array.ThrowIfNull(nameof(array));
+            return new ReadOnlyListSegment<T>(array);
+        }
+
+        /// <summary>
         /// 将 <see cref="ArraySegment{T}"/> 转换为 <see cref="ReadOnlyListSegment{T}"/>
         /// 不复制元素；返回值的结构体枚举器可直接用于 foreach，不产生分配。
         /// </summary>
