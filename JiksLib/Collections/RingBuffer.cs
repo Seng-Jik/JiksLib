@@ -198,6 +198,28 @@ namespace JiksLib.Collections
         /// 写入一组元素
         /// 元素按给定顺序逐个写入，因此序列中最后一个元素最终位于下标 0
         /// </summary>
+        /// <remarks>
+        /// 片段底层是数组时走无拷贝的数组路径，否则按下标逐元素写入。
+        /// </remarks>
+        public void AddRange(ReadOnlyListSegment<T> items)
+        {
+            if (items.Count == 0)
+                return;
+
+            if (items.Source is T[] array)
+            {
+                AddRange(new ArraySegment<T>(array, items.Offset, items.Count));
+                return;
+            }
+
+            for (int i = 0; i < items.Count; i++)
+                Add(items[i]);
+        }
+
+        /// <summary>
+        /// 写入一组元素
+        /// 元素按给定顺序逐个写入，因此序列中最后一个元素最终位于下标 0
+        /// </summary>
         /// <exception cref="ArgumentNullException">
         /// 当 <paramref name="items"/> 为 <c>null</c> 时抛出
         /// </exception>
@@ -222,6 +244,10 @@ namespace JiksLib.Collections
             else if (items is ArraySegment<T> segment)
             {
                 AddRange(segment);
+            }
+            else if (items is ReadOnlyListSegment<T> readOnlySegment)
+            {
+                AddRange(readOnlySegment);
             }
             else
             {
